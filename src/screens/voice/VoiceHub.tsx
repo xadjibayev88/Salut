@@ -82,7 +82,8 @@ export function VoiceHub() {
   const ch = CHARACTERS.find((c) => c.id === prefs.character) ?? CHARACTERS[0];
   const micLang = prefs.micLang !== 'auto' ? prefs.micLang : prefs.lang === 'uz' ? role.micLang : role.micLang === 'fr-FR' ? 'fr-FR' : EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.mic;
   const customOk = prefs.role !== 'custom' || prefs.customRole.trim().length >= CUSTOM_ROLE_MIN;
-  const resting = rest > now;
+  // Super (yoki admin) — dam olish kutilmaydi, hatto oldin bepul rejimda belgilangan bo'lsa ham.
+  const resting = rest > now && !config?.premium;
   const canTalk = !!config?.ai && (browserSttSupported() || (config.stt && cloudSttSupported()));
 
   const options: CallOptions | null = useMemo(
