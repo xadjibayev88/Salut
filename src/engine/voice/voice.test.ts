@@ -66,3 +66,10 @@ describe('answerLang — mikrofon tilini avtomatik tanlash', () => {
     expect(parseRichAns('Salom [[an', true).map((s) => s.text).join('')).not.toContain('[[');
   });
 });
+
+describe('answerLang — fransuzcha savol belgidan ustun', () => {
+  it("oxirgi fransuzcha savol + tarjima → fr", () => {
+    expect(answerLang("Tanishamiz: [fr]Comment tu t'appelles ?[/fr] (komma tü appel) — isming nima?\n\n[[ans:uz]]")).toBe('fr');
+    expect(answerLang("[fr]Bonjour ![/fr] — salom. Bugun nimani o'rganamiz? [[ans:uz]]")).toBe('uz');
+  });
+});

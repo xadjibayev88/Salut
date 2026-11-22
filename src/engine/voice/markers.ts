@@ -135,8 +135,11 @@ export function talkStats(utterances: string[]): TalkStats {
  */
 export function answerLang(raw: string): 'fr' | 'uz' | null {
   const m = /\[\[\s*ans\s*:\s*(fr|uz|ru|en)\s*\]\]/i.exec(raw);
-  if (m) return m[1].toLowerCase() === 'fr' ? 'fr' : 'uz';
   const tail = raw.replace(/\[\[[^\]]*\]\]/g, '').trim().slice(-260);
+  // Oxirgi fransuzcha bo'lak savol bo'lsa va undan keyin faqat izoh/tarjima qolgan bo'lsa — fransuzcha javob kutilyapti.
+  const lastFr = /\[fr\]([^[]*)\[\/fr\]([^[]*)$/i.exec(tail);
+  if (lastFr && /\?\s*$/.test(lastFr[1]) && lastFr[2].length < 90) return 'fr';
+  if (m) return m[1].toLowerCase() === 'fr' ? 'fr' : 'uz';
   if (/(fransuzcha|frantsuzcha|fransuz tilida)[^.?!]{0,30}(ayt|yoz|javob|takrorla|qaytar|tuz|gapir)/i.test(tail)) return 'fr';
   if (/\b(takrorlang|qaytaring|takrorla)\b/i.test(tail) && /\[fr\]/i.test(tail)) return 'fr';
   // Oxirgi gap butunlay fransuzcha savol: «... Et toi ?[/fr]»
