@@ -1,4 +1,4 @@
-// Krua javobidagi maxsus belgilar:
+// Vivi javobidagi maxsus belgilar:
 //   [[shape:star]] — maskot shakli (keyingi replikagacha saqlanadi)
 //   [[do:hop]]     — bir martalik imo-ishora
 //   [laughs]       — ovoz tegi (faqat ElevenLabs v3 uchun; boshqa holatda olib tashlanadi)

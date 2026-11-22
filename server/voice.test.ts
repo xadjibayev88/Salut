@@ -8,7 +8,7 @@ describe('voice-mode prompt', () => {
   it('adds character, language, voice rules and body markers', () => {
     const r = parseTutorRequest({ ...base, mode: 'voice', character: 'witty', lang: 'ru', audioTags: true }) as TutorRequest;
     const s = systemInstruction(r);
-    expect(s).toContain('Hazilkash Krua');
+    expect(s).toContain('Hazilkash Vivi');
     expect(s).toContain('rus tilida');
     expect(s).toContain('OVOZLI SUHBAT');
     expect(s).toContain('[[shape:');
@@ -33,8 +33,8 @@ describe('voice-mode prompt', () => {
 
 describe('voice server helpers', () => {
   it('parses ElevenLabs voices safely', () => {
-    expect(parseVoices('Krua:AbCdEf123456, Bad:!!, Prof:ZZZZZZZZZZ')).toEqual([
-      { name: 'Krua', id: 'AbCdEf123456' },
+    expect(parseVoices('Vivi:AbCdEf123456, Bad:!!, Prof:ZZZZZZZZZZ')).toEqual([
+      { name: 'Vivi', id: 'AbCdEf123456' },
       { name: 'Prof', id: 'ZZZZZZZZZZ' },
     ]);
     expect(parseVoices(undefined)).toEqual([]);

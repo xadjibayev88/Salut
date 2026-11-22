@@ -1,4 +1,4 @@
-// Salut Super: obuna sahifasi (Payme / Click) va obunachi holati.
+// Voilà Super: obuna sahifasi (Payme / Click) va obunachi holati.
 import { useEffect, useState } from 'react';
 import { accountApi, useAccount } from '../state/account';
 import { AuthScreen } from './Auth';
@@ -6,8 +6,8 @@ import { Confetti } from '../components/Confetti';
 
 const PERKS = [
   ['☕', 'Cheksiz kofe', "Xato qilsangiz ham darsdan chiqib ketmaysiz"],
-  ['🚫', "Reklamasiz", "Darslar va Krua bilan suhbat orasida reklama yo'q"],
-  ['🎙️', 'Krua bilan cheksiz suhbat', "30 daqiqalik sessiyalar, dam olish kutilmaydi"],
+  ['🚫', "Reklamasiz", "Darslar va Vivi bilan suhbat orasida reklama yo'q"],
+  ['🎙️', 'Vivi bilan cheksiz suhbat', "30 daqiqalik sessiyalar, dam olish kutilmaydi"],
   ['☀️', 'Seriyani bepul tiklash', "Uzilgan seriyani 2 kun ichida tangasiz tiklaysiz"],
   ['⛱️', 'Har oy bepul seriya soyaboni', "Bir kunlik tanaffusda ham seriyangiz saqlanadi"],
 ];

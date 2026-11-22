@@ -47,7 +47,7 @@ import org.json.JSONObject;
 import java.util.concurrent.Executor;
 
 /**
- * Salut! — WebView ilova. Sayt (BuildConfig.START_URL) ichida ochiladi va JS ko'priklari beradi:
+ * Voilà! — WebView ilova. Sayt (BuildConfig.START_URL) ichida ochiladi va JS ko'priklari beradi:
  *  - AndroidAdMob: banner, mukofotli video, to'liq ekranli reklama (src/engine/ads.ts bilan bir xil protokol)
  *  - AndroidAuth: telefondagi Google hisobi orqali bir bosishda kirish (Credential Manager → ID token)
  */

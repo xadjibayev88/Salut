@@ -241,7 +241,7 @@ export class VoiceCall {
   private onVadStart() {
     if (this.o.inputMode !== 'handsfree') return;
     if (this.snap.phase === 'speaking') {
-      // Barge-in: Krua gapirayotganda o'quvchi gapira boshladi.
+      // Barge-in: Vivi gapirayotganda o'quvchi gapira boshladi.
       const now = Date.now();
       this.bargeIns = [...this.bargeIns.filter((t) => now - t < 20_000), now];
       if (this.bargeIns.length >= 3) this.notice('nudgeNoise');
@@ -318,7 +318,7 @@ export class VoiceCall {
     if (this.finishing || Date.now() - this.startedAt >= this.snap.limitMs) this.end('limit');
   }
 
-  // ---------- Krua javobi ----------
+  // ---------- Vivi javobi ----------
 
   private history() {
     return this.snap.turns.slice(-21, -1).map((t) => ({ role: t.role, text: t.text }));
@@ -414,7 +414,7 @@ export class VoiceCall {
     }
   }
 
-  /** Krua gapini bo'lish: ovoz va oqim darhol to'xtaydi. */
+  /** Vivi gapini bo'lish: ovoz va oqim darhol to'xtaydi. */
   interrupt() {
     const live = this.snap.live.trim();
     this.tts.stop();

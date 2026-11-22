@@ -1,7 +1,7 @@
-# Salut! — Fransuz tili o'zbekcha
+# Voilà! — Fransuz tili o'zbekcha
 
 Fransuz tilini o'zbek tilida so'zlashuvchilar uchun o'rgatadigan, o'yin elementlari bor (gamifikatsiyalangan) PWA ilova.
-Nomi, maskoti (Krua — beretli kruasan), dizayni va kurs mazmuni original.
+Nomi, maskoti (Vivi — yoqimtoy parijlik mushukcha), dizayni va kurs mazmuni original. To'g'ri javobda Vivi «Voilà !» deb sehr ko'rsatadi.
 
 ## Imkoniyatlar
 
@@ -10,14 +10,14 @@ Nomi, maskoti (Krua — beretli kruasan), dizayni va kurs mazmuni original.
   to'g'ri tarjimani tanlash, erkin yozish (urg'u klaviaturasi bilan). So'z ustiga bossangiz, tarjimasi chiqadi.
 - **Javob tekshirish:** muqobil tarjimalar, o'zbekcha apostrof variantlari (o' / oʻ / o‘), urg'u belgisiz yozilgan javob
   va kichik harf xatolari izoh bilan qabul qilinadi.
-- **Krua ustoz (AI):** o'zbekcha ravon va hazil bilan gaplashadigan fransuz tili ustozi (Gemini).
+- **Vivi ustoz (AI):** o'zbekcha ravon va hazil bilan gaplashadigan fransuz tili ustozi (Gemini).
   O'quvchining o'tgan darslari, biladigan so'zlari va xatolarini biladi; 5 stsenariy (erkin suhbat, Parij kafesi,
   tanishuv, grammatika, xatolar tahlili); fransuzcha iboralar bosilganda talaffuz qilinadi; mikrofon (uz/fr); oqimli javob.
-- **Krua AI — jonli ovozli suhbat:** Kruani (yoki Space) bosib turib gapirish yoki qo'lsiz rejim (ovoz faolligini
-  aniqlash, Krua gapirayotganda gapini bo'lish). Javob gap-gap bo'lib ovozlanadi (birinchi gap tayyor bo'lishi bilan),
-  keyingi gap ovozi oldindan yuklanadi. Krua 15 xil shaklga kiradi va 8 xil imo-ishora qiladi (javobdagi belgilar
+- **Vivi AI — jonli ovozli suhbat:** Vivini (yoki Space) bosib turib gapirish yoki qo'lsiz rejim (ovoz faolligini
+  aniqlash, Vivi gapirayotganda gapini bo'lish). Javob gap-gap bo'lib ovozlanadi (birinchi gap tayyor bo'lishi bilan),
+  keyingi gap ovozi oldindan yuklanadi. Vivi 15 xil shaklga kiradi va 8 xil imo-ishora qiladi (javobdagi belgilar
   bo'yicha). 4 xarakter (Klassik, Professor — rozilik bilan, Mehribon, Hazilkash), 8 tayyor rol + o'z rolingiz,
-  tushuntirish tili (uz/ru/en), ovoz tanlash, subtitrlar, suhbat matni, sessiya taymeri va "Krua dam olyapti" tanaffusi,
+  tushuntirish tili (uz/ru/en), ovoz tanlash, subtitrlar, suhbat matni, sessiya taymeri va "Vivi dam olyapti" tanaffusi,
   oxirgi 10 ta replika xotirasi. Suhbatdan keyin tahlil: so'z/gap/gapirish vaqti/turli so'zlar, shaxsiy rekordlar,
   kuchli va zaif tomonlar, yangi so'zlarni takrorlash tizimiga qo'shish.
 - **O'yin elementlari:** ball, kunlik maqsad, quyosh seriyasi (soyabon bilan), kofe ☕ (xato qilinsa kamayadi,
@@ -28,7 +28,7 @@ Nomi, maskoti (Krua — beretli kruasan), dizayni va kurs mazmuni original.
   (Profil) — blur o'chadi, animatsiyalar kamayadi, ilova qotmaydi.
 - **Hisoblar:** Google bilan kirish (veb — Google Identity Services, Android — Credential Manager), email + parol,
   yoki mehmon sifatida. Progress serverga sinxronlanadi va istalgan qurilmada davom etadi. Hisobni o'chirish.
-- **Super obunasi:** oylik / yillik, Payme va Click orqali. Cheksiz kofe, reklamasiz, Krua bilan 30 daqiqalik
+- **Super obunasi:** oylik / yillik, Payme va Click orqali. Cheksiz kofe, reklamasiz, Vivi bilan 30 daqiqalik
   suhbatlar tanaffussiz, seriyani bepul tiklash, har oy bepul soyabon.
 - **Reklama:** Android ilovada AdMob (banner, interstitial, mukofotli video), vebda AdSense. Darsda, qo'ng'iroqda
   va Super a'zolarida reklama ko'rsatilmaydi. Sozlamalar: `public/ads-config.js`, `public/app-ads.txt`.
@@ -67,7 +67,7 @@ Ishlab chiqishda: bir terminalda `GEMINI_API_KEY=... npm run server`, ikkinchisi
 | `TRUST_PROXY` | — | `1` — reverse proxy ortida `X-Forwarded-For` ga ishonish |
 | `ALLOWED_ORIGINS` | — | Boshqa domendan so'rovga ruxsat (vergul bilan) |
 | `ELEVENLABS_API_KEY` | — | Tabiiy ovoz (o'zbekcha ham). Bo'lmasa — qurilmadagi brauzer ovozi |
-| `ELEVENLABS_VOICES` | — | `Nomi:voiceId` ro'yxati, masalan `Krua:abc123,Professor:def456` |
+| `ELEVENLABS_VOICES` | — | `Nomi:voiceId` ro'yxati, masalan `Vivi:abc123,Professor:def456` |
 | `ELEVENLABS_MODEL_ID` | `eleven_v4` | o'zbek tilini qo'llaydi (v3 qo'llamaydi) |
 | `VOICE_SESSION_MINUTES` / `VOICE_COOLDOWN_MINUTES` | `10` / `20` | Sessiya uzunligi va undan keyingi tanaffus |
 | `TTS_CHARS_PER_DAY` | `12000` | Bitta IP uchun kunlik ovoz belgilari |
@@ -102,7 +102,7 @@ yozuvi avtomatik ravishda Gemini orqali aniqlanadi (`/api/stt`), shuning uchun h
 ## Tuzilma
 
 ```
-server/tutor.ts         Krua personasi, prompt, kiruvchi ma'lumot tekshiruvi, Gemini SSE oqimi
+server/tutor.ts         Vivi personasi, prompt, kiruvchi ma'lumot tekshiruvi, Gemini SSE oqimi
 server/voice.ts         STT (Gemini audio), TTS (ElevenLabs proksi), suhbat tahlili
 server/main.ts          HTTP server: statik fayllar + barcha /api yo'nalishlari (limitlar, xatolar)
 server/accounts.ts      hisoblar: scrypt parol, imzolangan sessiya, Google ID token tekshiruvi, progress

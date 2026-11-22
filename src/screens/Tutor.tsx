@@ -182,7 +182,7 @@ function TextChat() {
       <div className="tutor-head">
         <Mascot mood={busy ? 'think' : 'happy'} size={52} />
         <div className="tutor-title">
-          <b>Krua ustoz</b>
+          <b>Vivi ustoz</b>
           <small className={busy ? 'typing-label' : ''}>{busy ? 'yozmoqda…' : 'AI · fransuz tili ustozi'}</small>
         </div>
         <button
@@ -209,7 +209,7 @@ function TextChat() {
       <div className="chat">
         {all.map((m) => (
           <div key={m.id} className={`msg msg-${m.role} ${m.error ? "error" : ""}`}>
-            {m.role === 'tutor' && <div className="msg-avatar">🥐</div>}
+            {m.role === 'tutor' && <div className="msg-avatar"><Mascot size={30} mood="happy" /></div>}
             <div className="msg-bubble">
               {m.role === 'tutor' ? <RichText text={m.text} /> : m.text}
               {m.role === 'tutor' && !m.error && frenchParts(m.text).length > 0 && ttsSupported() && (
@@ -227,7 +227,7 @@ function TextChat() {
         ))}
         {streamText !== null && (
           <div className="msg msg-tutor">
-            <div className="msg-avatar">🥐</div>
+            <div className="msg-avatar"><Mascot size={30} mood="happy" /></div>
             <div className="msg-bubble">
               {streamText ? <RichText text={streamText} streaming /> : <span className="dots"><i /><i /><i /></span>}
             </div>
@@ -287,7 +287,7 @@ function TextChat() {
         )}
       </form>
       {xpToast && <div className="xp-toast">+{xpToast} ball</div>}
-      <p className="tutor-note">Krua — sun'iy intellekt. Ba'zan xato qilishi mumkin; muhim narsalarni darslar bilan tekshiring.</p>
+      <p className="tutor-note">Vivi — sun'iy intellekt. Ba'zan xato qilishi mumkin; muhim narsalarni darslar bilan tekshiring.</p>
     </div>
   );
 }

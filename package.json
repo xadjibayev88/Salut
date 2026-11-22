@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Salut! — fransuz tilini o'zbek tilida o'rganish ilovasi",
+  "description": "Voilà! — fransuz tilini o'zbek tilida o'rganish ilovasi",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

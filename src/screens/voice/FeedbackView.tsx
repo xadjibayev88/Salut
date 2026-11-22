@@ -164,7 +164,7 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
           Yana gaplashish
         </button>
         <button type="button" className="btn btn-text" onClick={onBack}>
-          Krua sahifasiga qaytish
+          Vivi sahifasiga qaytish
         </button>
       </div>
     </div>

@@ -22,15 +22,15 @@ const MIC_ERRORS: Record<string, string> = {
 };
 
 const NOTICES: Record<string, string> = {
-  weak: 'Aloqa zaif — Krua biroz kechikib javob berishi mumkin.',
-  reconnecting: "Aloqa uzildi — qayta ulanmoqdamiz. Krua to'xtagan joyidan davom etadi.",
-  turnFailed: 'Krua eshitmadi — yana bir bor ayting.',
+  weak: 'Aloqa zaif — Vivi biroz kechikib javob berishi mumkin.',
+  reconnecting: "Aloqa uzildi — qayta ulanmoqdamiz. Vivi to'xtagan joyidan davom etadi.",
+  turnFailed: 'Vivi eshitmadi — yana bir bor ayting.',
   nudgeSilence: "Ovozingiz eshitilmayaptimi? «Bosib gapirish» rejimini sinab ko'ring.",
   nudgeNoise: "Atrofingiz shovqinlimi? «Bosib gapirish» rejimini sinab ko'ring.",
   tooLong: "Replika bir daqiqagacha bo'lsin — qisqaroq gapiring.",
-  ttsQuota: 'Bugungi ovoz limiti tugadi — Krua brauzer ovozida davom etadi.',
+  ttsQuota: 'Bugungi ovoz limiti tugadi — Vivi brauzer ovozida davom etadi.',
   sttFailed: "Nutqni aniqlab bo'lmadi — qayta urinib ko'ring.",
-  upstream: "Krua vaqtincha javob bera olmadi. Birozdan so'ng qayta urinib ko'ring.",
+  upstream: "Vivi vaqtincha javob bera olmadi. Birozdan so'ng qayta urinib ko'ring.",
   rateLimited: "Juda ko'p so'rov — bir daqiqadan keyin urinib ko'ring.",
 };
 
@@ -115,19 +115,19 @@ export function VoiceCallScreen({
           ? 'Eshitmoqda… (yozib olinmoqda)'
           : 'Eshitmoqda…'
         : s.phase === 'thinking'
-          ? 'Krua o\'ylamoqda…'
+          ? 'Vivi o\'ylamoqda…'
           : s.phase === 'speaking'
-            ? 'Krua gapirmoqda…'
+            ? 'Vivi gapirmoqda…'
             : 'Sizning navbatingiz';
   const hint =
     s.phase === 'speaking'
       ? ptt
-        ? "Gapini bo'lish uchun Kruani bosib turing"
-        : "Gapira boshlang — Krua jim bo'lib tinglaydi"
+        ? "Gapini bo'lish uchun Vivini bosib turing"
+        : "Gapira boshlang — Vivi jim bo'lib tinglaydi"
       : s.phase === 'ready'
         ? ptt
-          ? 'Gapirish uchun Kruani yoki Space\'ni bosib turing'
-          : 'Shunchaki gapiring — Krua tinglayapti'
+          ? 'Gapirish uchun Vivini yoki Space\'ni bosib turing'
+          : 'Shunchaki gapiring — Vivi tinglayapti'
         : s.phase === 'user' && ptt
           ? "Gapirib bo'lgach, qo'yib yuboring"
           : '';
@@ -172,13 +172,13 @@ export function VoiceCallScreen({
         </button>
       </header>
 
-      {s.tired && <div className="call-tired">😮‍💨 Krua charchayapti… {fmt(s.limitMs - s.elapsedMs)} qoldi</div>}
+      {s.tired && <div className="call-tired">😮‍💨 Vivi charchayapti… {fmt(s.limitMs - s.elapsedMs)} qoldi</div>}
 
       <main className="call-stage">
         <button
           type="button"
           className="call-avatar"
-          aria-label={ptt ? 'Gapirish uchun bosib turing' : 'Krua'}
+          aria-label={ptt ? 'Gapirish uchun bosib turing' : 'Vivi'}
           onPointerDown={(e) => {
             if (!ptt) return;
             (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -271,7 +271,7 @@ export function VoiceCallScreen({
               {s.turns.length === 0 && <p className="muted">Suhbat matni shu yerda paydo bo'ladi.</p>}
               {s.turns.map((t) => (
                 <div key={t.id} className={`tline tl-${t.role}`}>
-                  <b>{t.role === 'user' ? 'Siz' : 'Krua'}</b>
+                  <b>{t.role === 'user' ? 'Siz' : 'Vivi'}</b>
                   <span>{t.role === 'tutor' ? <RichText text={displayText(t.text)} /> : t.text}</span>
                 </div>
               ))}

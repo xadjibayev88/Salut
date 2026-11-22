@@ -215,7 +215,7 @@ export function leagueStandings(league: LeagueState, now = new Date(), name = 'S
     const curve = Math.pow(p, 0.85 + r() * 0.4);
     rows.push({ id: `b${i}`, name: botName, avatar: AVATARS[Math.floor(r() * AVATARS.length)], xp: Math.round(activity * jitter * curve), isMe: false });
   }
-  rows.push({ id: 'me', name: name || 'Siz', avatar: '🥐', xp: league.weeklyXp, isMe: true });
+  rows.push({ id: 'me', name: name || 'Siz', avatar: '🐱', xp: league.weeklyXp, isMe: true });
   return rows.sort((a, b) => b.xp - a.xp || (a.isMe ? -1 : b.isMe ? 1 : 0));
 }
 
@@ -411,8 +411,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'words100', title: "Lug'at", desc: "100 ta so'z o'rganing", icon: '📖', goal: 100, progress: learnedWords },
   { id: 'unit1', title: 'Bonjour !', desc: "1-bo'limni tugating", icon: '🇫🇷', goal: 1, progress: (s) => (unitComplete(s, 0) ? 1 : 0) },
   { id: 'course', title: 'Parijga tayyor', desc: 'Butun kursni tugating', icon: '🗼', goal: ALL_LESSONS.length, progress: (s) => ALL_LESSONS.filter((l) => s.lessonsDone[l.id]).length },
-  { id: 'chat10', title: 'Suhbatdosh', desc: 'Krua bilan 10 ta xabar almashing', icon: '🗨️', goal: 10, progress: (s) => s.chatMessages },
-  { id: 'chat100', title: 'Gapdon', desc: 'Krua bilan 100 ta xabar', icon: '🎙️', goal: 100, progress: (s) => s.chatMessages },
+  { id: 'chat10', title: 'Suhbatdosh', desc: 'Vivi bilan 10 ta xabar almashing', icon: '🗨️', goal: 10, progress: (s) => s.chatMessages },
+  { id: 'chat100', title: 'Gapdon', desc: 'Vivi bilan 100 ta xabar', icon: '🎙️', goal: 100, progress: (s) => s.chatMessages },
   { id: 'practice10', title: 'Takror — ilm onasi', desc: '10 marta mashq qiling', icon: '🏋️', goal: 10, progress: (s) => s.practiceDone },
 ];
 
@@ -534,7 +534,7 @@ const QUEST_POOL: QuestDef[] = [
   { id: 'xp', title: "{n} ball to'plang", icon: '⭐', value: (d) => d.xp, goals: [20, 30, 40] },
   { id: 'lessons', title: '{n} ta dars tugating', icon: '🚇', value: (d) => d.lessons, goals: [1, 2, 3] },
   { id: 'perfect', title: "{n} ta darsni xatosiz o'ting", icon: '💯', value: (d) => d.perfect, goals: [1, 2] },
-  { id: 'chat', title: 'Krua bilan {n} ta xabar almashing', icon: '💬', value: (d) => d.chat, goals: [3, 5] },
+  { id: 'chat', title: 'Vivi bilan {n} ta xabar almashing', icon: '💬', value: (d) => d.chat, goals: [3, 5] },
   { id: 'combo', title: "Ketma-ket {n} ta to'g'ri javob", icon: '⚡', value: (d) => d.combo, goals: [8, 12] },
   { id: 'practice', title: '{n} marta mashq qiling', icon: '🏋️', value: (d) => d.practice, goals: [1, 2] },
 ];

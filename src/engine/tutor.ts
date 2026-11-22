@@ -1,4 +1,4 @@
-// Krua ustoz — mijoz tomoni: kontekst yig'ish, oqimli so'rov, javobni bo'laklash.
+// Vivi ustoz — mijoz tomoni: kontekst yig'ish, oqimli so'rov, javobni bo'laklash.
 import { ALL_LESSONS } from '../data/course';
 import type { GameState } from './game';
 
@@ -26,7 +26,7 @@ export const SCENARIOS: ScenarioInfo[] = [
     title: 'Erkin suhbat',
     icon: '💬',
     greet: (n) =>
-      `${n ? `${n}, ` : ''}[fr]Salut ![/fr] (salyu) Men Krua — beretli kruasan va sizning fransuz tili ustozingizman. Xohlagan narsangizni so'rang: so'z, grammatika, Parij... Faqat meni choyga botirmang, iltimos 😄 Bugun nimadan boshlaymiz?`,
+      `${n ? `${n}, ` : ''}[fr]Salut ![/fr] (salyu) Men Vivi — parijlik mushukcha va sizning fransuz tili ustozingizman. Xohlagan narsangizni so'rang: so'z, grammatika, Parij... Faqat qornimni silamang, darsni unutib qo'yaman 😸 Bugun nimadan boshlaymiz?`,
     suggestions: ['Fransuzlar qanday salomlashadi?', 'Menga 3 ta foydali ibora o\'rgat', 'Fransuzcha bir hazil aytib ber'],
   },
   {
@@ -42,7 +42,7 @@ export const SCENARIOS: ScenarioInfo[] = [
     title: 'Tanishuv',
     icon: '🤝',
     greet: () =>
-      `[fr]Salut ! Je m'appelle Krua. Et toi ?[/fr] (Salom! Mening ismim Krua. Seningchi?) Tasavvur qiling, Parijdagi parkda tanishdik. Fransuzcha javob berishga harakat qiling — bilmasangiz o'zbekcha yozing, birga tuzamiz.`,
+      `[fr]Salut ! Je m'appelle Vivi. Et toi ?[/fr] (Salom! Mening ismim Vivi. Seningchi?) Tasavvur qiling, Parijdagi parkda tanishdik. Fransuzcha javob berishga harakat qiling — bilmasangiz o'zbekcha yozing, birga tuzamiz.`,
     suggestions: ["Je m'appelle Ali.", 'Je suis ouzbek.', 'Qanday tanishtiraman o\'zimni?'],
   },
   {
@@ -50,7 +50,7 @@ export const SCENARIOS: ScenarioInfo[] = [
     title: 'Grammatika',
     icon: '📐',
     greet: () =>
-      `Grammatika — fransuz tilining eng nozik qismi, xuddi mening qatlamlarim kabi 🥐 Savolingizni bering: artikllar, rod, fe'llar, inkor — hammasini oddiy misollar bilan tushuntiraman.`,
+      `Grammatika — fransuz tilining eng nozik qismi, xuddi kalava ipidek chigal, lekin birga yechamiz 🧶 Savolingizni bering: artikllar, rod, fe'llar, inkor — hammasini oddiy misollar bilan tushuntiraman.`,
     suggestions: ['un va une ning farqi nima?', "être fe'lini tushuntir", 'Inkor gap qanday tuziladi?'],
   },
   {

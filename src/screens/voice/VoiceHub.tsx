@@ -1,4 +1,4 @@
-// Krua ovozli suhbati: tanishuv → xarakter va rol tanlash → qo'ng'iroq → tahlil.
+// Vivi ovozli suhbati: tanishuv → xarakter va rol tanlash → qo'ng'iroq → tahlil.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CHARACTERS, CUSTOM_ROLE_MAX, CUSTOM_ROLE_MIN, EXPLAIN_LANGS, ROLES } from '../../data/characters';
 import { applyChatTurn } from '../../engine/game';
@@ -158,7 +158,7 @@ export function VoiceHub() {
     return (
       <div className="voice-intro">
         <div className="intro-hero">
-          <h1>Yangi Krua bilan tanishing</h1>
+          <h1>Yangi Vivi bilan tanishing</h1>
           <KruaLive shape="pill" action="wave" actionKey={1} size={220} />
           <ul className="intro-beats">
             <li>🤝 Do'stona</li>
@@ -185,7 +185,7 @@ export function VoiceHub() {
     <div className="voice-hub">
       <div className="vh-head">
         <div>
-          <h1 className="page-title">Krua AI</h1>
+          <h1 className="page-title">Vivi AI</h1>
           <p className="muted">Jonli AI suhbatdoshingiz. Xarakterni tanlang va gaplashishni boshlang.</p>
         </div>
         <button type="button" className="icon-btn" aria-label="Qanday gaplashish kerak" onClick={() => setShowHelp(true)}>
@@ -224,7 +224,7 @@ export function VoiceHub() {
       </div>
 
       <section className="vh-section">
-        <h3>Rol — Krua kim bo'ladi</h3>
+        <h3>Rol — Vivi kim bo'ladi</h3>
         <div className="role-grid">
           {ROLES.map((r) => (
             <button key={r.id} type="button" className={`role-chip ${r.id === prefs.role ? 'on' : ''}`} onClick={() => setPrefs({ role: r.id })}>
@@ -267,7 +267,7 @@ export function VoiceHub() {
               </option>
             ))}
           </select>
-          <small className="muted">Krua shu tilda tushuntiradi, mashq — fransuzcha.</small>
+          <small className="muted">Vivi shu tilda tushuntiradi, mashq — fransuzcha.</small>
         </label>
         {config && config.voices.length > 0 && (
           <label className="vh-field">
@@ -291,7 +291,7 @@ export function VoiceHub() {
               Qo'lsiz rejim
             </button>
           </div>
-          <small className="muted">{prefs.inputMode === 'ptt' ? 'Kruani (yoki Space) bosib turib gapirasiz.' : 'Hech narsani bosmasdan gapirasiz — Krua doimo tinglaydi.'}</small>
+          <small className="muted">{prefs.inputMode === 'ptt' ? 'Vivini (yoki Space) bosib turib gapirasiz.' : 'Hech narsani bosmasdan gapirasiz — Vivi doimo tinglaydi.'}</small>
         </div>
       </section>
 
@@ -336,7 +336,7 @@ export function VoiceHub() {
       )}
 
       {config && config.tts === 'browser' && !browserVoiceAvailable(prefs.lang) && (
-        <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Krua fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
+        <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
       )}
 
       <div className="vh-start">
@@ -344,8 +344,8 @@ export function VoiceHub() {
           <div className="rest-card">
             <KruaLive state="sleeping" shape="pill" size={110} />
             <div>
-              <b>Krua dam olyapti</b>
-              <p className="muted">Yaxshi suhbatlashdingiz! Keyingi suhbatdan oldin Kruaga dam kerak. Yana tayyor bo'lishiga {fmtLeft(rest - now)} qoldi.</p>
+              <b>Vivi dam olyapti</b>
+              <p className="muted">Yaxshi suhbatlashdingiz! Keyingi suhbatdan oldin Viviga dam kerak. Yana tayyor bo'lishiga {fmtLeft(rest - now)} qoldi.</p>
             </div>
           </div>
         ) : !config ? (
@@ -365,7 +365,7 @@ export function VoiceHub() {
             🎙️ {ch.name} bilan gaplashish · {config.sessionMinutes} daqiqagacha
           </button>
         )}
-        <p className="tutor-note">Krua — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>
+        <p className="tutor-note">Vivi — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>
       </div>
 
       <section className="vh-section">
@@ -401,7 +401,7 @@ export function VoiceHub() {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="big-emoji">🎩</div>
             <h3>Boshlashdan oldin bilib qo'ying</h3>
-            <p className="muted">Professor Krua qattiqqo'l: bo'sh maqtov yo'q, javobni qayta-qayta talab qiladi. Bu haqorat emas — talabchan mashq. Agar sizga to'g'ri kelmasa, boshqa xarakterni tanlang.</p>
+            <p className="muted">Professor Vivi qattiqqo'l: bo'sh maqtov yo'q, javobni qayta-qayta talab qiladi. Bu haqorat emas — talabchan mashq. Agar sizga to'g'ri kelmasa, boshqa xarakterni tanlang.</p>
             <button
               type="button"
               className="btn btn-primary btn-lg"
@@ -426,10 +426,10 @@ export function VoiceHub() {
             <ol>
               <li>«Gaplashish»ni bosing va mikrofonga ruxsat bering.</li>
               <li>
-                <b>Kruani (yoki Space) bosib turing</b>, gapiring, so'ng qo'yib yuboring. Qo'lsiz rejimda shunchaki gapiring.
+                <b>Vivini (yoki Space) bosib turing</b>, gapiring, so'ng qo'yib yuboring. Qo'lsiz rejimda shunchaki gapiring.
               </li>
-              <li>Krua 1–2 soniyada javob bera boshlaydi. Gapini bo'lmoqchi bo'lsangiz — yana bosib turing (yoki gapiring): Krua jim bo'lib tinglaydi.</li>
-              <li>Krua oxirgi 10 ta replika almashinuvini eslab qoladi. «Eshitmadim» desa — balandroq va mikrofonga yaqinroq gapiring.</li>
+              <li>Vivi 1–2 soniyada javob bera boshlaydi. Gapini bo'lmoqchi bo'lsangiz — yana bosib turing (yoki gapiring): Vivi jim bo'lib tinglaydi.</li>
+              <li>Vivi oxirgi 10 ta replika almashinuvini eslab qoladi. «Eshitmadim» desa — balandroq va mikrofonga yaqinroq gapiring.</li>
               <li>Suhbat {config?.sessionMinutes ?? 10} daqiqagacha davom etadi; oxirida tahlil va yangi so'zlar chiqadi.</li>
               <li>Fransuzcha iboralar ustiga bossangiz, qayta talaffuz qilinadi.</li>
             </ol>

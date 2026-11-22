@@ -23,7 +23,7 @@ export function Profile() {
     <div className="page">
       <AccountCard />
       <div className="profile-head">
-        <div className="avatar-big">🥐</div>
+        <div className="avatar-big">🐱</div>
         <div>
           <input className="name-input" value={name} placeholder="Ismingiz" onChange={(e) => setName(e.target.value)} onBlur={() => update((s) => ({ ...s, name: name.trim() }))} />
           <p className="muted">{since} dan beri · 🇺🇿 → 🇫🇷</p>

@@ -86,7 +86,7 @@ export function saveSession(rec: SessionRecord) {
   write(HISTORY_KEY, list.slice(0, 30));
 }
 
-/** Krua dam olish vaqti (sessiya limiti tugagach). */
+/** Vivi dam olish vaqti (sessiya limiti tugagach). */
 export const restUntil = (): number => read<number>(REST_KEY, 0);
 export const setRestUntil = (t: number) => write(REST_KEY, t);
 

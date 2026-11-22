@@ -63,7 +63,7 @@ export function Onboarding() {
       {step === 0 && (
         <div className="onboard-hero">
           <Mascot mood="cheer" size={200} className="bounce-in" />
-          <h1 className="brand">Salut!</h1>
+          <h1 className="brand">Voilà!</h1>
           <p className="lead">Fransuz tilini o'zbek tilida — bepul, qiziqarli va samarali.</p>
           <button type="button" className="btn btn-primary btn-lg" onClick={() => { speak('Salut ! Bienvenue !'); setStep(1); }}>
             Boshlash

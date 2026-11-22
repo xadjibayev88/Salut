@@ -1,4 +1,4 @@
-// Krua xarakterlari va rol o'yinlari (ovozli va matnli suhbat uchun umumiy).
+// Vivi xarakterlari va rol o'yinlari (ovozli va matnli suhbat uchun umumiy).
 
 export type CharacterId = 'classic' | 'strict' | 'kind' | 'witty';
 export type RoleId = 'free' | 'cafe' | 'meet' | 'shop' | 'hotel' | 'exam' | 'grammar' | 'mistakes' | 'custom';
@@ -18,16 +18,16 @@ export interface Character {
 export const CHARACTERS: Character[] = [
   {
     id: 'classic',
-    name: 'Klassik Krua',
+    name: 'Klassik Vivi',
     tagline: 'Muvozanatli ustoz',
     description: "Do'stona, aniq va sabrli. Kundalik mashq uchun eng yaxshi tanlov.",
     sample: "Keling, bugun kafeda buyurtma berishni mashq qilamiz. Birinchi so'z — «Bonjour»!",
     color: '#2B3A9B',
-    icon: '🥐',
+    icon: '🐱',
   },
   {
     id: 'strict',
-    name: 'Professor Krua',
+    name: 'Professor Vivi',
     tagline: 'Talabchan murabbiy',
     description: "Bo'sh maqtov yo'q. Har bir javobni to'liq gap bilan talab qiladi.",
     sample: 'Yetarli emas. Qaytadan — bu safar to\'liq gap bilan.',
@@ -37,7 +37,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'kind',
-    name: 'Mehribon Krua',
+    name: 'Mehribon Vivi',
     tagline: 'Iliq va rag\'batlantiruvchi',
     description: "Har bir urinishingizni qadrlaydi va o'zingizga ishonchni oshiradi.",
     sample: 'Deyarli to\'g\'ri! Shoshilmang — juda yaxshi ketyapsiz.',
@@ -46,7 +46,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'witty',
-    name: 'Hazilkash Krua',
+    name: 'Hazilkash Vivi',
     tagline: 'Hozirjavob va kinoyali',
     description: 'Aqlli hazillar bilan sizni hushyor tutadi. Zerikish taqiqlangan.',
     sample: "Voy, zo'r gap! Endi buni fransuzcha ayting — o'zbekchasini o'zim ham bilaman.",
@@ -73,8 +73,8 @@ export const ROLES: Role[] = [
     title: 'Erkin suhbat',
     icon: '💬',
     greet: (n) =>
-      `${n ? `${n}, ` : ''}[fr]Salut ![/fr] (salyu) Men Krua — beretli kruasan va sizning fransuz tili ustozingizman. Xohlagan narsangizni so'rang: so'z, grammatika, Parij... Faqat meni choyga botirmang, iltimos 😄 Bugun nimadan boshlaymiz?`,
-    voiceGreet: (n) => `[[do:wave]] [fr]Salut ![/fr] ${n ? `${n}, ` : ''}men Krua. Bugun nima haqida gaplashamiz?`,
+      `${n ? `${n}, ` : ''}[fr]Salut ![/fr] (salyu) Men Vivi — parijlik mushukcha va sizning fransuz tili ustozingizman. Xohlagan narsangizni so'rang: so'z, grammatika, Parij... Faqat qornimni silamang, darsni unutib qo'yaman 😸 Bugun nimadan boshlaymiz?`,
+    voiceGreet: (n) => `[[do:wave]] [fr]Salut ![/fr] ${n ? `${n}, ` : ''}men Vivi. Bugun nima haqida gaplashamiz?`,
     suggestions: ['Fransuzlar qanday salomlashadi?', "Menga 3 ta foydali ibora o'rgat", 'Fransuzcha bir hazil aytib ber'],
     micLang: 'uz-UZ',
   },
@@ -93,8 +93,8 @@ export const ROLES: Role[] = [
     title: 'Tanishuv',
     icon: '🤝',
     greet: () =>
-      `[fr]Salut ! Je m'appelle Krua. Et toi ?[/fr] (Salom! Mening ismim Krua. Seningchi?) Tasavvur qiling, Parijdagi parkda tanishdik. Fransuzcha javob berishga harakat qiling — bilmasangiz o'zbekcha ayting, birga tuzamiz.`,
-    voiceGreet: () => `[[do:wave]] [fr]Salut ! Je m'appelle Krua. Et toi ?[/fr] Ismingizni fransuzcha ayting!`,
+      `[fr]Salut ! Je m'appelle Vivi. Et toi ?[/fr] (Salom! Mening ismim Vivi. Seningchi?) Tasavvur qiling, Parijdagi parkda tanishdik. Fransuzcha javob berishga harakat qiling — bilmasangiz o'zbekcha ayting, birga tuzamiz.`,
+    voiceGreet: () => `[[do:wave]] [fr]Salut ! Je m'appelle Vivi. Et toi ?[/fr] Ismingizni fransuzcha ayting!`,
     suggestions: ["Je m'appelle Ali.", 'Je suis ouzbek.', "Qanday tanishtiraman o'zimni?"],
     micLang: 'fr-FR',
   },
@@ -102,7 +102,7 @@ export const ROLES: Role[] = [
     id: 'shop',
     title: "Kiyim do'koni",
     icon: '🛍️',
-    greet: () => `[fr]Bonjour ! Je peux vous aider ?[/fr] (Salom! Yordam bera olamanmi?) Men sotuvchiman. Nima qidiryapsiz — ko'ylakmi, shimmi, beretmi? Beret tavsiya qilaman, o'zimda ham bor 😄`,
+    greet: () => `[fr]Bonjour ! Je peux vous aider ?[/fr] (Salom! Yordam bera olamanmi?) Men sotuvchiman. Nima qidiryapsiz — ko'ylakmi, shimmi, beretmi? Beret tavsiya qilaman — mushukchalarga ham juda yarashadi 😸`,
     voiceGreet: () => `[[shape:card]] [fr]Bonjour ! Je peux vous aider ?[/fr] Nima qidiryapsiz?`,
     suggestions: ['Je voudrais un t-shirt.', "C'est combien ?", 'Qanday so\'rayman narxini?'],
     micLang: 'fr-FR',
@@ -129,7 +129,7 @@ export const ROLES: Role[] = [
     id: 'grammar',
     title: 'Grammatika',
     icon: '📐',
-    greet: () => `Grammatika — fransuz tilining eng nozik qismi, xuddi mening qatlamlarim kabi 🥐 Savolingizni bering: artikllar, rod, fe'llar, inkor — hammasini oddiy misollar bilan tushuntiraman.`,
+    greet: () => `Grammatika — fransuz tilining eng nozik qismi, xuddi kalava ipidek chigal, lekin birga yechamiz 🧶 Savolingizni bering: artikllar, rod, fe'llar, inkor — hammasini oddiy misollar bilan tushuntiraman.`,
     voiceGreet: () => `[[shape:book]] Grammatika vaqti! Qaysi mavzu qiynayapti?`,
     suggestions: ['un va une ning farqi nima?', "être fe'lini tushuntir", 'Inkor gap qanday tuziladi?'],
     micLang: 'uz-UZ',

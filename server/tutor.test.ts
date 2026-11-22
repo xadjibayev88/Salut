@@ -41,7 +41,7 @@ describe('prompt', () => {
   it('includes persona, scenario and learner data', () => {
     const r = parseTutorRequest({ ...base, scenario: 'cafe' }) as TutorRequest;
     const s = systemInstruction(r);
-    expect(s).toContain('Krua');
+    expect(s).toContain('Vivi');
     expect(s).toContain('[fr]');
     expect(s).toContain('ofitsiant');
     expect(s).toContain('"ism":"Ali"');

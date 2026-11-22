@@ -1,12 +1,13 @@
-// Jonli Krua: ovozli suhbatda shaklini o'zgartiradigan, imo-ishora qiladigan maskot.
+// Jonli Vivi (mushukcha): ovozli suhbatda shaklini o'zgartiradigan, imo-ishora qiladigan maskot.
 // Shakl ([[shape:..]]) keyingi replikagacha saqlanadi, imo-ishora ([[do:..]]) bir marta ijro etiladi.
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Action, Shape } from '../engine/voice/markers';
+import { CatBase, CatEars, CatMuzzle, FUR, INK } from './Mascot';
 
 export type LiveState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'sleeping';
 
 const COLORS: Record<Shape, string> = {
-  pill: '#E59A3C',
+  pill: FUR,
   circle: '#3B82F6',
   tall: '#4F46E5',
   puddle: '#0EA5A4',
@@ -67,10 +68,12 @@ function Face({ x, y, s = 1, shape, state, level }: { x: number; y: number; s?: 
         </g>
       ) : (
         <g>
-          <ellipse cx="-22" cy="-6" rx="10" ry={sad ? 9 : 12} fill="#fff" />
-          <ellipse cx="22" cy="-6" rx="10" ry={sad ? 9 : 12} fill="#fff" />
-          <circle className="krua-pupil" cx="-21" cy={-4 + look} r="6" fill="#2B1A10" />
-          <circle className="krua-pupil" cx="23" cy={-4 + look} r="6" fill="#2B1A10" />
+          <ellipse className="vivi-eye" cx="-26" cy="-8" rx="12" ry={sad ? 11 : 14} fill={INK} />
+          <ellipse className="vivi-eye" cx="26" cy="-8" rx="12" ry={sad ? 11 : 14} fill={INK} />
+          <circle className="krua-pupil" cx="-22" cy={-14 + look} r="4.8" fill="#fff" />
+          <circle className="krua-pupil" cx="30" cy={-14 + look} r="4.8" fill="#fff" />
+          <circle cx="-30" cy="-2" r="2.2" fill="#fff" opacity=".85" />
+          <circle cx="22" cy="-2" r="2.2" fill="#fff" opacity=".85" />
           {sad && (
             <g stroke="#2B1A10" strokeWidth="3.5" strokeLinecap="round">
               <path d="M-34 -22l14 5" />
@@ -84,30 +87,19 @@ function Face({ x, y, s = 1, shape, state, level }: { x: number; y: number; s?: 
       ) : sad ? (
         <path d="M-12 24q12-10 24 0" stroke="#2B1A10" strokeWidth="4" fill="none" strokeLinecap="round" />
       ) : mouthOpen > 1 ? (
-        <ellipse cx="0" cy="20" rx="9" ry={mouthOpen} fill="#2B1A10" />
+        <ellipse cx="0" cy="23" rx="8" ry={mouthOpen} fill="#BE185D" stroke="#2B1A10" strokeWidth="2.5" />
       ) : (
-        <path d="M-12 14q12 14 24 0" stroke="#2B1A10" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+        <path d="M-12 17q6 7 12 0q6 7 12 0" stroke="#2B1A10" strokeWidth="3.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       )}
+      <CatMuzzle x={0} y={4} />
       {sad && state !== 'sleeping' && (
         <g fill="#7DD3FC" className="krua-tears">
           <path d="M-30 4q-4 8 0 12q4-4 0-12z" />
           <path d="M30 4q-4 8 0 12q4-4 0-12z" />
         </g>
       )}
-      <ellipse cx="-38" cy="10" rx="7" ry="4" fill="#F28B82" opacity=".55" />
-      <ellipse cx="38" cy="10" rx="7" ry="4" fill="#F28B82" opacity=".55" />
-    </g>
-  );
-}
-
-function Croissant() {
-  return (
-    <g stroke="#B86A1E" strokeWidth="4" strokeLinejoin="round">
-      <path d="M22 128C10 104 26 76 50 74L64 140C46 150 30 144 22 128Z" fill="#E59A3C" />
-      <path d="M178 128C190 104 174 76 150 74L136 140C154 150 170 144 178 128Z" fill="#E59A3C" />
-      <path d="M46 72C56 46 78 38 100 38C122 38 144 46 154 72L144 146C120 160 80 160 56 146Z" fill="#F4B860" />
-      <path d="M70 48C76 70 74 120 66 148" stroke="#D98B30" fill="none" strokeLinecap="round" />
-      <path d="M130 48C124 70 126 120 134 148" stroke="#D98B30" fill="none" strokeLinecap="round" />
+      <ellipse cx="-44" cy="12" rx="9" ry="5" fill="#F9A8D4" opacity=".55" />
+      <ellipse cx="44" cy="12" rx="9" ry="5" fill="#F9A8D4" opacity=".55" />
     </g>
   );
 }
@@ -152,18 +144,19 @@ export function KruaLive({
       <div className="krua-glow" />
       <div key={`${action}-${actionKey}`} className={`krua-act ${action ? `act-${action}` : ''}`}>
         <div key={shape} className="krua-morph">
-          <svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={`Krua: ${shape}`}>
+          <svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={`Vivi: ${shape}`} className="vivi">
             <ellipse cx="100" cy="186" rx="58" ry="7" fill="rgba(0,0,0,.10)" />
             {body ? (
-              <path d={body.d} fill={color} stroke="rgba(0,0,0,.18)" strokeWidth="4" strokeLinejoin="round" fillRule="evenodd" />
+              <>
+                {/* Mushuk quloqlari — har qanday shaklda Vivi tanilib turadi */}
+                <g transform={`translate(${body.face[0] - 100} ${Math.min(40, Math.max(-14, body.face[1] - 112))})`}>
+                  <CatEars fill={color} />
+                </g>
+                <path d={body.d} fill={color} stroke="rgba(0,0,0,.18)" strokeWidth="4" strokeLinejoin="round" fillRule="evenodd" />
+              </>
             ) : (
-              <Croissant />
+              <CatBase />
             )}
-            {/* Beret — Kruaning o'ziga xos belgisi, har qanday shaklda */}
-            <g transform={body ? `translate(${body.face[0] - 100} ${Math.max(-14, body.face[1] - 150)})` : undefined}>
-              <path d="M70 46C70 24 132 20 136 40C124 48 82 52 70 46Z" fill="#818CF8" stroke="#4F46E5" strokeWidth="4" strokeLinejoin="round" />
-              <circle cx="104" cy="20" r="5" fill="#4F46E5" />
-            </g>
             <Face x={body ? body.face[0] : 100} y={body ? body.face[1] : 100} s={body?.scale ?? 1} shape={shape} state={state} level={level} />
             {flare && (
               <g className="krua-flame">

@@ -21,7 +21,7 @@ type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'learn', label: "Metro", icon: '🚇' },
-  { id: 'tutor', label: 'Ustoz', icon: '💬' },
+  { id: 'tutor', label: 'Vivi ustoz', icon: '🐱' },
   { id: 'practice', label: 'Mashq', icon: '🏋️' },
   { id: 'leagues', label: 'Turnir', icon: '🗼' },
   { id: 'shop', label: "Do'kon", icon: '🛍️' },
@@ -87,11 +87,11 @@ export function App() {
     <div className={`shell ${tab === 'tutor' ? 'tutor-mode' : ''}`}>
       <nav className="sidebar">
         <div className="logo">
-          <span className="logo-mark">🥐</span> Salut!
+          <Mascot size={38} mood="happy" className="logo-cat" /> Voilà!
         </div>
         {TABS.map((t) => (
           <button key={t.id} type="button" className={`nav-item ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)}>
-            <span className="nav-icon">{t.icon}</span>
+            <span className="nav-icon">{t.id === 'tutor' ? <Mascot size={30} mood="happy" className="nav-cat" /> : t.icon}</span>
             <span>{t.label}</span>
           </button>
         ))}
@@ -116,7 +116,7 @@ export function App() {
       <nav className="bottombar">
         {TABS.map((t) => (
           <button key={t.id} type="button" className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)} aria-label={t.label}>
-            <span>{t.icon}</span>
+            <span>{t.id === 'tutor' ? <Mascot size={34} mood="happy" className="tab-cat" /> : t.icon}</span>
           </button>
         ))}
       </nav>

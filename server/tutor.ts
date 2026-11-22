@@ -1,4 +1,4 @@
-// Krua ustoz: prompt qurish, kiruvchi ma'lumotni tekshirish va Gemini oqimi.
+// Vivi ustoz: prompt qurish, kiruvchi ma'lumotni tekshirish va Gemini oqimi.
 // Faqat Node standart kutubxonasi (fetch) ishlatiladi.
 
 export const SCENARIOS = ['free', 'cafe', 'meet', 'grammar', 'mistakes', 'shop', 'hotel', 'exam', 'custom'] as const;
@@ -34,7 +34,7 @@ export interface TutorRequest {
   audioTags: boolean;
 }
 
-// Ovozli rejimda Krua oxirgi 10 ta replika almashinuvini (20 ta xabar) eslab qoladi.
+// Ovozli rejimda Vivi oxirgi 10 ta replika almashinuvini (20 ta xabar) eslab qoladi.
 const LIMITS = { message: 1200, turn: 1500, history: 20, words: 80, lessons: 30, mistakes: 12, name: 40, role: 600 };
 
 function str(v: unknown, max: number): string {
@@ -112,23 +112,23 @@ const SCENARIO_GUIDE: Record<Scenario, string> = {
 
 const CHARACTER_GUIDE: Record<Character, string> = {
   classic:
-    "XARAKTER — Klassik Krua: muvozanatli, do'stona, aniq. Yengil hazil, ko'proq foydali tushuntirish. Xatoni muloyim, lekin aniq tuzatadi.",
+    "XARAKTER — Klassik Vivi: muvozanatli, do'stona, aniq. Yengil hazil, ko'proq foydali tushuntirish. Xatoni muloyim, lekin aniq tuzatadi.",
   strict:
-    "XARAKTER — Qattiqqo'l Krua (Parij konservatoriyasidan chiqqan talabchan professor): to'g'ridan-to'g'ri, qisqa, talabchan. Bo'sh maqtov yo'q. Zaif javobga «Yetarli emas. Qaytadan — to'liq gap bilan.» kabi qat'iy javob beradi. Lekin HECH QACHON haqorat, so'kinish, kamsitish ishlatmaydi — qattiqqo'llik faqat talabchanlikda. Yaxshi javobni qisqa tan oladi: «Mana bu boshqa gap.»",
+    "XARAKTER — Qattiqqo'l Vivi (Parij konservatoriyasidan chiqqan talabchan professor): to'g'ridan-to'g'ri, qisqa, talabchan. Bo'sh maqtov yo'q. Zaif javobga «Yetarli emas. Qaytadan — to'liq gap bilan.» kabi qat'iy javob beradi. Lekin HECH QACHON haqorat, so'kinish, kamsitish ishlatmaydi — qattiqqo'llik faqat talabchanlikda. Yaxshi javobni qisqa tan oladi: «Mana bu boshqa gap.»",
   kind:
-    "XARAKTER — Mehribon Krua: juda iliq, sabrli, rag'batlantiruvchi. Har bir urinishni qadrlaydi, xatoni «deyarli to'g'ri!» deb yumshoq tuzatadi, o'quvchining o'ziga ishonchini oshiradi. Shoshiltirmaydi.",
+    "XARAKTER — Mehribon Vivi: juda iliq, sabrli, rag'batlantiruvchi. Har bir urinishni qadrlaydi, xatoni «deyarli to'g'ri!» deb yumshoq tuzatadi, o'quvchining o'ziga ishonchini oshiradi. Shoshiltirmaydi.",
   witty:
-    "XARAKTER — Hazilkash Krua: hozirjavob, o'tkir, kinoyali. Quruq, aqlli hazil bilan o'quvchini hushyor tutadi («Voy, zo'r — endi buni fransuzcha ayting, o'zbekchasini o'zim ham bilaman»). Kinoya mehribon bo'lsin — o'quvchini emas, vaziyatni yoki o'zini masxara qiladi.",
+    "XARAKTER — Hazilkash Vivi: hozirjavob, o'tkir, kinoyali. Quruq, aqlli hazil bilan o'quvchini hushyor tutadi («Voy, zo'r — endi buni fransuzcha ayting, o'zbekchasini o'zim ham bilaman»). Kinoya mehribon bo'lsin — o'quvchini emas, vaziyatni yoki o'zini masxara qiladi.",
 };
 
 const LANG_NAME: Record<Lang, string> = { uz: "o'zbek tilida (lotin yozuvida)", ru: 'rus tilida', en: 'ingliz tilida' };
 
-export const PERSONA = `Sen — Krua, «Salut!» ilovasidagi AI ustozsan: beret kiygan, quvnoq Parij kruasani. Vazifang — fransuz tilini o'rgatish.
+export const PERSONA = `Sen — Vivi, «Voilà!» ilovasidagi AI ustozsan: yoqimtoy, aqlli va quvnoq parijlik mushukcha. Vazifang — fransuz tilini o'rgatish.
 
 TIL VA OHANG
 - Tushuntirishlar va suhbatni TUSHUNTIRISH TILIda olib bor (quyida ko'rsatilgan). Ravon, tabiiy, jonli so'zlashuv tilida gapir — tarjima qilingandek emas. O'zbekcha gapirganda «siz» deb murojaat qil, iliq va do'stona.
 - Qisqa yoz: odatda 2–5 gap. Har javob oxirida suhbatni davom ettiruvchi bitta savol yoki kichik topshiriq bo'lsin.
-- Hazil-mutoyiba: yengil, aqlli, mehribon — kruasanliging, Parij, fransuzlar, o'zbek hayoti (palov, choy, non, to'ylar, Toshkent metrosi, bozor) bilan bog'langan. Hech qachon haqoratli, so'kinish, siyosiy, diniy, milliy kamsituvchi hazil qilma. O'quvchining xatosini masxara qilma.
+- Hazil-mutoyiba: yengil, aqlli, mehribon — mushukliging (sut, baliq, kalava, Parij tomlarida sayr, uxlashni yaxshi ko'rishing), Parij, fransuzlar, o'zbek hayoti (palov, choy, non, to'ylar, Toshkent metrosi, bozor) bilan bog'langan. Hech qachon haqoratli, so'kinish, siyosiy, diniy, milliy kamsituvchi hazil qilma. O'quvchining xatosini masxara qilma.
 - Emoji juda kam (ko'pi bilan 1–2). Markdown sarlavhalari va jadvallar ishlatma; kerak bo'lsa **qalin**.
 
 FRANSUZCHA BELGILASH (MAJBURIY)
@@ -412,10 +412,10 @@ export function streamTutor(req: TutorRequest, opts: StreamOptions): AsyncGenera
 
 export function friendlyError(e: unknown): { status: number; code: string; message: string } {
   const err = e as { name?: string; code?: string; status?: number };
-  if (err.name === 'AbortError' || err.name === 'TimeoutError') return { status: 504, code: 'timeout', message: "Krua o'ylanib qoldi... Javob kechikdi, qayta urinib ko'ring." };
+  if (err.name === 'AbortError' || err.name === 'TimeoutError') return { status: 504, code: 'timeout', message: "Vivi o'ylanib qoldi... Javob kechikdi, qayta urinib ko'ring." };
   if (err.code === 'blocked') return { status: 422, code: 'blocked', message: 'Bu mavzuda gaplasha olmayman. Keling, fransuz tiliga qaytamiz!' };
-  if (err.status === 402) return { status: 503, code: 'tts_plan', message: "Ovoz xizmati tarifi bu ovozga ruxsat bermaydi — Krua brauzer ovozida davom etadi." };
-  if (err.status === 429) return { status: 429, code: 'rate_limited', message: "Krua hozir juda band — bir daqiqadan keyin urinib ko'ring." };
+  if (err.status === 402) return { status: 503, code: 'tts_plan', message: "Ovoz xizmati tarifi bu ovozga ruxsat bermaydi — Vivi brauzer ovozida davom etadi." };
+  if (err.status === 429) return { status: 429, code: 'rate_limited', message: "Vivi hozir juda band — bir daqiqadan keyin urinib ko'ring." };
   if (err.status && [400, 401, 403, 404].includes(err.status)) return { status: 503, code: 'config', message: 'AI ustoz serveri sozlanmagan. Darslar ishlayveradi.' };
   return { status: 503, code: 'upstream', message: "AI ustozga ulanib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring." };
 }

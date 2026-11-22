@@ -62,7 +62,7 @@ export function feedbackBody(req: FeedbackRequest, model: string): Record<string
     systemInstruction: {
       parts: [
         {
-          text: `Sen fransuz tili ustozi Kruasan. O'quvchi bilan bo'lgan suhbatni tahlil qil va FAQAT so'ralgan JSON ni qaytar. Barcha izohlar ${LANG_NAME[req.lang]} tilida, qisqa, iliq va aniq bo'lsin.
+          text: `Sen fransuz tili ustozi Vivi (parijlik mushukcha). O'quvchi bilan bo'lgan suhbatni tahlil qil va FAQAT so'ralgan JSON ni qaytar. Barcha izohlar ${LANG_NAME[req.lang]} tilida, qisqa, iliq va aniq bo'lsin.
 - summary: 1 gap — suhbat haqida umumiy taassurot.
 - strengths: o'quvchi YAXSHI qilgan 1–3 narsa (faqat haqiqatda bo'lganlari; o'quvchi fransuzcha ishlatgan joylarga e'tibor ber).
 - growth: rivojlantirish kerak bo'lgan 1–3 narsa: text — muammo, example — o'quvchining aniq gapi (iqtibos), better — to'g'ri fransuzcha variant. Xato o'ylab topma; xato bo'lmasa, keyingi qadamni taklif qil (example bo'sh qolishi mumkin).
@@ -160,7 +160,7 @@ export interface VoiceOption {
   name: string;
 }
 
-/** ELEVENLABS_VOICES="Krua:voiceId,Professor:voiceId2" */
+/** ELEVENLABS_VOICES="Vivi:voiceId,Professor:voiceId2" */
 export function parseVoices(env: string | undefined): VoiceOption[] {
   return (env ?? '')
     .split(',')

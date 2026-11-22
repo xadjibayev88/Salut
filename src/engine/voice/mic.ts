@@ -1,5 +1,5 @@
 // Mikrofon: ruxsat, ovoz darajasi va ovoz faolligini aniqlash (VAD).
-// Echo-cancellation yoqilgan — Krua ovozi mikrofonga qaytib tushmasligi uchun.
+// Echo-cancellation yoqilgan — Vivi ovozi mikrofonga qaytib tushmasligi uchun.
 
 export type MicError = 'denied' | 'notfound' | 'busy' | 'unsupported' | 'blocked';
 

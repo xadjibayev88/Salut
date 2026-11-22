@@ -24,7 +24,7 @@ export type SessionConfig =
   | { kind: 'review'; unitIndex: number }
   | { kind: 'practice'; mode: 'smart' | 'mistakes' | 'listening' };
 
-const PRAISE = ['Ajoyib!', "Zo'r!", 'Barakalla!', 'Juda yaxshi!', 'Très bien !', 'Parfait !', 'Qoyil!', 'Super!'];
+const PRAISE = ['Voilà !', 'Voilà !', 'Ajoyib!', "Zo'r!", 'Barakalla!', 'Juda yaxshi!', 'Très bien !', 'Parfait !', 'Qoyil!', 'Super!'];
 
 function generate(cfg: SessionConfig, state: ReturnType<typeof useStore>['state']): Exercise[] {
   const tts = ttsSupported() && state.settings.listening;
@@ -228,6 +228,18 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
       </main>
 
       <footer className={`session-foot ${evaluation ? (evaluation.correct ? 'ok' : 'bad') : ''}`}>
+        {evaluation?.correct && (
+          // Vivi sehr ko'rsatadi: har to'g'ri javobda «Voilà !»
+          <div className="voila-burst" key={`v-${pos}-${solved}`} aria-hidden="true">
+            <Mascot mood="cheer" size={72} />
+            <b>Voilà !</b>
+            <i className="spark s1">✦</i>
+            <i className="spark s2">✧</i>
+            <i className="spark s3">✦</i>
+            <i className="spark s4">✧</i>
+            <i className="spark s5">✦</i>
+          </div>
+        )}
         <div className="foot-inner">
           {evaluation ? (
             <div className="feedback">

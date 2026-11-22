@@ -1,5 +1,5 @@
-// Salut! serveri: dist/ ni tarqatadi va Krua ustozni (matn + ovoz) Gemini / ElevenLabs bilan ulaydi.
-// Ishga tushirish: GEMINI_API_KEY=... [ELEVENLABS_API_KEY=... ELEVENLABS_VOICES="Krua:id"] node server/main.ts
+// Voilà! serveri: dist/ ni tarqatadi va Vivi ustozni (matn + ovoz) Gemini / ElevenLabs bilan ulaydi.
+// Ishga tushirish: GEMINI_API_KEY=... [ELEVENLABS_API_KEY=... ELEVENLABS_VOICES="Vivi:id"] node server/main.ts
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
@@ -138,7 +138,7 @@ async function guarded<T>(
   if (typeof parsed === 'string') return json(res, 400, { code: 'bad_request', message: parsed });
   const limited = take(opts.bucket, clientIp(req));
   if (limited) return json(res, 429, { code: 'rate_limited', message: limited });
-  if (active >= CONCURRENCY) return json(res, 429, { code: 'busy', message: "Krua hozir boshqa o'quvchilar bilan gaplashyapti. Bir necha soniyadan keyin urinib ko'ring." });
+  if (active >= CONCURRENCY) return json(res, 429, { code: 'busy', message: "Vivi hozir boshqa o'quvchilar bilan gaplashyapti. Bir necha soniyadan keyin urinib ko'ring." });
   active++;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(Object.assign(new Error('timeout'), { name: 'TimeoutError' })), 30_000);
@@ -370,7 +370,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       },
       async (data, signal) => {
         const limited = take('tts', `${clientIp(req)}`, data.text.length, TTS_CHARS_PER_DAY);
-        if (limited) return json(res, 429, { code: 'tts_quota', message: 'Bugungi ovoz limiti tugadi — Krua matn bilan davom etadi.' });
+        if (limited) return json(res, 429, { code: 'tts_quota', message: 'Bugungi ovoz limiti tugadi — Vivi matn bilan davom etadi.' });
         const upstream = await elevenLabsTts(data.text, data.voice, { apiKey: env.ELEVENLABS_API_KEY!, model: TTS_MODEL, languageCode: TTS_LANG, signal, base: env.ELEVENLABS_API_BASE });
         res.writeHead(200, { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' });
         await new Promise<void>((ok, fail) => {
@@ -422,5 +422,5 @@ const server = createServer((req, res) => {
 server.keepAliveTimeout = 65_000;
 
 server.listen(PORT, () =>
-  console.log(`Salut! server: http://localhost:${PORT} · AI: ${env.GEMINI_API_KEY ? MODEL : "o'chiq"} · ovoz: ${env.ELEVENLABS_API_KEY && VOICES.length ? `ElevenLabs (${TTS_MODEL})` : 'brauzer'}`),
+  console.log(`Voilà! server: http://localhost:${PORT} · AI: ${env.GEMINI_API_KEY ? MODEL : "o'chiq"} · ovoz: ${env.ELEVENLABS_API_KEY && VOICES.length ? `ElevenLabs (${TTS_MODEL})` : 'brauzer'}`),
 );
