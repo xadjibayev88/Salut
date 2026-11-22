@@ -1010,3 +1010,11 @@ html.lite .vivi * { animation: none !important; }
 .social.yt { background: linear-gradient(135deg, rgba(239, 68, 68, .2), rgba(127, 29, 29, .14)); }
 .social-icon { font-size: 26px; } .social-text { flex: 1; display: grid; } .social-text small { color: var(--muted); font-size: 12px; } .social-go { font-size: 22px; opacity: .7; }
 .about-link { display: block; width: 100%; text-align: center; text-decoration: none; margin: 12px 0 6px; }
+/* Ijtimoiy kirish */
+.social-login { display: grid; gap: 8px; width: 100%; margin-top: 8px; }
+.btn-social { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 13px 14px; border-radius: 999px; font-weight: 700; font-size: 15px; border: none; color: #fff; }
+.btn-social .si { font-weight: 900; font-size: 18px; width: 22px; text-align: center; }
+.btn-social.fb { background: #1877f2; }
+.btn-social.apple { background: #000; border: 1px solid rgba(255, 255, 255, .25); }
+.btn-social.tg { background: #229ed9; }
+.tg-widget { display: flex; justify-content: center; min-height: 44px; }

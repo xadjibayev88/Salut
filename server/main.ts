@@ -6,7 +6,7 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback } from './tutor.ts';
-import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken } from './accounts.ts';
+import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createOrder, orderStatus, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
@@ -329,7 +329,14 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     const uid = currentUserId(req);
     const user = uid ? getUser(uid) : null;
     const sub = activePlan(user?.id ?? null);
-    json(res, 200, { user, plan: sub.plan, expiresAt: sub.expiresAt, googleClientId: googleClientIds()[0] ?? null, billing: plansPayload() });
+    json(res, 200, { user, plan: sub.plan, expiresAt: sub.expiresAt, googleClientId: googleClientIds()[0] ?? null,
+      // Boshqa kirish usullari: faqat sozlanganlari mijozga ko'rinadi (maxfiy kalitlar yuborilmaydi).
+      auth: {
+        appleClientId: (env.APPLE_CLIENT_ID ?? '').split(',')[0]?.trim() || null,
+        facebookAppId: env.FACEBOOK_APP_SECRET ? env.FACEBOOK_APP_ID || null : null,
+        telegramBot: env.TELEGRAM_BOT_TOKEN ? env.TELEGRAM_BOT_USERNAME || null : null,
+      },
+      billing: plansPayload() });
   },
 
   'POST /api/auth/register': (req, res) =>
@@ -346,6 +353,42 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
         return { ok: true, user: upsertGoogleUser(p.sub, p.email, p.name, p.picture) } as const;
       } catch {
         return { ok: false, status: 401, message: "Google tokeni tasdiqlanmadi — qayta urinib ko'ring" } as const;
+      }
+    }),
+
+  'POST /api/auth/apple': (req, res) =>
+    authRoute(req, res, async (b) => {
+      const ids = (env.APPLE_CLIENT_ID ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+      if (!ids.length) return { ok: false, status: 503, message: 'Apple bilan kirish sozlanmagan' } as const;
+      try {
+        const p = await verifyAppleIdToken(String(b.idToken ?? ''), ids);
+        // Apple ismni faqat birinchi kirishda (mijozga) beradi.
+        const name = typeof b.name === 'string' ? b.name.slice(0, 40) : '';
+        return { ok: true, user: upsertSocialUser('apple', p.sub, p.email, name, null) } as const;
+      } catch {
+        return { ok: false, status: 401, message: "Apple tokeni tasdiqlanmadi — qayta urinib ko'ring" } as const;
+      }
+    }),
+
+  'POST /api/auth/facebook': (req, res) =>
+    authRoute(req, res, async (b) => {
+      if (!env.FACEBOOK_APP_ID || !env.FACEBOOK_APP_SECRET) return { ok: false, status: 503, message: 'Facebook bilan kirish sozlanmagan' } as const;
+      try {
+        const p = await verifyFacebookToken(String(b.accessToken ?? ''), env.FACEBOOK_APP_ID, env.FACEBOOK_APP_SECRET);
+        return { ok: true, user: upsertSocialUser('facebook', p.id, p.email, p.name, p.picture) } as const;
+      } catch {
+        return { ok: false, status: 401, message: "Facebook orqali kirib bo'lmadi — qayta urinib ko'ring" } as const;
+      }
+    }),
+
+  'POST /api/auth/telegram': (req, res) =>
+    authRoute(req, res, async (b) => {
+      if (!env.TELEGRAM_BOT_TOKEN) return { ok: false, status: 503, message: 'Telegram bilan kirish sozlanmagan' } as const;
+      try {
+        const p = typeof b.initData === 'string' ? verifyTelegramWebApp(b.initData, env.TELEGRAM_BOT_TOKEN) : verifyTelegramLogin((b.data ?? {}) as Record<string, unknown>, env.TELEGRAM_BOT_TOKEN);
+        return { ok: true, user: upsertSocialUser('telegram', p.id, null, p.name, p.avatar) } as const;
+      } catch {
+        return { ok: false, status: 401, message: "Telegram ma'lumoti tasdiqlanmadi — qayta urinib ko'ring" } as const;
       }
     }),
 

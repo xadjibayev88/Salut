@@ -21,6 +21,7 @@ interface Me {
   plan: 'free' | 'month' | 'year';
   expiresAt: number | null;
   googleClientId: string | null;
+  auth?: { appleClientId: string | null; facebookAppId: string | null; telegramBot: string | null };
   billing: BillingInfo;
 }
 
@@ -32,6 +33,8 @@ interface AccountCtx {
   refresh: () => Promise<void>;
   signIn: (kind: 'login' | 'register', email: string, password: string, name?: string) => Promise<string | null>;
   signInGoogle: (credential: string) => Promise<string | null>;
+  /** Facebook / Apple / Telegram: tayyor payload server yo'liga yuboriladi. */
+  signInSocial: (provider: 'facebook' | 'apple' | 'telegram', payload: Record<string, unknown>) => Promise<string | null>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<boolean>;
 }
@@ -145,6 +148,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     async (credential: string) => afterAuth(await api<{ message?: string }>('auth/google', { method: 'POST', body: JSON.stringify({ credential }) })),
     [refresh], // eslint-disable-line react-hooks/exhaustive-deps
   );
+  const signInSocial = useCallback(
+    async (provider: 'facebook' | 'apple' | 'telegram', payload: Record<string, unknown>) =>
+      afterAuth(await api<{ message?: string }>(`auth/${provider}`, { method: 'POST', body: JSON.stringify(payload) })),
+    [refresh], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const signOut = useCallback(async () => {
     await api('auth/logout', { method: 'POST' });
     try {
@@ -166,7 +174,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent('salut:premium', { detail: premium }));
   }, [premium]);
 
-  return <Ctx.Provider value={{ me, loaded, online, premium, refresh, signIn, signInGoogle, signOut, deleteAccount }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ me, loaded, online, premium, refresh, signIn, signInGoogle, signInSocial, signOut, deleteAccount }}>{children}</Ctx.Provider>;
 }
 
 export function useAccount(): AccountCtx {

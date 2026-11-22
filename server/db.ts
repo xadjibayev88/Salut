@@ -28,6 +28,12 @@ export function db(): DatabaseSync {
       avatar TEXT,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS identities (
+      provider TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      PRIMARY KEY (provider, subject)
+    );
     CREATE TABLE IF NOT EXISTS progress (
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       state TEXT NOT NULL,

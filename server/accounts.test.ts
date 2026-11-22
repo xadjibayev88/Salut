@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createHash, generateKeyPairSync, sign as cryptoSign } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync, sign as cryptoSign } from 'node:crypto';
 process.env.SALUT_DB = ':memory:';
 process.env.SESSION_SECRET = 'x'.repeat(40);
 import { resetDbForTests } from './db.ts';
-import { createSessionToken, getProgress, login, putProgress, register, upsertGoogleUser, verifyGoogleIdToken, verifySessionToken } from './accounts.ts';
+import { createSessionToken, getProgress, login, putProgress, register, upsertGoogleUser, upsertSocialUser, verifyFacebookToken, verifyGoogleIdToken, verifySessionToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createOrder, payme, paymeAuthorized } from './billing.ts';
 
 beforeEach(() => {
@@ -126,5 +126,42 @@ describe('billing', () => {
   it('refuses disabled providers', () => {
     delete process.env.CLICK_SECRET_KEY;
     expect(createOrder(user(), 'month', 'click', 'https://x')).toMatchObject({ status: 400 });
+  });
+});
+
+describe('ijtimoiy kirish', () => {
+  const BOT = '123456:ABC-test-token';
+  it('Telegram Login Widget imzosini tekshiradi', () => {
+    const data: Record<string, unknown> = { id: 42, first_name: 'Ali', username: 'ali', auth_date: Math.floor(Date.now() / 1000) };
+    const check = Object.entries(data).map(([k, v]) => `${k}=${v}`).sort().join('\n');
+    data.hash = createHmac('sha256', createHash('sha256').update(BOT).digest()).update(check).digest('hex');
+    expect(verifyTelegramLogin(data, BOT)).toMatchObject({ id: '42', name: 'Ali' });
+    expect(() => verifyTelegramLogin({ ...data, first_name: 'Hacker' }, BOT)).toThrow();
+    expect(() => verifyTelegramLogin(data, 'boshqa:token')).toThrow();
+  });
+  it('Telegram Mini App initData imzosini tekshiradi', () => {
+    const p = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id: 7, first_name: 'Malika' }) });
+    const check = [...p.entries()].map(([k, v]) => `${k}=${v}`).sort().join('\n');
+    p.set('hash', createHmac('sha256', createHmac('sha256', 'WebAppData').update(BOT).digest()).update(check).digest('hex'));
+    expect(verifyTelegramWebApp(p.toString(), BOT)).toMatchObject({ id: '7', name: 'Malika' });
+    p.set('hash', '00'.repeat(32));
+    expect(() => verifyTelegramWebApp(p.toString(), BOT)).toThrow();
+  });
+  it("Facebook tokenini Graph API orqali tekshiradi", async () => {
+    const fetchImpl = (async (url: string) => {
+      if (url.includes('debug_token')) return new Response(JSON.stringify({ data: { is_valid: true, app_id: 'app1', user_id: '99' } }));
+      return new Response(JSON.stringify({ id: '99', first_name: 'Sardor', email: 'S@Example.uz', picture: { data: { url: 'https://x/p.jpg' } } }));
+    }) as unknown as typeof fetch;
+    const p = await verifyFacebookToken('EAAB' + 'x'.repeat(40), 'app1', 'sec', fetchImpl);
+    expect(p).toMatchObject({ id: '99', name: 'Sardor', email: 's@example.uz' });
+    const bad = (async () => new Response(JSON.stringify({ data: { is_valid: true, app_id: 'boshqa' } }))) as unknown as typeof fetch;
+    await expect(verifyFacebookToken('EAAB' + 'x'.repeat(40), 'app1', 'sec', bad)).rejects.toThrow();
+  });
+  it("ijtimoiy hisob qayta kirganda o'sha foydalanuvchiga, email bo'yicha mavjud hisobga bog'lanadi", () => {
+    const a = upsertSocialUser('telegram', '42', null, 'Ali', null);
+    expect(upsertSocialUser('telegram', '42', null, 'Ali', null).id).toBe(a.id);
+    const r = register('sardor@example.uz', 'parol12345', 'Sardor');
+    if (!('user' in r) || !r.user) throw new Error('register');
+    expect(upsertSocialUser('facebook', '99', 'sardor@example.uz', 'Sardor', null).id).toBe(r.user.id);
   });
 });

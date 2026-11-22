@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '../state/account';
 import { Mascot } from '../components/Mascot';
+import { SocialLogin } from '../components/SocialLogin';
 
 type GoogleId = {
   initialize: (o: { client_id: string; callback: (r: { credential: string }) => void; ux_mode?: string; auto_select?: boolean; itp_support?: boolean }) => void;
@@ -124,7 +125,8 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { in
           ) : (
             <div className="gis-wrap" ref={gBtn} />
           ))}
-        {clientId && <div className="auth-or"><span>yoki email bilan</span></div>}
+        <SocialLogin onDone={onDone} onError={setError} />
+        {(clientId || me.auth?.facebookAppId || me.auth?.appleClientId || me.auth?.telegramBot) && <div className="auth-or"><span>yoki email bilan</span></div>}
         <form onSubmit={submit} className="auth-form">
           {mode === 'register' && (
             <input className="text-input" placeholder="Ismingiz" autoComplete="given-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />

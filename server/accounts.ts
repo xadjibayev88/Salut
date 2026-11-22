@@ -1,5 +1,5 @@
 // Hisoblar: email + parol (scrypt), Google (ID token), sessiya cookie (HMAC), progress sinxronlash.
-import { createHmac, createPublicKey, randomBytes, randomUUID, scryptSync, timingSafeEqual, verify as cryptoVerify } from 'node:crypto';
+import { createHash, createHmac, createPublicKey, randomBytes, randomUUID, scryptSync, timingSafeEqual, verify as cryptoVerify } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { IncomingMessage } from 'node:http';
@@ -148,6 +148,21 @@ export function upsertGoogleUser(sub: string, email: string | null, name: string
   return getUser(id)!;
 }
 
+/** Facebook / Apple / Telegram hisobi: identities jadvali orqali bog'lanadi. */
+export function upsertSocialUser(provider: 'facebook' | 'apple' | 'telegram', subject: string, email: string | null, name: string, avatar: string | null): User {
+  const link = db().prepare('SELECT user_id FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { user_id: string } | undefined;
+  if (link && getUser(link.user_id)) {
+    if (avatar) db().prepare('UPDATE users SET avatar = COALESCE(avatar, ?) WHERE id = ?').run(avatar, link.user_id);
+    return getUser(link.user_id)!;
+  }
+  // Tasdiqlangan email bilan oldin ochilgan hisob bo'lsa — unga bog'laymiz.
+  const byEmail = email ? (db().prepare('SELECT * FROM users WHERE email = ?').get(email) as Row | undefined) : undefined;
+  const id = byEmail?.id ?? randomUUID();
+  if (!byEmail) db().prepare('INSERT INTO users (id, email, name, avatar, created_at) VALUES (?, ?, ?, ?, ?)').run(id, email, name.slice(0, 40), avatar, Date.now());
+  db().prepare('INSERT OR REPLACE INTO identities (provider, subject, user_id) VALUES (?, ?, ?)').run(provider, subject, id);
+  return getUser(id)!;
+}
+
 export function deleteUser(id: string) {
   db().prepare('DELETE FROM users WHERE id = ?').run(id);
 }
@@ -198,6 +213,93 @@ export async function verifyGoogleIdToken(token: string, audiences: string[], op
     name: String(payload.given_name ?? payload.name ?? '').slice(0, 40),
     picture: typeof payload.picture === 'string' ? payload.picture.slice(0, 500) : null,
   };
+}
+
+// ---------- Apple ID token ----------
+
+let appleJwks: { keys: Jwk[]; until: number } | null = null;
+async function appleKeys(fetchImpl: typeof fetch = fetch): Promise<Jwk[]> {
+  if (appleJwks && appleJwks.until > Date.now()) return appleJwks.keys;
+  const res = await fetchImpl('https://appleid.apple.com/auth/keys');
+  if (!res.ok) throw new Error(`Apple keys HTTP ${res.status}`);
+  const j = (await res.json()) as { keys: Jwk[] };
+  appleJwks = { keys: j.keys, until: Date.now() + 3600_000 };
+  return j.keys;
+}
+
+export async function verifyAppleIdToken(token: string, audiences: string[], opts: { now?: number; keys?: Jwk[]; fetchImpl?: typeof fetch } = {}): Promise<{ sub: string; email: string | null }> {
+  const parts = token.split('.');
+  if (parts.length !== 3 || token.length > 4096) throw new Error('bad token');
+  const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')) as { alg?: string; kid?: string };
+  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+  if (header.alg !== 'RS256') throw new Error('bad alg');
+  const keys = opts.keys ?? (await appleKeys(opts.fetchImpl));
+  const jwk = keys.find((k) => k.kid === header.kid);
+  if (!jwk) throw new Error('unknown key');
+  const key = createPublicKey({ key: { kty: jwk.kty, n: jwk.n, e: jwk.e }, format: 'jwk' });
+  if (!cryptoVerify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), key, Buffer.from(parts[2], 'base64url'))) throw new Error('bad signature');
+  const now = Math.floor((opts.now ?? Date.now()) / 1000);
+  if (payload.iss !== 'https://appleid.apple.com') throw new Error('bad iss');
+  if (!audiences.includes(String(payload.aud))) throw new Error('bad aud');
+  if (typeof payload.exp !== 'number' || payload.exp < now - 60) throw new Error('expired');
+  const verified = payload.email_verified === true || payload.email_verified === 'true';
+  return { sub: String(payload.sub), email: verified && typeof payload.email === 'string' ? payload.email.toLowerCase() : null };
+}
+
+// ---------- Facebook ----------
+
+export async function verifyFacebookToken(
+  accessToken: string,
+  appId: string,
+  appSecret: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ id: string; name: string; email: string | null; picture: string | null }> {
+  if (!/^[A-Za-z0-9]{20,600}$/.test(accessToken)) throw new Error('bad token');
+  const dbg = await fetchImpl(`https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(`${appId}|${appSecret}`)}`);
+  const d = (await dbg.json()) as { data?: { is_valid?: boolean; app_id?: string; user_id?: string } };
+  if (!d.data?.is_valid || d.data.app_id !== appId) throw new Error('invalid token');
+  const me = await fetchImpl(`https://graph.facebook.com/me?fields=id,first_name,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`);
+  const m = (await me.json()) as { id?: string; first_name?: string; name?: string; email?: string; picture?: { data?: { url?: string } } };
+  if (!m.id || m.id !== d.data.user_id) throw new Error('user mismatch');
+  return { id: m.id, name: String(m.first_name ?? m.name ?? '').slice(0, 40), email: m.email ? m.email.toLowerCase() : null, picture: m.picture?.data?.url?.slice(0, 500) ?? null };
+}
+
+// ---------- Telegram ----------
+// Login Widget: hash = HMAC_SHA256(data_check_string, SHA256(bot_token)).
+// Mini App (Telegram ichida): hash = HMAC_SHA256(data_check_string, HMAC_SHA256(bot_token, "WebAppData")).
+
+export function verifyTelegramLogin(data: Record<string, unknown>, botToken: string, now = Date.now()): { id: string; name: string; avatar: string | null } {
+  const hash = String(data.hash ?? '');
+  const fields = Object.entries(data)
+    .filter(([k, v]) => k !== 'hash' && v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${k}=${v}`)
+    .sort()
+    .join('\n');
+  const secret = createHash('sha256').update(botToken).digest();
+  const expected = createHmac('sha256', secret).update(fields).digest('hex');
+  if (!hash || !safeEqualHex(hash, expected)) throw new Error('bad hash');
+  if (now / 1000 - Number(data.auth_date) > 86400) throw new Error('expired');
+  return { id: String(data.id), name: String(data.first_name ?? data.username ?? '').slice(0, 40), avatar: typeof data.photo_url === 'string' ? data.photo_url.slice(0, 500) : null };
+}
+
+export function verifyTelegramWebApp(initData: string, botToken: string, now = Date.now()): { id: string; name: string; avatar: string | null } {
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash') ?? '';
+  params.delete('hash');
+  const check = [...params.entries()].map(([k, v]) => `${k}=${v}`).sort().join('\n');
+  const secret = createHmac('sha256', 'WebAppData').update(botToken).digest();
+  const expected = createHmac('sha256', secret).update(check).digest('hex');
+  if (!hash || !safeEqualHex(hash, expected)) throw new Error('bad hash');
+  if (now / 1000 - Number(params.get('auth_date')) > 86400) throw new Error('expired');
+  const user = JSON.parse(params.get('user') ?? '{}') as { id?: number; first_name?: string; username?: string; photo_url?: string };
+  if (!user.id) throw new Error('no user');
+  return { id: String(user.id), name: String(user.first_name ?? user.username ?? '').slice(0, 40), avatar: user.photo_url?.slice(0, 500) ?? null };
+}
+
+function safeEqualHex(a: string, b: string): boolean {
+  const x = Buffer.from(a, 'hex');
+  const y = Buffer.from(b, 'hex');
+  return x.length === y.length && x.length > 0 && timingSafeEqual(x, y);
 }
 
 // ---------- Progress ----------
