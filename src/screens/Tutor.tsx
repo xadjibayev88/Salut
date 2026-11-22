@@ -6,6 +6,7 @@ import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
+import { answerLang } from '../engine/voice/markers';
 
 const CHAT_KEY = 'salut.chat.v1';
 type Chats = Partial<Record<Scenario, ChatMessage[]>>;
@@ -119,6 +120,9 @@ function TextChat() {
       }, ac.signal);
       const reply: ChatMessage = { id: uid(), role: 'tutor', text: acc.trim() || '...', ts: Date.now() };
       setMessages((m) => [...m, reply]);
+      // Mikrofon tili avtomatik: Vivi fransuzcha javob kutsa — FR, aks holda UZ.
+      const want = answerLang(reply.text);
+      if (want) setMicLang(want === 'fr' ? 'fr-FR' : 'uz-UZ');
       if (state.settings.tutorVoice) speakQueue(frenchParts(reply.text), state.settings.ttsRate);
       const r = applyChatTurn(state);
       update(() => r.state);
@@ -257,8 +261,9 @@ function TextChat() {
             <button type="button" className={`mic ${listening ? 'live' : ''}`} onClick={toggleMic} title="Ovoz bilan yozish" disabled={busy}>
               🎤
             </button>
-            <button type="button" className="mic-lang" onClick={() => setMicLang(micLang === 'uz-UZ' ? 'fr-FR' : 'uz-UZ')} title="Mikrofon tili">
+            <button type="button" className="mic-lang" onClick={() => setMicLang(micLang === 'uz-UZ' ? 'fr-FR' : 'uz-UZ')} title="Mikrofon tili (Vivi javobiga qarab o'zi almashadi)">
               {micLang === 'uz-UZ' ? 'UZ' : 'FR'}
+              <i className="auto-badge">avto</i>
             </button>
           </div>
         )}

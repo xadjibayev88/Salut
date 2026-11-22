@@ -46,3 +46,23 @@ describe('records', () => {
     expect(c.speaking).toEqual({ record: false, up: false });
   });
 });
+
+import { answerLang } from './markers';
+import { parseRich as parseRichAns } from '../tutor';
+
+describe('answerLang — mikrofon tilini avtomatik tanlash', () => {
+  it('model belgisi ustun', () => {
+    expect(answerLang("Zo'r! Endi ayting: [fr]Je m'appelle Ali.[/fr] [[ans:fr]]")).toBe('fr');
+    expect(answerLang('Bugun nima o\'rganamiz? [[ans:uz]]')).toBe('uz');
+  });
+  it('belgisiz — matndan taxmin', () => {
+    expect(answerLang("Qani, buni fransuzcha ayting: men talabaman.")).toBe('fr');
+    expect(answerLang("[fr]Comment tu t'appelles ?[/fr]")).toBe('fr');
+    expect(answerLang('Bugun kayfiyatingiz qanday?')).toBeNull();
+  });
+  it('belgi chatda ko\'rinmaydi (oqim paytida ham)', () => {
+    const txt = parseRichAns('Salom! [[ans:fr]]').map((s) => s.text).join('');
+    expect(txt).not.toContain('[[');
+    expect(parseRichAns('Salom [[an', true).map((s) => s.text).join('')).not.toContain('[[');
+  });
+});

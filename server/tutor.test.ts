@@ -157,3 +157,14 @@ describe('parseRich (client)', () => {
     expect(frenchParts('[fr]Oui[/fr] va [fr]Non[/fr]')).toEqual(['Oui', 'Non']);
   });
 });
+
+describe('Bezori Vivi 18+', () => {
+  it("xarakter qabul qilinadi va promptda chegaralar bor", () => {
+    const r = parseTutorRequest({ scenario: 'free', message: 'salom', character: 'adult' });
+    expect(typeof r).not.toBe('string');
+    const sys = systemInstruction(r as TutorRequest);
+    expect(sys).toContain('Bezori Vivi (18+');
+    expect(sys).toContain("QAT'IY TAQIQLAR");
+    expect(sys).toContain('[[ans:fr]]');
+  });
+});

@@ -1,6 +1,6 @@
 // Vivi xarakterlari va rol o'yinlari (ovozli va matnli suhbat uchun umumiy).
 
-export type CharacterId = 'classic' | 'strict' | 'kind' | 'witty';
+export type CharacterId = 'classic' | 'strict' | 'kind' | 'witty' | 'adult';
 export type RoleId = 'free' | 'cafe' | 'meet' | 'shop' | 'hotel' | 'exam' | 'grammar' | 'mistakes' | 'custom';
 export type ExplainLang = 'uz' | 'ru' | 'en';
 
@@ -13,6 +13,8 @@ export interface Character {
   color: string;
   icon: string;
   consent?: boolean;
+  /** Faqat 18 yoshdan kattalar uchun (yoshni tasdiqlash kerak). */
+  adult?: boolean;
 }
 
 export const CHARACTERS: Character[] = [
@@ -52,6 +54,17 @@ export const CHARACTERS: Character[] = [
     sample: "Voy, zo'r gap! Endi buni fransuzcha ayting — o'zbekchasini o'zim ham bilaman.",
     color: '#C2410C',
     icon: '😏',
+  },
+  {
+    id: 'adult',
+    name: 'Bezori Vivi 18+',
+    tagline: 'Faqat kattalar uchun',
+    description: "Tili achchiq, uyalmas mushuk: so'kinadi, qovuradi, ko'cha jargoni va kattalar mavzularini o'rgatadi.",
+    sample: "Putain ! Yana «je suis» o'rniga «je es» deding-a? Eshak ham bunaqa qilmaydi. Qani, qaytadan!",
+    color: '#7F1D1D',
+    icon: '😼',
+    consent: true,
+    adult: true,
   },
 ];
 

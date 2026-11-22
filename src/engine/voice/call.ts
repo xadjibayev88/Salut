@@ -3,7 +3,7 @@
 // Qotmaslik uchun: hamma narsa asinxron va bekor qilinadigan; birinchi gap tayyor bo'lishi bilan ovoz;
 // keyingi gap ovozi oldindan yuklanadi; tarmoq uzilsa bir marta avtomatik qayta urinadi.
 import { ROLES, type CharacterId, type ExplainLang, type RoleId } from '../../data/characters';
-import { displayText, extractCues, SentenceSplitter, talkStats, type Action, type Shape } from './markers';
+import { answerLang, displayText, extractCues, SentenceSplitter, talkStats, type Action, type Shape } from './markers';
 import { Mic, type MicError } from './mic';
 import { browserSttSupported, cloudSttSupported, CloudStt, HybridStt, WebSpeechStt, type Stt, type SttError } from './stt';
 import { TtsQueue } from './tts';
@@ -42,6 +42,8 @@ export interface CallOptions {
   inputMode: InputMode;
   stt: SttEngine;
   micLang: string;
+  /** Mikrofon tili «Avto»: Vivi javobiga qarab o'zi almashadi. */
+  autoMic?: boolean;
   rate: number;
   name: string;
   context: () => unknown;
@@ -390,6 +392,7 @@ export class VoiceCall {
       clearTimeout(watchdog);
       if (ac.signal.aborted) return;
       this.addTurn('tutor', acc.trim());
+      this.autoMic(acc);
       this.tts.end();
     } catch (e) {
       clearTimeout(weak);
@@ -432,6 +435,15 @@ export class VoiceCall {
   }
 
   // ---------- Sozlamalar (suhbat davomida) ----------
+
+  /** Avtomatik mikrofon tili: Vivi fransuzcha javob kutsa — fr-FR, aks holda asosiy til. */
+  private autoMic(reply: string) {
+    if (!this.o.autoMic) return;
+    const want = answerLang(reply);
+    if (!want) return;
+    const next = want === 'fr' ? 'fr-FR' : this.o.micLang.startsWith('fr') ? 'uz-UZ' : this.o.micLang;
+    if (next !== this.snap.micLang) this.set({ micLang: next });
+  }
 
   setMicLang(lang: string) {
     this.set({ micLang: lang });

@@ -128,3 +128,18 @@ export function talkStats(utterances: string[]): TalkStats {
   const sentences = utterances.reduce((n, u) => n + Math.max(1, (u.match(/[.!?…]+/g) ?? []).length), 0);
   return { words: words.length, sentences: utterances.length ? sentences : 0, unique: new Set(words).size };
 }
+
+/**
+ * Vivi o'quvchidan keyingi javobni qaysi tilda kutyapti?
+ * Avval modelning [[ans:fr]] / [[ans:uz]] belgisi, bo'lmasa matndan taxmin qilinadi.
+ */
+export function answerLang(raw: string): 'fr' | 'uz' | null {
+  const m = /\[\[\s*ans\s*:\s*(fr|uz|ru|en)\s*\]\]/i.exec(raw);
+  if (m) return m[1].toLowerCase() === 'fr' ? 'fr' : 'uz';
+  const tail = raw.replace(/\[\[[^\]]*\]\]/g, '').trim().slice(-260);
+  if (/(fransuzcha|frantsuzcha|fransuz tilida)[^.?!]{0,30}(ayt|yoz|javob|takrorla|qaytar|tuz|gapir)/i.test(tail)) return 'fr';
+  if (/\b(takrorlang|qaytaring|takrorla)\b/i.test(tail) && /\[fr\]/i.test(tail)) return 'fr';
+  // Oxirgi gap butunlay fransuzcha savol: «... Et toi ?[/fr]»
+  if (/\?\s*\[\/fr\]\s*(\([^)]*\))?\s*$/i.test(tail)) return 'fr';
+  return null;
+}

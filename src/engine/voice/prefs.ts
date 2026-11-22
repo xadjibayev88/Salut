@@ -19,6 +19,8 @@ export interface VoicePrefs {
   rate: number;
   introSeen: boolean;
   strictConsent: boolean;
+  /** «Menga 18 yosh to'lgan» tasdig'i (Bezori Vivi 18+ uchun). */
+  adultConfirmed: boolean;
 }
 
 export interface Feedback {
@@ -58,6 +60,7 @@ export const DEFAULT_PREFS: VoicePrefs = {
   rate: 1,
   introSeen: false,
   strictConsent: false,
+  adultConfirmed: false,
 };
 
 function read<T>(key: string, fallback: T): T {

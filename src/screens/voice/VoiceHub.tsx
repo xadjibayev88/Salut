@@ -79,6 +79,7 @@ export function VoiceHub() {
             inputMode: prefs.inputMode,
             stt: prefs.stt,
             micLang,
+            autoMic: prefs.micLang === 'auto',
             rate: prefs.rate,
             name: state.name,
             context: () => learnerContext(state),
@@ -200,7 +201,7 @@ export function VoiceHub() {
             role="listitem"
             className={`char-card ${c.id === prefs.character ? 'on' : ''}`}
             style={{ ['--ch' as string]: c.color }}
-            onClick={() => (c.consent && !prefs.strictConsent ? setConsentFor(c.id) : setPrefs({ character: c.id }))}
+            onClick={() => (c.adult ? (prefs.adultConfirmed ? setPrefs({ character: c.id }) : setConsentFor(c.id)) : c.consent && !prefs.strictConsent ? setConsentFor(c.id) : setPrefs({ character: c.id }))}
           >
             <div className="char-top">
               <span className="char-icon">{c.icon}</span>
@@ -315,7 +316,7 @@ export function VoiceHub() {
           <label className="vh-field">
             <span>Men gapiradigan til</span>
             <select value={prefs.micLang} onChange={(e) => setPrefs({ micLang: e.target.value as VoicePrefs['micLang'] })}>
-              <option value="auto">Rolga qarab</option>
+              <option value="auto">Avtomatik (Vivi javobiga qarab)</option>
               <option value="uz-UZ">O'zbekcha</option>
               <option value="fr-FR">Français</option>
               <option value="ru-RU">Русский</option>
@@ -396,7 +397,33 @@ export function VoiceHub() {
         )}
       </section>
 
-      {consentFor && (
+      {consentFor === 'adult' && (
+        <div className="modal-back" onClick={() => setConsentFor(null)}>
+          <div className="sheet adult-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="big-emoji">🔞</div>
+            <h3>Bezori Vivi — faqat 18 yoshdan kattalar uchun</h3>
+            <p className="muted">
+              Bu xarakter so'kinadi, qo'pol hazil qiladi, sizni «qovuradi» va kattalar mavzularida (tanishuv, bar, ziyofat, ko'cha jargoni) gaplashadi.
+              Haqoratli kamsitish va shahvoniy tasvirlar yo'q — lekin ohang qattiq. Istalgan vaqtda boshqa xarakterga o'tishingiz mumkin.
+            </p>
+            <button
+              type="button"
+              className="btn btn-danger btn-lg"
+              onClick={() => {
+                setPrefs({ character: 'adult', adultConfirmed: true });
+                setConsentFor(null);
+              }}
+            >
+              Menga 18 yosh to'lgan — davom etish
+            </button>
+            <button type="button" className="btn btn-text" onClick={() => setConsentFor(null)}>
+              Yo'q, orqaga
+            </button>
+          </div>
+        </div>
+      )}
+
+      {consentFor && consentFor !== 'adult' && (
         <div className="modal-back" onClick={() => setConsentFor(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="big-emoji">🎩</div>
