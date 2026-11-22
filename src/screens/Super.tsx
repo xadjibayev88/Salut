@@ -158,9 +158,23 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
     };
   }, [refresh, review?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pay = async (provider: 'payme' | 'click' | 'card') => {
+  const pay = async (provider: 'payme' | 'click' | 'card' | 'telegram') => {
     if (!me.user) return setNeedAuth(true);
     if (provider === 'card') return setCardOpen(true);
+    if (provider === 'telegram') {
+      // Oynani darhol ochamiz (iOS Safari popup blokidan qochish uchun), havolani keyin beramiz.
+      const w = window.open('', '_blank');
+      setBusy('telegram');
+      const r = await accountApi<{ url?: string; message?: string }>('billing/telegram', { method: 'POST', body: '{}' });
+      setBusy(null);
+      if (!r.ok || !r.body.url) {
+        w?.close();
+        return setError(r.body.message ?? "Telegram botni ochib bo'lmadi");
+      }
+      if (w) w.location.href = r.body.url;
+      else location.href = r.body.url;
+      return;
+    }
     setBusy(provider);
     setError(null);
     const r = await accountApi<{ payUrl?: string; message?: string }>('billing/order', { method: 'POST', body: JSON.stringify({ plan, provider }) });
@@ -273,6 +287,11 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
           {me.billing.providers.includes('card') && (
             <button type="button" className="btn btn-pay card" disabled={!!busy} onClick={() => pay('card')}>
               💳 Karta orqali (Uzcard / Humo)
+            </button>
+          )}
+          {me.billing.telegram && (
+            <button type="button" className="btn btn-pay telegram" disabled={!!busy} onClick={() => pay('telegram')}>
+              {busy === 'telegram' ? 'Kuting…' : "✈️ Telegram bot orqali to'lash"}
             </button>
           )}
         </div>

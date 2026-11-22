@@ -17,6 +17,8 @@ export interface BillingInfo {
   providers: ('payme' | 'click' | 'card')[];
   anchor?: { label: string; uzs: number };
   card?: { number: string; owner: string; bank: string } | null;
+  /** Telegram to'lov boti ulangan bo'lsa true. */
+  telegram?: boolean;
 }
 
 interface Me {

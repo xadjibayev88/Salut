@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback, liveInstruction } from './tutor.ts';
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
-import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
+import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
+import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
@@ -373,10 +374,10 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       auth: {
         appleClientId: (env.APPLE_CLIENT_ID ?? '').split(',')[0]?.trim() || null,
         facebookAppId: env.FACEBOOK_APP_SECRET ? env.FACEBOOK_APP_ID || null : null,
-        telegramBot: env.TELEGRAM_BOT_TOKEN ? env.TELEGRAM_BOT_USERNAME || null : null,
+        telegramBot: env.TELEGRAM_BOT_TOKEN ? botUsername() || env.TELEGRAM_BOT_USERNAME || null : null,
       },
       admin: user ? isAdmin(user.id) : false,
-      billing: plansPayload() });
+      billing: { ...plansPayload(), telegram: !!botUsername() && plansPayload().providers.includes('card') } });
   },
 
   'POST /api/auth/register': (req, res) =>
@@ -489,7 +490,9 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     const b = (await readBody(req, 4_500_000).catch(() => ({}))) as { plan?: unknown; receipt?: unknown };
     const r = createCardOrder(uid, b.plan, b.receipt);
     if ('error' in r) return json(res, (r as { status: number }).status, { message: r.error });
-    void notifyAdmin(`🧾 Yangi chek: #${r.id} · ${r.plan} · ${r.amountUzs.toLocaleString('ru-RU')} so'm · ${getUser(uid)?.email ?? uid}\n${publicOrigin(req)}/#/admin`);
+    const b2 = bot();
+    if (b2) void b2.notifyReceipt(r.id, r.plan, r.amountUzs, `${getUser(uid)?.name ?? ''} · ${getUser(uid)?.email ?? uid} (ilova)`, b.receipt as string);
+    else void notifyAdmin(`🧾 Yangi chek: #${r.id} · ${r.plan} · ${r.amountUzs.toLocaleString('ru-RU')} so'm · ${getUser(uid)?.email ?? uid}\n${publicOrigin(req)}/#/admin`);
     json(res, 200, r);
   },
 
@@ -515,9 +518,21 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     if (!uid || !isAdmin(uid)) return json(res, 403, { message: "Ruxsat yo'q" });
     if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
     const b = (await readBody(req).catch(() => ({}))) as { id?: unknown; action?: unknown };
+    const orderUser = (receiptOwner(Number(b.id)));
     const ok = decideOrder(Number(b.id), b.action === 'approve');
     if (!ok) return json(res, 409, { message: "Buyurtma allaqachon ko'rib chiqilgan yoki topilmadi" });
+    if (orderUser) void bot()?.notifyDecision(orderUser, b.action === 'approve');
     json(res, 200, { ok: true });
+  },
+
+  // Telegram bot orqali to'lash: hisobni bog'laydigan bir martalik havola.
+  'POST /api/billing/telegram': (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid) return json(res, 401, { message: "Avval hisobga kiring" });
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const name = botUsername();
+    if (!name) return json(res, 503, { message: "Telegram bot hali sozlanmagan" });
+    json(res, 200, { url: `https://t.me/${name}?start=pay_${createLinkCode(uid)}` });
   },
 
   'GET /api/billing/order': (req, res) => {
@@ -734,6 +749,7 @@ const server = createServer((req, res) => {
 });
 server.keepAliveTimeout = 65_000;
 
+startBot();
 server.listen(PORT, () =>
   console.log(`Voilà! server: http://localhost:${PORT} · AI: ${env.GEMINI_API_KEY ? MODEL : "o'chiq"} · ovoz: ${env.ELEVENLABS_API_KEY && VOICES.length ? `ElevenLabs (${TTS_MODEL})` : 'brauzer'}`),
 );

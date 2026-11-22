@@ -161,6 +161,10 @@ export function decideOrder(orderId: number, approve: boolean): boolean {
   return true;
 }
 
+export function receiptOwner(orderId: number): string | null {
+  return orderById(orderId)?.user_id ?? null;
+}
+
 export function orderStatus(userId: string, id: number): string | null {
   const o = orderById(id);
   return o && o.user_id === userId ? o.status : null;

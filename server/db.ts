@@ -48,6 +48,16 @@ export function db(): DatabaseSync {
       order_id INTEGER PRIMARY KEY,
       data TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS tg_links (
+      code TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS tg_state (
+      chat_id TEXT PRIMARY KEY,
+      plan TEXT,
+      updated_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
