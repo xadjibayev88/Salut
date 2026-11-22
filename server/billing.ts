@@ -36,8 +36,17 @@ export function plansPayload() {
 
 // ---------- Obuna ----------
 
+/** ADMIN_EMAILS (vergul bilan) — ilova egasi/sinovchilar: obunasiz ham Super hisoblanadi. */
+function isAdmin(userId: string): boolean {
+  const list = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return false;
+  const u = db().prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email?: string } | undefined;
+  return !!u?.email && list.includes(u.email.toLowerCase());
+}
+
 export function activePlan(userId: string | null): { plan: PlanId | 'free'; expiresAt: number | null } {
   if (!userId) return { plan: 'free', expiresAt: null };
+  if (isAdmin(userId)) return { plan: 'year', expiresAt: Date.now() + 365 * 86400_000 };
   const r = db().prepare('SELECT plan, expires_at FROM subscriptions WHERE user_id = ?').get(userId) as { plan: PlanId; expires_at: number } | undefined;
   if (!r || r.expires_at <= Date.now()) return { plan: 'free', expiresAt: null };
   return { plan: r.plan, expiresAt: r.expires_at };

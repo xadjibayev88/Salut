@@ -593,7 +593,9 @@ p { margin: 0; }
 .vh-check input { width: 20px; height: 20px; accent-color: var(--primary); }
 .vh-adv-toggle { align-self: flex-start; background: none; border: none; color: var(--primary); font-weight: 700; font-size: 14px; padding: 4px 2px; }
 .vh-note { font-size: 13px; color: var(--muted); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
-.vh-start { display: flex; flex-direction: column; gap: 6px; position: sticky; bottom: 92px; z-index: 5; }
+.vh-start { display: flex; flex-direction: column; gap: 6px; position: sticky; bottom: 92px; z-index: 5; margin-top: 12px; }
+.vh-start .rest-card { box-shadow: 0 -18px 30px rgba(8, 9, 30, .85); }
+.memory-card { margin-bottom: 18px; }
 @media (min-width: 900px) { .vh-start { bottom: 16px; } }
 .start-call { background: linear-gradient(135deg, var(--ch), color-mix(in srgb, var(--ch) 70%, #fff)) !important; }
 .rest-card { display: flex; gap: 12px; align-items: center; background: var(--surface); border-radius: var(--r-card); box-shadow: var(--shadow-1); padding: 12px 16px; }
@@ -1026,3 +1028,4 @@ html.lite .vivi * { animation: none !important; }
 .live-toggle .sw { margin-left: auto; width: 42px; height: 24px; border-radius: 12px; background: rgba(255,255,255,.15); position: relative; flex: none; }
 .live-toggle .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; }
 .live-toggle.on .sw { background: #f59e0b; } .live-toggle.on .sw::after { transform: translateX(18px); }
+.vh-start:has(.rest-card) { position: static; }

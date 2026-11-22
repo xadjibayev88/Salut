@@ -165,3 +165,15 @@ describe('ijtimoiy kirish', () => {
     expect(upsertSocialUser('facebook', '99', 'sardor@example.uz', 'Sardor', null).id).toBe(r.user.id);
   });
 });
+
+describe('admin rejimi', () => {
+  it('ADMIN_EMAILS dagi foydalanuvchi obunasiz Super hisoblanadi', async () => {
+    const { activePlan } = await import('./billing.ts');
+    const r = register('owner@voila.test', 'parol12345', 'Owner');
+    if (!r.ok) throw new Error('reg');
+    expect(activePlan(r.user.id).plan).toBe('free');
+    process.env.ADMIN_EMAILS = 'someone@x.uz, OWNER@voila.test';
+    expect(activePlan(r.user.id).plan).toBe('year');
+    delete process.env.ADMIN_EMAILS;
+  });
+});
