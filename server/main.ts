@@ -162,6 +162,49 @@ async function guarded<T>(
 const FALLBACK_MODEL = env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite';
 // Nutqni aniqlash uchun aniqroq model (o'zbekcha+fransuzcha); xato bo'lsa asosiy modelga o'tadi.
 const STT_MODEL = env.GEMINI_STT_MODEL || 'gemini-3.5-flash';
+const STT_HEDGE_MS = num('GEMINI_STT_HEDGE_MS', 1500);
+
+/**
+ * Nutqni aniqlash «poygasi»: aniq model (STT_MODEL) darhol, u STT_HEDGE_MS ichida javob bermasa
+ * tez model (MODEL) ham parallel ishga tushadi — birinchi kelgan javob olinadi, qolgani bekor qilinadi.
+ * Aniq model ba'zan 15–20 soniya kutib qoladi yoki 429 qaytaradi; bu foydalanuvchiga sezilmaydi.
+ */
+async function raceStt(data: Parameters<typeof sttBody>[0], signal: AbortSignal): Promise<unknown> {
+  if (STT_MODEL === MODEL) return generateJson(sttBody(data, MODEL), gem(signal));
+  const acs = [new AbortController(), new AbortController()];
+  const onAbort = () => acs.forEach((a) => a.abort());
+  signal.addEventListener('abort', onAbort, { once: true });
+  const run = (i: number, model: string) =>
+    generateJson(sttBody(data, model), { ...gem(AbortSignal.any([signal, acs[i].signal])), model, fallbackModel: undefined, hedgeMs: 0 }).then((v) => {
+      acs[1 - i].abort();
+      return v;
+    });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const accurate = run(0, STT_MODEL);
+  const fast = new Promise<unknown>((resolve, reject) => {
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      run(1, MODEL).then(resolve, reject);
+    };
+    timer = setTimeout(go, STT_HEDGE_MS);
+    // Aniq model xato bersa (429/5xx) — kutmasdan tez modelga o'tamiz.
+    accurate.catch(() => {
+      if (timer) clearTimeout(timer);
+      if (!signal.aborted) go();
+    });
+  });
+  try {
+    return await Promise.any([accurate, fast]);
+  } catch (e) {
+    throw (e as AggregateError).errors?.[1] ?? (e as AggregateError).errors?.[0] ?? e;
+  } finally {
+    if (timer) clearTimeout(timer);
+    signal.removeEventListener('abort', onAbort);
+  }
+}
+
 const HEDGE_MS = env.GEMINI_HEDGE_MS !== undefined ? Number(env.GEMINI_HEDGE_MS) : 1500;
 const gem = (signal: AbortSignal) => ({ apiKey: env.GEMINI_API_KEY!, model: MODEL, fallbackModel: FALLBACK_MODEL || undefined, hedgeMs: HEDGE_MS, base: env.GEMINI_API_BASE, signal });
 
@@ -349,7 +392,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
 
   'POST /api/stt': (req, res) =>
     guarded(req, res, { bucket: 'stt', maxBody: 3 * 1024 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseSttRequest }, async (data, signal) => {
-      const raw = (await generateJson(sttBody(data, STT_MODEL), { ...gem(signal), model: STT_MODEL, fallbackModel: MODEL, hedgeMs: 0 })) as { text?: unknown };
+      const raw = (await raceStt(data, signal)) as { text?: unknown };
       json(res, 200, { text: typeof raw?.text === 'string' ? raw.text.trim().slice(0, 1200) : '' });
     }),
 
