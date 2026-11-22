@@ -310,10 +310,10 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       ai: !!env.GEMINI_API_KEY,
       stt: !!env.GEMINI_API_KEY,
       // Server ovozi: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. Ikkalasi ham bo'lmasa — brauzer.
-      tts: (premium && env.ELEVENLABS_API_KEY && VOICES.length) || env.GEMINI_API_KEY ? 'elevenlabs' : 'browser',
-      ttsTier: premium && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : env.GEMINI_API_KEY ? 'gemini' : 'browser',
-      audioTags: !!(premium && env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
-      voices: premium && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
+      tts: (premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length) || env.GEMINI_API_KEY ? 'elevenlabs' : 'browser',
+      ttsTier: premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : env.GEMINI_API_KEY ? 'gemini' : 'browser',
+      audioTags: !!(premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
+      voices: premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
       // Super obunachilari: uzunroq sessiya, dam olish talab qilinmaydi.
       // Bepul: kuniga bitta qisqa sessiya (keyingisi — ertaga), Super: uzun sessiyalar, tanaffussiz.
       sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN),
@@ -473,7 +473,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
 
   'POST /api/tts': (req, res) => {
     // Super + ElevenLabs — Dilzoda ovozi; qolganlar — Gemini'ning bepul ovozi.
-    const premiumVoice = isPremium(req) && !!(env.ELEVENLABS_API_KEY && VOICES.length);
+    // Hammaga Gemini ovozi (tiniq va arzon). ElevenLabs faqat zaxira; TTS_PROVIDER=elevenlabs bo'lsa — Super uchun asosiy.
+    const premiumVoice = env.TTS_PROVIDER === 'elevenlabs' && isPremium(req) && !!(env.ELEVENLABS_API_KEY && VOICES.length);
     return guarded(
       req,
       res,

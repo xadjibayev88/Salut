@@ -987,3 +987,11 @@ html.lite .vivi * { animation: none !important; }
 .memory-card .memory-head .btn { padding: 4px 8px; font-size: 13px; }
 .memory-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
 .memory-card .small { font-size: 13px; margin: 0; }
+/* Super taklifi */
+.super-banner { display: flex; align-items: center; gap: 10px; width: calc(100% - 8px); margin: 4px 4px 12px; padding: 12px 14px; border-radius: 18px; border: 1px solid rgba(253, 224, 71, .35); background: linear-gradient(135deg, rgba(245, 158, 11, .22), rgba(236, 72, 153, .2)); color: var(--text); text-align: left; cursor: pointer; }
+.super-banner .sb-badge { font-weight: 900; font-size: 11px; letter-spacing: 1px; padding: 5px 8px; border-radius: 8px; color: #1f1300; background: linear-gradient(135deg, #fde047, #f59e0b); }
+.super-banner .sb-text { flex: 1; display: grid; } .super-banner .sb-text small { color: var(--muted); font-size: 12px; }
+.super-banner .sb-go { font-size: 24px; opacity: .8; }
+.super-offer { max-height: 90vh; overflow-y: auto; }
+.super-offer .super-perks { width: 100%; text-align: left; }
+.rest-card .btn { margin-top: 8px; }

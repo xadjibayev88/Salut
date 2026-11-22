@@ -1,3 +1,4 @@
+import { SuperBanner, SuperOfferModal } from '../../components/SuperOffer';
 // Vivi ovozli suhbati: tanishuv → xarakter va rol tanlash → qo'ng'iroq → tahlil.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CHARACTERS, CUSTOM_ROLE_MAX, CUSTOM_ROLE_MIN, EXPLAIN_LANGS, ROLES } from '../../data/characters';
@@ -43,6 +44,22 @@ export function VoiceHub() {
   const [view, setView] = useState<View>({ kind: 'hub' });
   const [history, setHistory] = useState<SessionRecord[]>(loadHistory);
   const [consentFor, setConsentFor] = useState<string | null>(null);
+  // Super taklifi: bepul foydalanuvchilarga kuniga bir marta kirganda, va bepul suhbat tugaganda.
+  const [offer, setOffer] = useState<null | 'enter' | 'limit'>(null);
+  const isFree = !!config && config.premium === false;
+  useEffect(() => {
+    if (!isFree) return;
+    const key = 'voila.superOffer.day';
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      if (localStorage.getItem(key) === today) return;
+      localStorage.setItem(key, today);
+    } catch {
+      /* xotira yopiq */
+    }
+    const t = setTimeout(() => setOffer('enter'), 700);
+    return () => clearTimeout(t);
+  }, [isFree]);
   const [showHelp, setShowHelp] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -98,6 +115,7 @@ export function VoiceHub() {
       const talked = rec.turns.filter((t) => t.role === 'user').length > 0;
       // Bepul: kunlik sessiya ishlatildi — qanday tugaganidan qat'i nazar (keyingisi ertaga). Super: faqat limitda.
       if (config && config.cooldownMinutes > 0 && (c.snap.endReason === 'limit' || (talked && !config.premium))) setRestUntil(Date.now() + config.cooldownMinutes * 60_000);
+      if (config && !config.premium && (c.snap.endReason === 'limit' || talked)) setTimeout(() => setOffer('limit'), 900);
       // Xotirani yangilash (fon rejimida).
       if (talked)
         void updateMemory(state.memory ?? '', rec.turns.map((t) => ({ role: t.role, text: t.text })), state.name).then((m) => m && update((s) => ({ ...s, memory: m })));
@@ -141,6 +159,8 @@ export function VoiceHub() {
   }
   if (view.kind === 'feedback') {
     return (
+      <>
+      {offer && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
       <FeedbackView
         record={view.record}
         lang={prefs.lang}
@@ -158,6 +178,7 @@ export function VoiceHub() {
           setView({ kind: 'hub' });
         }}
       />
+      </>
     );
   }
 
@@ -191,6 +212,7 @@ export function VoiceHub() {
   // ---------- Bosh sahifa ----------
   return (
     <div className="voice-hub">
+      {offer && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
       <div className="vh-head">
         <div>
           <h1 className="page-title">Vivi AI</h1>
@@ -360,6 +382,8 @@ export function VoiceHub() {
         <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
       )}
 
+      {isFree && <SuperBanner onOpen={() => setOffer('enter')} />}
+
       <section className="vh-section memory-card">
         <div className="memory-head">
           <b>🧠 Vivi sizni eslaydi</b>
@@ -398,6 +422,11 @@ export function VoiceHub() {
             <div>
               <b>Vivi dam olyapti</b>
               <p className="muted">Yaxshi suhbatlashdingiz! Keyingi suhbatdan oldin Viviga dam kerak. Yana tayyor bo'lishiga {fmtLeft(rest - now)} qoldi.</p>
+              {isFree && (
+                <button type="button" className="btn btn-primary" onClick={() => setOffer('limit')}>
+                  ⭐ Hoziroq davom etish — Super
+                </button>
+              )}
             </div>
           </div>
         ) : !config ? (
