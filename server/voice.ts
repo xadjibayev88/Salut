@@ -224,3 +224,71 @@ export async function elevenLabsTts(
   }
   return res;
 }
+
+
+// ---------- Bepul ovoz: Gemini TTS ----------
+// Super bo'lmagan foydalanuvchilar uchun: Gemini'ning ovoz modeli (bepul tarifda tekin, pullikda arzon).
+// Javob WAV (PCM) ko'rinishida keladi; limit tugasa (429) navbatdagi modelga o'tiladi.
+export async function geminiTts(
+  text: string,
+  opts: { apiKey: string; models: string[]; voiceName: string; base?: string; signal?: AbortSignal; fetchImpl?: typeof fetch; onQuota?: (model: string, perDay: boolean) => void; skip?: (model: string) => boolean },
+): Promise<{ audio: Buffer; mime: string }> {
+  const base = (opts.base || 'https://generativelanguage.googleapis.com/v1beta/models').replace(/\/$/, '');
+  let last: unknown = new Error('no tts model');
+  for (const model of opts.models) {
+    if (opts.skip?.(model)) continue;
+    const res = await (opts.fetchImpl ?? fetch)(`${base}/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': opts.apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text }] }],
+        generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName } } } },
+      }),
+      signal: opts.signal,
+    });
+    if (res.status === 429 || res.status === 404) {
+      const body = await res.text().catch(() => '');
+      opts.onQuota?.(model, res.status === 404 || /PerDay|per day/i.test(body));
+      last = Object.assign(new Error(`Gemini TTS ${res.status}`), { status: 429 });
+      continue;
+    }
+    if (!res.ok) {
+      last = Object.assign(new Error(`Gemini TTS ${res.status}`), { status: res.status });
+      continue;
+    }
+    const j = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] } }[] };
+    const part = j.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
+    if (!part?.data) {
+      last = new Error('Gemini TTS empty');
+      continue;
+    }
+    let audio = Buffer.from(part.data, 'base64');
+    let mime = (part.mimeType ?? 'audio/wav').split(';')[0];
+    // Xom PCM kelsa (audio/L16) — WAV sarlavhasi qo'shamiz, brauzer o'ynay olsin.
+    if (!/wav/i.test(mime) || audio.subarray(0, 4).toString('ascii') !== 'RIFF') {
+      const rate = Number(/rate=(\d+)/.exec(part.mimeType ?? '')?.[1] ?? 24000);
+      audio = Buffer.concat([wavHeader(audio.length, rate), audio]);
+      mime = 'audio/wav';
+    }
+    return { audio, mime };
+  }
+  throw last;
+}
+
+function wavHeader(dataLen: number, rate: number, channels = 1, bits = 16): Buffer {
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0);
+  h.writeUInt32LE(36 + dataLen, 4);
+  h.write('WAVE', 8);
+  h.write('fmt ', 12);
+  h.writeUInt32LE(16, 16);
+  h.writeUInt16LE(1, 20);
+  h.writeUInt16LE(channels, 22);
+  h.writeUInt32LE(rate, 24);
+  h.writeUInt32LE((rate * channels * bits) / 8, 28);
+  h.writeUInt16LE((channels * bits) / 8, 32);
+  h.writeUInt16LE(bits, 34);
+  h.write('data', 36);
+  h.writeUInt32LE(dataLen, 40);
+  return h;
+}

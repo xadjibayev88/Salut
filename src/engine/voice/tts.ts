@@ -123,7 +123,7 @@ export class TtsQueue {
           body: JSON.stringify({ text, voice: this.voiceId }),
           signal,
         });
-        if (res.status === 429) {
+        if (res.status === 429 || res.status === 503) {
           const b = (await res.json().catch(() => ({}))) as { code?: string };
           if (b.code === 'tts_quota') {
             this.onFail?.('tts_quota');

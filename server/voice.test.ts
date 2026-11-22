@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseTutorRequest, systemInstruction, type TutorRequest } from './tutor.ts';
-import { cleanFeedback, feedbackBody, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { cleanFeedback, feedbackBody, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const base = { scenario: 'free', message: 'Salom', history: [], context: {} };
 
@@ -68,5 +68,25 @@ describe('STT kontekst', () => {
     const req = r as Exclude<typeof r, string>;
     expect(req.context).toBe("Qani: Comment tu t'appelles ?");
     expect(JSON.stringify(sttBody(req, 'gemini-3.5-flash'))).toContain("Comment tu t'appelles");
+  });
+});
+
+describe('Gemini ovozi (bepul)', () => {
+  it("429 da keyingi TTS modelga o'tadi va WAV qaytaradi", async () => {
+    const seen: string[] = [];
+    const quota: string[] = [];
+    const pcm = Buffer.alloc(480).toString('base64');
+    const fetchImpl = (async (url: string) => {
+      const m = /models\/([^:]+):/.exec(url)![1];
+      seen.push(m);
+      if (m === 'tts-a') return new Response('{"error":{"message":"PerDay"}}', { status: 429 });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: pcm } }] } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const r = await geminiTts('Salom', { apiKey: 'k', models: ['tts-a', 'tts-b'], voiceName: 'Leda', fetchImpl, onQuota: (m) => quota.push(m) });
+    expect(seen).toEqual(['tts-a', 'tts-b']);
+    expect(quota).toEqual(['tts-a']);
+    expect(r.mime).toBe('audio/wav');
+    expect(r.audio.subarray(0, 4).toString('ascii')).toBe('RIFF');
+    expect(r.audio.length).toBe(44 + 480);
   });
 });

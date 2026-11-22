@@ -10,6 +10,8 @@ export interface ChatMessage {
   role: 'user' | 'tutor';
   text: string;
   error?: boolean;
+  /** Bepul limit tugadi — Super taklifi ko'rsatiladi. */
+  upsell?: boolean;
   ts: number;
 }
 

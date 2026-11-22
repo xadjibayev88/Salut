@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContents, friendlyError, parseTutorRequest, streamTutor, systemInstruction, type TutorRequest } from './tutor.ts';
+import { buildContents, configureRotation, friendlyError, isExhausted, parseTutorRequest, streamGemini, streamTutor, streamTutorWithFallback, systemInstruction, type TutorRequest } from './tutor.ts';
 import { parseRich, frenchParts } from '../src/engine/tutor.ts';
 
 const base = { scenario: 'free', message: 'Salom!', history: [], context: { name: 'Ali', lessons: ['Salom!'], words: ['bonjour'], mistakes: [], streak: 2 } };
@@ -178,5 +178,42 @@ describe('Senzurasiz rejim', () => {
     const plain = systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom', character: 'strict', mode: 'voice', audioTags: true }) as TutorRequest);
     expect(plain).not.toContain('SENZURASIZ REJIM');
     expect(plain).not.toContain('[fuck]');
+  });
+});
+
+describe('modellarni almashlab ishlatish', () => {
+  it("429 da keyingi modelga o'tadi va tugagan modelni chetga suradi", async () => {
+    configureRotation(['m-b', 'm-c']);
+    const calls: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      const m = /models\/([^:]+):/.exec(url)![1];
+      calls.push(m);
+      if (m === 'm-a' || m === 'm-b') return new Response('{"error":{"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}', { status: 429 });
+      const sse = 'data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Salut' }] }, finishReason: 'STOP' }] }) + '\n\n';
+      return new Response(sse, { status: 200 });
+    }) as unknown as typeof fetch;
+    let out = '';
+    for await (const t of streamGemini({ contents: [] }, { apiKey: 'k', model: 'm-a', fetchImpl })) out += t;
+    expect(out).toBe('Salut');
+    expect(calls).toEqual(['m-a', 'm-b', 'm-c']);
+    expect(isExhausted('m-a')).toBe(true);
+    calls.length = 0;
+    for await (const t of streamGemini({ contents: [] }, { apiKey: 'k', model: 'm-a', fetchImpl })) out += t;
+    expect(calls).toEqual(['m-c']);
+    configureRotation([]);
+  });
+});
+
+describe('zaxira AI xizmati', () => {
+  it("Gemini ishlamasa, OpenAI-mos xizmatga o'tadi", async () => {
+    const fetchImpl = (async (url: string) => {
+      if (url.includes('generativelanguage') || url.includes('models/')) return new Response('{}', { status: 400 });
+      const body = ['data: ' + JSON.stringify({ choices: [{ delta: { content: 'Salut ' } }] }), 'data: ' + JSON.stringify({ choices: [{ delta: { content: 'jonim!' } }] }), 'data: [DONE]', ''].join('\n');
+      return new Response(body, { status: 200 });
+    }) as unknown as typeof fetch;
+    const r = parseTutorRequest({ scenario: 'free', message: 'salom' }) as TutorRequest;
+    let out = '';
+    for await (const t of streamTutorWithFallback(r, { apiKey: 'k', model: 'x', fetchImpl }, { url: 'https://fb.example/v1', key: 'f', model: 'llama' })) out += t;
+    expect(out).toBe('Salut jonim!');
   });
 });

@@ -5,10 +5,10 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
-import { friendlyError, generateJson, parseTutorRequest, streamTutor } from './tutor.ts';
+import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback } from './tutor.ts';
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken } from './accounts.ts';
 import { activePlan, click, createOrder, orderStatus, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
-import { cleanFeedback, elevenLabsTts, feedbackBody, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { cleanFeedback, elevenLabsTts, feedbackBody, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -170,7 +170,7 @@ const STT_HEDGE_MS = num('GEMINI_STT_HEDGE_MS', 1500);
  * Aniq model ba'zan 15–20 soniya kutib qoladi yoki 429 qaytaradi; bu foydalanuvchiga sezilmaydi.
  */
 async function raceStt(data: Parameters<typeof sttBody>[0], signal: AbortSignal): Promise<unknown> {
-  if (STT_MODEL === MODEL) return generateJson(sttBody(data, MODEL), gem(signal));
+  if (STT_MODEL === MODEL || isExhausted(STT_MODEL)) return generateJson(sttBody(data, MODEL), gem(signal));
   const acs = [new AbortController(), new AbortController()];
   const onAbort = () => acs.forEach((a) => a.abort());
   signal.addEventListener('abort', onAbort, { once: true });
@@ -205,6 +205,42 @@ async function raceStt(data: Parameters<typeof sttBody>[0], signal: AbortSignal)
   }
 }
 
+// Bepul limitlar tugaganda navbatdagi modellar (har birining kunlik limiti alohida).
+configureRotation((env.GEMINI_ROTATION ?? 'gemini-flash-lite-latest,gemini-3.1-flash-lite-preview,gemini-3-flash-preview,gemini-flash-latest').split(','));
+// ---------- Bepul foydalanuvchilar uchun kunlik limit ----------
+// Super obunachilarda cheklov yo'q. Hisob bo'lsa — foydalanuvchi bo'yicha, mehmonlarda — IP bo'yicha.
+const FREE_MSGS = num('FREE_MESSAGES_PER_DAY', 30);
+const FREE_VOICE_MIN = num('FREE_VOICE_MINUTES', 5);
+const dailyUse = new Map<string, { day: string; n: number }>();
+const tashkentDay = () => new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10);
+const minutesToTashkentMidnight = () => {
+  const t = new Date(Date.now() + 5 * 3600_000);
+  return Math.max(1, 24 * 60 - (t.getUTCHours() * 60 + t.getUTCMinutes()));
+};
+function quotaKey(req: IncomingMessage) {
+  const uid = currentUserId(req);
+  return uid ? `u:${uid}` : `ip:${clientIp(req)}`;
+}
+const isPremium = (req: IncomingMessage) => activePlan(currentUserId(req)).plan !== 'free';
+/** Bugun qolgan bepul xabarlar (Super — null, ya'ni cheklovsiz). */
+function freeLeft(req: IncomingMessage): number | null {
+  if (isPremium(req)) return null;
+  const r = dailyUse.get(quotaKey(req));
+  return Math.max(0, FREE_MSGS - (r && r.day === tashkentDay() ? r.n : 0));
+}
+function useFree(req: IncomingMessage) {
+  if (isPremium(req)) return;
+  const k = quotaKey(req);
+  const day = tashkentDay();
+  const r = dailyUse.get(k);
+  dailyUse.set(k, { day, n: r && r.day === day ? r.n + 1 : 1 });
+  if (dailyUse.size > 50_000) for (const [key, v] of dailyUse) if (v.day !== day) dailyUse.delete(key);
+}
+
+const GEMINI_TTS_MODELS = (env.GEMINI_TTS_MODELS ?? 'gemini-3.8-flash-lite-tts,gemini-3.8-flash-tts').split(',').map((m) => m.trim()).filter(Boolean);
+const GEMINI_TTS_VOICE = env.GEMINI_TTS_VOICE || 'Leda';
+// Zaxira AI (ixtiyoriy): masalan Groq — FALLBACK_LLM_URL=https://api.groq.com/openai/v1
+const FALLBACK_LLM = env.FALLBACK_LLM_URL && env.FALLBACK_LLM_KEY && env.FALLBACK_LLM_MODEL ? { url: env.FALLBACK_LLM_URL, key: env.FALLBACK_LLM_KEY, model: env.FALLBACK_LLM_MODEL } : undefined;
 const HEDGE_MS = env.GEMINI_HEDGE_MS !== undefined ? Number(env.GEMINI_HEDGE_MS) : 1500;
 const gem = (signal: AbortSignal) => ({ apiKey: env.GEMINI_API_KEY!, model: MODEL, fallbackModel: FALLBACK_MODEL || undefined, hedgeMs: HEDGE_MS, base: env.GEMINI_API_BASE, signal });
 
@@ -250,19 +286,24 @@ async function clickRoute(req: IncomingMessage, res: ServerResponse, action: 0 |
 }
 
 const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void> = {
-  'GET /api/health': (_q, res) => json(res, 200, { ok: true, ai: !!env.GEMINI_API_KEY, model: MODEL }),
+  'GET /api/health': (_q, res) => json(res, 200, { ok: true, ai: !!env.GEMINI_API_KEY, model: MODEL, exhausted: rotationStatus().map((r) => r.model) }),
 
   'GET /api/voice/config': (req, res) => {
-    const premium = activePlan(currentUserId(req)).plan !== 'free';
+    const premium = isPremium(req);
     json(res, 200, {
       ai: !!env.GEMINI_API_KEY,
       stt: !!env.GEMINI_API_KEY,
-      tts: env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : 'browser',
-      audioTags: !!(env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
-      voices: env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
+      // Server ovozi: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. Ikkalasi ham bo'lmasa — brauzer.
+      tts: (premium && env.ELEVENLABS_API_KEY && VOICES.length) || env.GEMINI_API_KEY ? 'elevenlabs' : 'browser',
+      ttsTier: premium && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : env.GEMINI_API_KEY ? 'gemini' : 'browser',
+      audioTags: !!(premium && env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
+      voices: premium && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
       // Super obunachilari: uzunroq sessiya, dam olish talab qilinmaydi.
-      sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : SESSION_MIN,
-      cooldownMinutes: premium ? 0 : COOLDOWN_MIN,
+      // Bepul: kuniga bitta qisqa sessiya (keyingisi — ertaga), Super: uzun sessiyalar, tanaffussiz.
+      sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN),
+      cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
+      messagesLeft: freeLeft(req),
+      messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
   },
@@ -369,11 +410,17 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
   'POST /api/billing/click/prepare': (req, res) => clickRoute(req, res, 0),
   'POST /api/billing/click/complete': (req, res) => clickRoute(req, res, 1),
 
-  'POST /api/tutor': (req, res) =>
-    guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseTutorRequest }, async (data, signal) => {
+  'POST /api/tutor': (req, res) => {
+    if (freeLeft(req) === 0)
+      return json(res, 429, {
+        code: 'daily_limit',
+        message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Ertaga yana gaplashamiz — yoki Super bilan cheklovsiz davom eting 💜`,
+      });
+    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseTutorRequest }, async (data, signal) => {
+      useFree(req);
       let started = false;
       const send = (o: unknown) => res.write(`data: ${JSON.stringify(o)}\n\n`);
-      for await (const text of streamTutor(data, gem(signal))) {
+      for await (const text of streamTutorWithFallback(data, gem(signal), FALLBACK_LLM)) {
         if (!started) {
           started = true;
           res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' });
@@ -382,7 +429,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       }
       send({ done: true });
       res.end();
-    }),
+    });
+  },
 
   'POST /api/tutor/feedback': (req, res) =>
     guarded(req, res, { bucket: 'feedback', maxBody: 160 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseFeedbackRequest }, async (data, signal) => {
@@ -396,26 +444,47 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       json(res, 200, { text: typeof raw?.text === 'string' ? raw.text.trim().slice(0, 1200) : '' });
     }),
 
-  'POST /api/tts': (req, res) =>
-    guarded(
+  'POST /api/tts': (req, res) => {
+    // Super + ElevenLabs — Dilzoda ovozi; qolganlar — Gemini'ning bepul ovozi.
+    const premiumVoice = isPremium(req) && !!(env.ELEVENLABS_API_KEY && VOICES.length);
+    return guarded(
       req,
       res,
       {
         bucket: 'tts',
         maxBody: 8 * 1024,
-        needKey: env.ELEVENLABS_API_KEY && VOICES.length ? env.ELEVENLABS_API_KEY : undefined,
-        keyName: 'ELEVENLABS_API_KEY / ELEVENLABS_VOICES',
+        needKey: premiumVoice ? env.ELEVENLABS_API_KEY : env.GEMINI_API_KEY,
+        keyName: premiumVoice ? 'ELEVENLABS_API_KEY' : 'GEMINI_API_KEY',
         parse: (b) => {
           const o = (b ?? {}) as Record<string, unknown>;
           const text = ttsText(o.text);
           if (!text) return "Matn bo'sh";
           const voice = VOICES.find((v) => v.id === o.voice) ?? VOICES[0];
-          return { text, voice: voice.id };
+          return { text, voice: voice?.id ?? '' };
         },
       },
       async (data, signal) => {
         const limited = take('tts', `${clientIp(req)}`, data.text.length, TTS_CHARS_PER_DAY);
         if (limited) return json(res, 429, { code: 'tts_quota', message: 'Bugungi ovoz limiti tugadi — Vivi matn bilan davom etadi.' });
+        if (!premiumVoice) {
+          try {
+            const { audio, mime } = await geminiTts(data.text, {
+              apiKey: env.GEMINI_API_KEY!,
+              models: GEMINI_TTS_MODELS,
+              voiceName: GEMINI_TTS_VOICE,
+              base: env.GEMINI_API_BASE,
+              signal,
+              skip: (m) => isExhausted(m),
+              onQuota: (m, perDay) => markExhausted(m, perDay),
+            });
+            res.writeHead(200, { 'content-type': mime, 'cache-control': 'no-store', 'content-length': audio.length });
+            return void res.end(audio);
+          } catch (e) {
+            if ((e as Error).name === 'AbortError') throw e;
+            // Gemini ovozi ishlamasa — mijoz qurilmaning o'z ovoziga o'tadi.
+            return json(res, 503, { code: 'tts_quota', message: 'Ovoz vaqtincha mavjud emas — Vivi qurilma ovozida davom etadi.' });
+          }
+        }
         const upstream = await elevenLabsTts(data.text, data.voice, { apiKey: env.ELEVENLABS_API_KEY!, model: TTS_MODEL, languageCode: TTS_LANG, signal, base: env.ELEVENLABS_API_BASE });
         res.writeHead(200, { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' });
         await new Promise<void>((ok, fail) => {
@@ -425,7 +494,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
           s.pipe(res);
         });
       },
-    ),
+    );
+  },
 };
 
 // ---------- Statik fayllar ----------

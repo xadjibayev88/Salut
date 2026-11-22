@@ -355,6 +355,12 @@ export function VoiceHub() {
         <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
       )}
 
+      {config && config.messagesLeft != null && (
+        <p className="vh-quota">
+          🎁 Bugun {config.messagesLeft} / {config.messagesPerDay} ta bepul xabar va {config.sessionMinutes} daqiqalik ovozli suhbat.{' '}
+          <a href="#/shop">Super — cheksiz va Dilzoda ovozi</a>
+        </p>
+      )}
       <div className="vh-start">
         {resting ? (
           <div className="rest-card">

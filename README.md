@@ -86,6 +86,13 @@ Ishlab chiqishda: bir terminalda `GEMINI_API_KEY=... npm run server`, ikkinchisi
 | `PAYME_MERCHANT_ID` / `PAYME_KEY` / `PAYME_TEST` | — | Payme kassa; `PAYME_TEST=1` — test |
 | `CLICK_SERVICE_ID` / `CLICK_MERCHANT_ID` / `CLICK_SECRET_KEY` | — | Click Merchant |
 
+### Bepul rejim
+
+- Gemini limiti (429) tugasa, Vivi avtomatik ravishda navbatdagi modelga o'tadi (`GEMINI_ROTATION`); barchasi tugasa —
+  ixtiyoriy zaxira xizmatga (`FALLBACK_LLM_*`, OpenAI bilan mos API).
+- Bepul foydalanuvchilar: kuniga `FREE_MESSAGES_PER_DAY` ta AI xabar va `FREE_VOICE_MINUTES` daqiqalik ovozli suhbat,
+  ovoz — Gemini TTS. Super: cheksiz, Dilzoda ovozi (ElevenLabs), uzun sessiyalar.
+
 ### To'lov tizimlarini ulash
 
 - **Payme:** Payme Business kabinetida kassa yarating, endpoint: `https://<domen>/api/billing/payme`.

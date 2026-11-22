@@ -143,7 +143,8 @@ function TextChat() {
         if (acc.trim()) setMessages((m) => [...m, { id: uid(), role: 'tutor', text: acc.trim(), ts: Date.now() }]);
       } else {
         const msg = e instanceof TutorError ? e.message : 'Kutilmagan xato yuz berdi.';
-        setMessages((m) => [...m, ...(acc.trim() ? [{ id: uid(), role: 'tutor' as const, text: acc.trim(), ts: Date.now() }] : []), { id: uid(), role: 'tutor', text: msg, error: true, ts: Date.now() }]);
+        const upsell = e instanceof TutorError && e.code === 'daily_limit';
+        setMessages((m) => [...m, ...(acc.trim() ? [{ id: uid(), role: 'tutor' as const, text: acc.trim(), ts: Date.now() }] : []), { id: uid(), role: 'tutor', text: msg, error: true, upsell, ts: Date.now() }]);
       }
     } finally {
       setBusy(false);
@@ -294,7 +295,12 @@ function TextChat() {
                   ▶︎ fransuzcha
                 </button>
               )}
-              {m.error && m === messages[messages.length - 1] && (
+              {m.upsell && (
+                <button type="button" className="btn btn-primary msg-upsell" onClick={() => (location.hash = '#/shop')}>
+                  ⭐ Super — cheksiz suhbat
+                </button>
+              )}
+              {m.error && !m.upsell && m === messages[messages.length - 1] && (
                 <button type="button" className="msg-play" onClick={retry}>
                   ↻ Qayta urinish
                 </button>

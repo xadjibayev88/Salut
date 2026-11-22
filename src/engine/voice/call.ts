@@ -31,6 +31,12 @@ export interface VoiceConfig {
   voices: { id: string; name: string }[];
   sessionMinutes: number;
   cooldownMinutes: number;
+  /** Bugun qolgan bepul xabarlar (Super — null). */
+  messagesLeft?: number | null;
+  messagesPerDay?: number | null;
+  premium?: boolean;
+  /** Ovoz manbai: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. */
+  ttsTier?: 'elevenlabs' | 'gemini' | 'browser';
 }
 
 export interface CallOptions {
