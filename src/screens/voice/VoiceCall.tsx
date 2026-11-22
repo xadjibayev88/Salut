@@ -228,7 +228,7 @@ export function VoiceCallScreen({
           </button>
         </div>
         <div className="call-actions">
-          {(
+          {s.sttKind === 'browser' && (
             <button
               type="button"
               className="mic-lang-pill"

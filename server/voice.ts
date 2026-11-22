@@ -113,6 +113,8 @@ export interface SttRequest {
   audio: string; // base64
   mime: string;
   hint: 'uz' | 'fr' | 'auto';
+  /** Ustozning oxirgi gapi — aniqlash uchun kontekst (ismlar, kutilgan javob). */
+  context: string;
 }
 
 const AUDIO_MIME = /^audio\/(webm|ogg|mp4|mpeg|wav|x-wav|aac)(;.*)?$/;
@@ -124,7 +126,8 @@ export function parseSttRequest(body: unknown): SttRequest | string {
   if (!audio || !/^[A-Za-z0-9+/=]+$/.test(audio.slice(0, 200))) return "Audio yo'q";
   if (!AUDIO_MIME.test(mime)) return "Audio formati qo'llab-quvvatlanmaydi";
   if (audio.length > 2_800_000) return 'Replika juda uzun — bir daqiqagacha gapiring';
-  return { audio, mime: mime.split(';')[0], hint: b.hint === 'uz' || b.hint === 'fr' ? b.hint : 'auto' };
+  const context = typeof b.context === 'string' ? b.context.replace(/\[\[[^\]]*\]\]/g, '').replace(/\[\/?fr\]/g, '').replace(/\s+/g, ' ').trim().slice(-400) : '';
+  return { audio, mime: mime.split(';')[0], hint: b.hint === 'uz' || b.hint === 'fr' ? b.hint : 'auto', context };
 }
 
 export function sttBody(req: SttRequest, model: string): Record<string, unknown> {
@@ -133,14 +136,22 @@ export function sttBody(req: SttRequest, model: string): Record<string, unknown>
     systemInstruction: {
       parts: [
         {
-          text: "Sen nutqni matnga aylantiruvchisan. Audiodagi gapni AYNAN yozib ber — tarjima qilma, tuzatma, javob berma. Nutq o'zbek (lotin yozuvida yoz), fransuz yoki aralash bo'lishi mumkin. Fransuz so'zlarini fransuz imlosida yoz. Agar nutq eshitilmasa yoki faqat shovqin bo'lsa, text ni bo'sh qoldir. Faqat JSON: {\"text\": \"...\"}",
+          text: `Sen nutqni matnga aylantiruvchisan. Gapiruvchi — fransuz tilini o'rganayotgan o'zbek o'quvchi; u AI ustoz «Vivi» bilan gaplashyapti.
+- Audiodagi gapni AYNAN yoz: tarjima qilma, javob berma, o'zingdan so'z qo'shma, gapni to'qima.
+- Nutq o'zbekcha, fransuzcha yoki aralash bo'lishi mumkin — har bir qismni o'z tilida yoz: o'zbekcha — lotin yozuvida (o', g', sh, ch), fransuzcha — fransuz imlosida (urg'u belgilari bilan).
+- O'quvchining fransuzcha talaffuzi xato bo'lishi mumkin: u aytmoqchi bo'lgan fransuzcha so'zni to'g'ri imloda yoz (masalan «jö mapel» → «je m'appelle»), lekin grammatik xatolarini TUZATMA (o'quvchi «je suis 25 an» desa — shunday yoz).
+- Ustozning oxirgi gapi kontekst sifatida beriladi: undagi ism va so'zlarni to'g'ri yozish uchun foydalan, lekin uni matnga qo'shma.
+- Nutq eshitilmasa, faqat shovqin yoki tushunarsiz bo'lsa — text bo'sh. Faqat JSON: {"text": "..."}`,
         },
       ],
     },
     contents: [
       {
         role: 'user',
-        parts: [{ inlineData: { mimeType: req.mime, data: req.audio } }, { text: `Til ishorasi: ${req.hint}` }],
+        parts: [
+          { inlineData: { mimeType: req.mime, data: req.audio } },
+          { text: `Kutilgan til (taxmin, majburiy emas): ${req.hint}.${req.context ? ` Ustozning oxirgi gapi: «${req.context}»` : ''}` },
+        ],
       },
     ],
     generationConfig: {

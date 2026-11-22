@@ -47,7 +47,7 @@ describe('voice server helpers', () => {
     expect(typeof parseSttRequest({ audio: 'AAAA', mime: 'video/mp4' })).toBe('string');
     expect(typeof parseSttRequest({ audio: '<script>', mime: 'audio/webm' })).toBe('string');
     const ok = parseSttRequest({ audio: 'GkXfo59ChoEBQveBAULygQRC', mime: 'audio/webm;codecs=opus', hint: 'fr' });
-    expect(ok).toEqual({ audio: 'GkXfo59ChoEBQveBAULygQRC', mime: 'audio/webm', hint: 'fr' });
+    expect(ok).toEqual({ audio: 'GkXfo59ChoEBQveBAULygQRC', mime: 'audio/webm', hint: 'fr', context: '' });
     const body = sttBody(ok as never, 'gemini-3.1-flash-lite') as { contents: { parts: { inlineData?: { mimeType: string } }[] }[] };
     expect(body.contents[0].parts[0].inlineData?.mimeType).toBe('audio/webm');
   });
@@ -58,5 +58,15 @@ describe('voice server helpers', () => {
     expect(JSON.stringify(feedbackBody(req as never, 'm'))).toContain('responseSchema');
     const fb = cleanFeedback({ summary: 'ok', strengths: ['a', 5, ''], growth: [{ text: 'x', example: 'e' }, {}], words: [{ fr: 'le chat', uz: 'mushuk' }, { fr: '' }], extra: 1 });
     expect(fb).toEqual({ summary: 'ok', strengths: ['a'], growth: [{ text: 'x', example: 'e', better: '' }], words: [{ fr: 'le chat', uz: 'mushuk' }] });
+  });
+});
+
+describe('STT kontekst', () => {
+  it('ustoz gapidan belgilar tozalanadi va promptga qo\'shiladi', () => {
+    const r = parseSttRequest({ audio: 'GkXfo59ChoEBQveBAULygQRC', mime: 'audio/webm', context: "Qani: [fr]Comment tu t'appelles ?[/fr] [[ans:fr]]" });
+    expect(typeof r).not.toBe('string');
+    const req = r as Exclude<typeof r, string>;
+    expect(req.context).toBe("Qani: Comment tu t'appelles ?");
+    expect(JSON.stringify(sttBody(req, 'gemini-3.5-flash'))).toContain("Comment tu t'appelles");
   });
 });

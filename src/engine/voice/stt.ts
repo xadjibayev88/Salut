@@ -149,6 +149,8 @@ export class CloudStt implements Stt {
   onPartial?: (text: string) => void;
   onFinal?: (text: string) => void;
   onError?: (e: SttError, message?: string) => void;
+  /** Ustozning oxirgi gapi — server aniqroq tanishi uchun kontekst. */
+  context: () => string = () => '';
 
   constructor(private stream: () => MediaStream | null, private maxMs = 60_000) {}
 
@@ -182,7 +184,7 @@ export class CloudStt implements Stt {
       const res = await fetch('./api/stt', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ audio: await blobToBase64(blob), mime: mime.split(';')[0], hint: lang.startsWith('fr') ? 'fr' : lang.startsWith('uz') ? 'uz' : 'auto' }),
+        body: JSON.stringify({ audio: await blobToBase64(blob), mime: mime.split(';')[0], hint: lang === 'auto' ? 'auto' : lang.startsWith('fr') ? 'fr' : lang.startsWith('uz') ? 'uz' : 'auto', context: this.context().slice(-600) }),
         signal: this.ac.signal,
       });
       const body = (await res.json().catch(() => ({}))) as { text?: string; code?: string; message?: string };

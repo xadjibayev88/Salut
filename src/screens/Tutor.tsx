@@ -7,6 +7,7 @@ import { Mascot } from '../components/Mascot';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
 import { answerLang } from '../engine/voice/markers';
+import { CloudStt, cloudSttSupported } from '../engine/voice/stt';
 
 const CHAT_KEY = 'salut.chat.v1';
 type Chats = Partial<Record<Scenario, ChatMessage[]>>;
@@ -71,6 +72,11 @@ function TextChat() {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [micLang, setMicLang] = useState<'uz-UZ' | 'fr-FR'>('uz-UZ');
+  // AI aniqlash (Gemini): o'zbekcha, fransuzcha va aralash gapni tilni tanlamasdan to'g'ri yozadi.
+  const cloudMic = useMemo(() => cloudSttSupported() && !!navigator.mediaDevices?.getUserMedia, []);
+  const [transcribing, setTranscribing] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const cloudRef = useRef<{ stt: CloudStt; stream: MediaStream } | null>(null);
   const [xpToast, setXpToast] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recRef = useRef<SR | null>(null);
@@ -144,7 +150,57 @@ function TextChat() {
     }
   }
 
+  async function toggleCloudMic() {
+    if (cloudRef.current) {
+      // Ikkinchi bosish — yozuv tugaydi va matnga aylantirishga yuboriladi.
+      setListening(false);
+      setTranscribing(true);
+      cloudRef.current.stt.stop();
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    } catch {
+      setMicError("Mikrofonga ruxsat berilmadi — brauzer sozlamalaridan ruxsat bering.");
+      return;
+    }
+    const stt = new CloudStt(() => stream, 60_000);
+    const lastTutor = [...[greeting, ...messages]].reverse().find((m) => m.role === 'tutor' && !m.error);
+    stt.context = () => lastTutor?.text ?? '';
+    const base = input ? `${input.trim()} ` : '';
+    const done = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      cloudRef.current = null;
+      setListening(false);
+      setTranscribing(false);
+    };
+    stt.onFinal = (t) => {
+      done();
+      if (t.trim()) {
+        setInput(base + t.trim());
+        inputRef.current?.focus();
+      } else setMicError("Ovoz eshitilmadi — mikrofonga yaqinroq, aniqroq gapiring.");
+    };
+    stt.onError = (e, m) => {
+      if (e === 'too-long') return;
+      done();
+      setMicError(m ?? "Ovozni matnga aylantirib bo'lmadi — qayta urinib ko'ring.");
+    };
+    cloudRef.current = { stt, stream };
+    stopSpeaking();
+    stt.start(micLang);
+    setMicError(null);
+    setListening(true);
+  }
+
+  useEffect(() => () => {
+    cloudRef.current?.stt.abort();
+    cloudRef.current?.stream.getTracks().forEach((t) => t.stop());
+  }, []);
+
   function toggleMic() {
+    if (cloudMic) return void toggleCloudMic();
     if (!SpeechRec) return;
     if (listening) {
       recRef.current?.stop();
@@ -256,15 +312,23 @@ function TextChat() {
           void send(input);
         }}
       >
-        {SpeechRec && (
+        {(cloudMic || SpeechRec) && (
           <div className="mic-group">
-            <button type="button" className={`mic ${listening ? 'live' : ''}`} onClick={toggleMic} title="Ovoz bilan yozish" disabled={busy}>
-              🎤
+            <button
+              type="button"
+              className={`mic ${listening ? 'live' : ''} ${transcribing ? 'busy' : ''}`}
+              onClick={toggleMic}
+              title={listening ? "To'xtatish va yuborish" : 'Ovoz bilan yozish (o\'zbekcha yoki fransuzcha)'}
+              disabled={busy || transcribing}
+            >
+              {transcribing ? '…' : listening ? '■' : '🎤'}
             </button>
+            {!cloudMic && (
             <button type="button" className="mic-lang" onClick={() => setMicLang(micLang === 'uz-UZ' ? 'fr-FR' : 'uz-UZ')} title="Mikrofon tili (Vivi javobiga qarab o'zi almashadi)">
               {micLang === 'uz-UZ' ? 'UZ' : 'FR'}
               <i className="auto-badge">avto</i>
             </button>
+            )}
           </div>
         )}
         <textarea
@@ -272,7 +336,7 @@ function TextChat() {
           value={input}
           rows={1}
           maxLength={800}
-          placeholder={listening ? 'Gapiring…' : "Xabar yozing (o'zbekcha yoki fransuzcha)"}
+          placeholder={transcribing ? 'Matnga aylantirilmoqda…' : listening ? "Gapiring… tugatgach ■ ni bosing" : "Xabar yozing (o'zbekcha yoki fransuzcha)"}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -292,6 +356,11 @@ function TextChat() {
         )}
       </form>
       {xpToast && <div className="xp-toast">+{xpToast} ball</div>}
+      {micError && (
+        <p className="mic-error" role="alert" onClick={() => setMicError(null)}>
+          {micError}
+        </p>
+      )}
       <p className="tutor-note">Vivi — sun'iy intellekt. Ba'zan xato qilishi mumkin; muhim narsalarni darslar bilan tekshiring.</p>
     </div>
   );

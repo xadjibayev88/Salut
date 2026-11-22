@@ -304,12 +304,12 @@ export function VoiceHub() {
           <label className="vh-field">
             <span>Nutqni aniqlash</span>
             <select value={prefs.stt} onChange={(e) => setPrefs({ stt: e.target.value as VoicePrefs['stt'] })}>
-              <option value="auto">Avtomatik</option>
+              <option value="auto">AI — eng aniq (tavsiya)</option>
               <option value="browser" disabled={!browserSttSupported()}>
-                Brauzer (eng tez)
+                Brauzer (tez, lekin o'zbekchada xato ko'p)
               </option>
               <option value="cloud" disabled={!config?.stt || !cloudSttSupported()}>
-                AI (aralash tillar)
+                AI (o'zbekcha + fransuzcha)
               </option>
             </select>
           </label>

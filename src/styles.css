@@ -882,3 +882,5 @@ html.has-banner .bottombar { bottom: calc(66px + env(safe-area-inset-bottom)); }
 html.lite .vivi * { animation: none !important; }
 .mic-lang { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
 .mic-lang .auto-badge { font-style: normal; font-size: 8px; font-weight: 700; letter-spacing: .3px; color: var(--primary); opacity: .85; text-transform: uppercase; }
+.mic-error { font-size: 12.5px; color: #fda4af; text-align: center; margin: 6px 0 0; cursor: pointer; }
+.mic.busy { opacity: .7; animation: pulse-ring 1s ease-in-out infinite; }

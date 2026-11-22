@@ -197,7 +197,8 @@ export class VoiceCall {
   private setupStt(pref: SttEngine) {
     const canBrowser = browserSttSupported();
     const canCloud = this.o.config.stt && cloudSttSupported();
-    const kind = pref === 'cloud' ? (canCloud ? 'cloud' : canBrowser ? 'browser' : null) : pref === 'browser' ? (canBrowser ? 'browser' : canCloud ? 'cloud' : null) : canBrowser ? 'browser' : canCloud ? 'cloud' : null;
+    // «Avto»: Gemini aniqlash (o'zbekcha+fransuzcha, aralash ham) — brauzer aniqlagichi o'zbek tilini yomon taniydi.
+    const kind = pref === 'browser' ? (canBrowser ? 'browser' : canCloud ? 'cloud' : null) : canCloud ? 'cloud' : canBrowser ? 'browser' : null;
     this.stt?.abort();
     if (!kind) {
       this.stt = null;
@@ -210,7 +211,12 @@ export class VoiceCall {
       h.spokeHint = () => this.turnPeak > 0.35 || Date.now() - this.turnStart > 1200;
       h.onDegrade = () => this.set({ sttKind: 'cloud' });
       stt = h;
-    } else stt = kind === 'browser' ? new WebSpeechStt() : new CloudStt(() => this.mic.stream);
+    } else if (kind === 'browser') stt = new WebSpeechStt();
+    else {
+      const c = new CloudStt(() => this.mic.stream);
+      c.context = () => [...this.snap.turns].reverse().find((t) => t.role === 'tutor')?.text ?? '';
+      stt = c;
+    }
     stt.onPartial = (t) => this.set({ partial: t === '…' ? '' : t });
     stt.onFinal = (t) => void this.onFinal(t);
     stt.onError = (e, m) => this.onSttError(e, m);

@@ -160,6 +160,8 @@ async function guarded<T>(
 }
 
 const FALLBACK_MODEL = env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite';
+// Nutqni aniqlash uchun aniqroq model (o'zbekcha+fransuzcha); xato bo'lsa asosiy modelga o'tadi.
+const STT_MODEL = env.GEMINI_STT_MODEL || 'gemini-3.5-flash';
 const HEDGE_MS = env.GEMINI_HEDGE_MS !== undefined ? Number(env.GEMINI_HEDGE_MS) : 1500;
 const gem = (signal: AbortSignal) => ({ apiKey: env.GEMINI_API_KEY!, model: MODEL, fallbackModel: FALLBACK_MODEL || undefined, hedgeMs: HEDGE_MS, base: env.GEMINI_API_BASE, signal });
 
@@ -347,7 +349,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
 
   'POST /api/stt': (req, res) =>
     guarded(req, res, { bucket: 'stt', maxBody: 3 * 1024 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseSttRequest }, async (data, signal) => {
-      const raw = (await generateJson(sttBody(data, MODEL), gem(signal))) as { text?: unknown };
+      const raw = (await generateJson(sttBody(data, STT_MODEL), { ...gem(signal), model: STT_MODEL, fallbackModel: MODEL, hedgeMs: 0 })) as { text?: unknown };
       json(res, 200, { text: typeof raw?.text === 'string' ? raw.text.trim().slice(0, 1200) : '' });
     }),
 
