@@ -1,4 +1,4 @@
-name: Salut APK yig'ish
+name: Voilà APK yig'ish
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       start_url:
         description: "Ilova ochadigan sayt manzili (Salut serveri), masalan https://salut.uz/"
         required: true
-        default: "https://salut.example.uz/"
+        default: "https://voila-fr.up.railway.app/"
 
 permissions:
   contents: write
