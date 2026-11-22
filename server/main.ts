@@ -355,6 +355,17 @@ async function clickRoute(req: IncomingMessage, res: ServerResponse, action: 0 |
 }
 
 const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void> = {
+  // Ilovadan texnik hisobot (masalan Live suhbat tugaganda): faqat raqamlar va xato matni, loglarga yoziladi.
+  'POST /api/client-log': async (req, res) => {
+    const limited = take('feedback', clientIp(req));
+    if (limited) return json(res, 429, { ok: false });
+    const b = (await readBody(req, 4096).catch(() => ({}))) as Record<string, unknown>;
+    const safe: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(b).slice(0, 24)) if (['string', 'number', 'boolean'].includes(typeof v) || Array.isArray(v)) safe[k.slice(0, 20)] = typeof v === 'string' ? v.slice(0, 160) : Array.isArray(v) ? v.slice(0, 5).map((x) => String(x).slice(0, 80)) : v;
+    console.log('client-log', JSON.stringify(safe));
+    json(res, 200, { ok: true });
+  },
+
   'GET /api/health': (_q, res) => json(res, 200, { ok: true, ai: !!env.GEMINI_API_KEY, model: MODEL, exhausted: rotationStatus().map((r) => r.model) }),
 
   'GET /api/voice/config': (req, res) => {

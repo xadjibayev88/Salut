@@ -68,7 +68,12 @@ function toPcm16(input: Float32Array, fromRate: number): Uint8Array {
   const len = Math.floor(input.length / ratio);
   const out = new Int16Array(len);
   for (let i = 0; i < len; i++) {
-    const v = input[Math.floor(i * ratio)];
+    // Oyna bo'yicha o'rtacha (oddiy past chastotali filtr) — 48 kHz → 16 kHz da shovqin/buzilish bo'lmasin.
+    const a = Math.floor(i * ratio);
+    const b = Math.max(a + 1, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = a; j < b && j < input.length; j++) sum += input[j];
+    const v = sum / (b - a);
     out[i] = Math.max(-1, Math.min(1, v)) * 0x7fff;
   }
   return new Uint8Array(out.buffer);
@@ -129,13 +134,16 @@ export class LiveSession {
     } catch {
       return this.fail('Mikrofonga ruxsat berilmadi.');
     }
-    this.ctxOut = new AudioContext({ sampleRate: 24000 });
+    // Qurilmaning o'z chastotasi (ba'zi telefonlar majburiy 24 kHz ni qo'llamaydi); bufer 24 kHz — brauzer o'zi o'giradi.
+    this.ctxOut = new AudioContext();
     this.gain = this.ctxOut.createGain();
     this.analyser = this.ctxOut.createAnalyser();
     this.analyser.fftSize = 512;
     this.gain.connect(this.analyser);
     this.analyser.connect(this.ctxOut.destination);
 
+    // Sahifa yopilsa ham suhbat to'g'ri tugaydi (va hisobot yuboriladi).
+    window.addEventListener('pagehide', () => this.end('user'), { once: true });
     const ws = new WebSocket(`${WS_URL}?access_token=${encodeURIComponent(tok.token)}`);
     this.ws = ws;
     ws.onopen = () => ws.send(JSON.stringify({ setup: tok.setup }));
@@ -167,6 +175,7 @@ export class LiveSession {
     } catch {
       return;
     }
+    this.stats.msgs++;
     if (m.setupComplete) {
       this.startedAt = Date.now();
       this.startMic();
@@ -183,8 +192,16 @@ export class LiveSession {
     }
     if (m.goAway) return this.end('limit');
     if (m.toolCall?.functionCalls?.length) {
-      for (const f of m.toolCall.functionCalls) this.react(f.args ?? {});
+      // Avval javob — Vivi kutib qolmasin; effektlar keyin (xato bo'lsa ham suhbat davom etadi).
+      this.stats.tools++;
       this.ws?.send(JSON.stringify({ toolResponse: { functionResponses: m.toolCall.functionCalls.map((f) => ({ id: f.id, name: f.name, response: { ok: true }, scheduling: 'WHEN_IDLE' })) } }));
+      for (const f of m.toolCall.functionCalls) {
+        try {
+          this.react(f.args ?? {});
+        } catch (e) {
+          this.stats.errors.push(`react:${(e as Error).message}`.slice(0, 80));
+        }
+      }
       return;
     }
     const sc = m.serverContent;
@@ -198,10 +215,12 @@ export class LiveSession {
     for (const p of sc.modelTurn?.parts ?? [])
       if (p.inlineData?.data) {
         this.heard = true;
+        this.stats.audio++;
         this.play(fromBase64(p.inlineData.data));
       }
     if (sc.inputTranscription?.text) {
       // Vivi gapira boshlasa, o'quvchining gapi yakunlangan hisoblanadi.
+      this.stats.heardUser = true;
       this.set({ liveUser: this.snap.liveUser + sc.inputTranscription.text });
       if (this.snap.liveUser.length < 400) this.guessCueOnce();
     }
@@ -240,6 +259,8 @@ export class LiveSession {
   private guessed = '';
   private lastEmit = 0;
   private heard = false;
+  /** Texnik hisobot (shaxsiy ma'lumotsiz) — telefonlarda nosozlikni topish uchun. */
+  private stats = { msgs: 0, audio: 0, tools: 0, micChunks: 0, micPeak: 0, heardUser: false, errors: [] as string[], rateIn: 0, rateOut: 0, outState: '' };
   private guessCueOnce() {
     // Bir gapda bir marta: o'quvchi ChatGPT'ni tilga olsa — rashk (model chaqirmasa ham).
     const u = this.snap.liveUser;
@@ -256,7 +277,11 @@ export class LiveSession {
 
   private startMic() {
     if (!this.stream) return;
-    this.ctxIn = new AudioContext({ sampleRate: 16000 });
+    // Mikrofon qurilmaning o'z chastotasida; 16 kHz ga toPcm16 o'giradi.
+    this.ctxIn = new AudioContext();
+    this.stats.rateIn = this.ctxIn.sampleRate;
+    this.stats.rateOut = this.ctxOut?.sampleRate ?? 0;
+    void this.ctxIn.resume().catch(() => undefined);
     const src = this.ctxIn.createMediaStreamSource(this.stream);
     const proc = this.ctxIn.createScriptProcessor(2048, 1, 1);
     const rate = this.ctxIn.sampleRate;
@@ -266,6 +291,8 @@ export class LiveSession {
       let peak = 0;
       for (let i = 0; i < ch.length; i += 16) peak = Math.max(peak, Math.abs(ch[i]));
       this.snap.micLevel = Math.min(1, peak * 2.5);
+      this.stats.micPeak = Math.max(this.stats.micPeak, peak);
+      this.stats.micChunks++;
       // O'quvchining gapirish vaqti (tahlil uchun).
       if (peak > 0.04) this.speakingMs += (ch.length / rate) * 1000;
       this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: toBase64(toPcm16(ch, rate)), mimeType: 'audio/pcm;rate=16000' } } }));
@@ -346,6 +373,15 @@ export class LiveSession {
 
   end(reason: 'user' | 'limit' | 'error' = 'user') {
     if (this.snap.phase === 'ended') return;
+    try {
+      const body = JSON.stringify({
+        event: 'live_end', reason, error: this.snap.error, secs: Math.round(this.snap.elapsedMs / 1000), ...this.stats,
+        micPeak: Math.round(this.stats.micPeak * 1000) / 1000, outState: this.ctxOut?.state, ua: navigator.userAgent.slice(0, 120),
+      });
+      navigator.sendBeacon?.('./api/client-log', new Blob([body], { type: 'application/json' }));
+    } catch {
+      /* hisobot yetmasa ham bo'ladi */
+    }
     clearInterval(this.timer);
     cancelAnimationFrame(this.raf);
     if (this.snap.liveUser.trim()) this.pushTurn('user', this.snap.liveUser.trim());
