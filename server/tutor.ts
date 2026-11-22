@@ -555,3 +555,23 @@ export async function* streamTutorWithFallback(req: TutorRequest, opts: StreamOp
     yield* streamOpenAiCompat(req, fb, opts.signal, opts.fetchImpl);
   }
 }
+
+
+// ---------- Gemini Live (real vaqtli ovozli suhbat) ----------
+// Live model ovozni o'zi eshitadi va o'zi gapiradi — matnli belgilar ([[shape]], [fr]) aytilib qolmasligi kerak.
+export function liveInstruction(req: TutorRequest): string {
+  const base = systemInstruction({ ...req, mode: 'chat' })
+    .split('\n\n')
+    .filter((p) => !p.startsWith('MATNLI CHAT EFFEKTLARI') && !p.startsWith('FRANSUZCHA (MAJBURIY)') && !p.startsWith('JAVOB TILI BELGISI'))
+    .join('\n\n')
+    // Ovozli modelda belgilar aytilib qolmasin.
+    .replace(/\[\[[^\]]*\]\]/g, '')
+    .replace(/\[\/?fr\]/g, '«');
+  return `${base}
+
+JONLI OVOZLI SUHBAT (Gemini Live) — bu qoidalar yuqoridagilardan USTUN:
+- Sen to'g'ridan-to'g'ri OVOZ bilan gapiryapsan. Hech qanday belgi, teg yoki qavs aytma: [[...]], [fr], [/fr], (talaffuz) — bularning hammasi TAQIQLANADI.
+- O'zbekcha gapir, fransuzcha so'z va iboralarni haqiqiy fransuzcha talaffuz bilan ayt, so'ng ma'nosini o'zbekcha ayt.
+- Javob QISQA: 1–3 gap. Tabiiy, jonli, emotsiyali gapir: kul, hayratlan, erkala — ohanging bilan.
+- O'quvchi gapingni bo'lsa — darhol to'xtab, uni tingla.`;
+}

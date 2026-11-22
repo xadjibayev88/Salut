@@ -10,6 +10,7 @@ import { browserSttSupported, cloudSttSupported } from '../../engine/voice/stt';
 import { TtsQueue, browserVoiceAvailable } from '../../engine/voice/tts';
 import { useStore } from '../../state/store';
 import { KruaLive } from '../../components/KruaLive';
+import { LiveCallScreen } from './LiveCall';
 import { VoiceCallScreen } from './VoiceCall';
 import { FeedbackView } from './FeedbackView';
 
@@ -35,7 +36,7 @@ const fmtLeft = (ms: number) => {
   return m >= 60 ? `${Math.floor(m / 60)} soat ${m % 60} daqiqa` : `${m} daqiqa`;
 };
 
-type View = { kind: 'hub' } | { kind: 'call'; key: number } | { kind: 'feedback'; record: SessionRecord };
+type View = { kind: 'hub' } | { kind: 'call'; key: number } | { kind: 'live'; key: number } | { kind: 'feedback'; record: SessionRecord };
 
 export function VoiceHub() {
   const { state, update } = useStore();
@@ -110,7 +111,7 @@ export function VoiceHub() {
   const onUserTurn = useCallback(() => update((s) => applyChatTurn(s).state), [update]);
 
   const onEnded = useCallback(
-    (c: VoiceCall) => {
+    (c: { snap: { endReason: VoiceCall['snap']['endReason']; error: unknown }; record: () => SessionRecord }) => {
       const rec = c.record();
       const talked = rec.turns.filter((t) => t.role === 'user').length > 0;
       // Bepul: kunlik sessiya ishlatildi — qanday tugaganidan qat'i nazar (keyingisi ertaga). Super: faqat limitda.
@@ -139,6 +140,16 @@ export function VoiceHub() {
   };
 
   // ---------- Qo'ng'iroq / tahlil ----------
+  if (view.kind === 'live' && options) {
+    return (
+      <LiveCallScreen
+        key={view.key}
+        options={{ character: options.character, role: options.role, customRole: options.customRole, explicit: !!options.explicit, lang: options.lang, context: options.context }}
+        subtitles={prefs.subtitles}
+        onEnded={onEnded}
+      />
+    );
+  }
   if (view.kind === 'call' && options) {
     return (
       <VoiceCallScreen
@@ -384,6 +395,17 @@ export function VoiceHub() {
 
       {isFree && <SuperBanner onOpen={() => setOffer('enter')} />}
 
+      {config?.live && (
+        <button type="button" className={`live-toggle ${prefs.live ? 'on' : ''}`} onClick={() => setPrefs({ live: !prefs.live })} aria-pressed={prefs.live}>
+          <span style={{ fontSize: 26 }}>⚡</span>
+          <span>
+            <b>Jonli rejim — Gemini Live</b>
+            <small>Real vaqtda, emotsiyali ovoz; Vivi gapini istalgan payt bo'lish mumkin (beta)</small>
+          </span>
+          <span className="sw" />
+        </button>
+      )}
+
       <section className="vh-section memory-card">
         <div className="memory-head">
           <b>🧠 Vivi sizni eslaydi</b>
@@ -441,9 +463,9 @@ export function VoiceHub() {
             className="btn btn-primary btn-lg start-call"
             style={{ ['--ch' as string]: ch.color }}
             disabled={!customOk}
-            onClick={() => setView({ kind: 'call', key: Date.now() })}
+            onClick={() => setView({ kind: prefs.live && config.live ? 'live' : 'call', key: Date.now() })}
           >
-            🎙️ {ch.name} bilan gaplashish · {config.sessionMinutes} daqiqagacha
+            {prefs.live && config.live ? '⚡' : '🎙️'} {ch.name} bilan gaplashish · {config.sessionMinutes} daqiqagacha
           </button>
         )}
         <p className="tutor-note">Vivi — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>

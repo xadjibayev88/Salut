@@ -1,0 +1,92 @@
+// Jonli rejim (Gemini Live) ekrani: qo'lsiz suhbat, Vivi gapini istalgan payt bo'lish mumkin.
+import { useEffect, useMemo, useState } from 'react';
+import { CHARACTERS } from '../../data/characters';
+import { LiveSession, type LiveOptions, type LiveSnap } from '../../engine/voice/live';
+import { KruaLive } from '../../components/KruaLive';
+import { setImmersive } from '../../engine/ads';
+
+const fmt = (ms: number) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
+
+export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveOptions; subtitles: boolean; onEnded: (s: LiveSession) => void }) {
+  const session = useMemo(() => new LiveSession(options), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [s, setS] = useState<LiveSnap>(session.snap);
+  const ch = CHARACTERS.find((c) => c.id === options.character)!;
+
+  useEffect(() => {
+    setImmersive(true);
+    session.onUpdate = setS;
+    void session.start();
+    return () => {
+      setImmersive(false);
+      session.end('user');
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (s.phase === 'ended') {
+      const t = setTimeout(() => onEnded(session), s.error ? 2200 : 300);
+      return () => clearTimeout(t);
+    }
+  }, [s.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const lastTutor = [...s.turns].reverse().find((t) => t.role === 'tutor')?.text ?? '';
+  const lastUser = [...s.turns].reverse().find((t) => t.role === 'user')?.text ?? '';
+  const clean = (t: string) => t.replace(/\[\[[^\]]*\]\]/g, '').replace(/\[\/?fr\]/gi, '').replace(/\s{2,}/g, ' ').trim();
+  const tutorLine = clean(s.liveTutor || lastTutor);
+  const userLine = s.liveUser || (s.liveTutor ? '' : lastUser);
+  const label = s.phase === 'connecting' ? 'Ulanmoqda…' : s.phase === 'speaking' ? 'Vivi gapirmoqda…' : s.phase === 'ended' ? 'Suhbat tugadi' : s.muted ? 'Mikrofon o\'chiq' : 'Tinglayapman — gapiring';
+
+  return (
+    <div className={`call live-call phase-${s.phase === 'speaking' ? 'speaking' : 'ready'}`} style={{ ['--ch' as string]: ch.color }}>
+      <header className="call-top">
+        <button type="button" className="icon-btn" aria-label="Tugatish" onClick={() => session.end('user')}>
+          ✕
+        </button>
+        <div className="call-meta">
+          <b>
+            ⚡ {ch.name} · Jonli
+          </b>
+          <span aria-label="Suhbat vaqti">
+            {fmt(s.elapsedMs)} / {fmt(s.limitMs)}
+          </span>
+        </div>
+        <span className="live-badge">LIVE</span>
+      </header>
+
+      <main className="call-stage">
+        <div className="call-avatar" aria-hidden="true">
+          <KruaLive
+            shape="pill"
+            state={s.phase === 'speaking' ? 'speaking' : s.phase === 'connecting' ? 'thinking' : s.micLevel > 0.08 ? 'listening' : 'idle'}
+            level={s.phase === 'speaking' ? s.level : s.micLevel}
+            size={Math.min(300, Math.round(window.innerWidth * 0.62))}
+          />
+        </div>
+        <div className="call-label" aria-live="polite">
+          <b>{label}</b>
+          <small>{s.error ?? "Shunchaki gapiring. Vivi gapirayotganda gapirsangiz — u to'xtab tinglaydi."}</small>
+        </div>
+        {subtitles && (tutorLine || userLine) && (
+          <div className="call-subs">
+            {tutorLine && <p className="sub-tutor">{tutorLine}</p>}
+            {userLine && <p className="sub-user">{userLine}</p>}
+          </div>
+        )}
+      </main>
+
+      <footer className="call-bottom">
+        <div className="call-actions">
+          <button type="button" className={`mic-lang-pill ${s.muted ? 'off' : ''}`} onClick={() => session.toggleMute()} disabled={s.phase === 'ended' || s.phase === 'connecting'}>
+            {s.muted ? '🔇 Mikrofon o\'chiq' : '🎤 Mikrofon yoqiq'}
+          </button>
+          <button type="button" className="btn btn-danger end-call" onClick={() => session.end('user')}>
+            Tugatish
+          </button>
+        </div>
+      </footer>
+    </div>
+  );
+}

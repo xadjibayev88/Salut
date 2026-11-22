@@ -35,6 +35,8 @@ export interface VoiceConfig {
   messagesLeft?: number | null;
   messagesPerDay?: number | null;
   premium?: boolean;
+  /** Gemini Live mavjudmi. */
+  live?: boolean;
   /** Ovoz manbai: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. */
   ttsTier?: 'elevenlabs' | 'gemini' | 'browser';
 }

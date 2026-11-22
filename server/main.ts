@@ -5,7 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
-import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback } from './tutor.ts';
+import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback, liveInstruction } from './tutor.ts';
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createOrder, orderStatus, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
@@ -255,6 +255,7 @@ function useFree(req: IncomingMessage) {
 
 const GEMINI_TTS_MODELS = (env.GEMINI_TTS_MODELS ?? 'gemini-3.8-flash-lite-tts,gemini-3.8-flash-tts').split(',').map((m) => m.trim()).filter(Boolean);
 const GEMINI_TTS_VOICE = env.GEMINI_TTS_VOICE || 'Leda';
+const LIVE_MODEL = env.GEMINI_LIVE_MODEL || 'gemini-3.8-live';
 // Zaxira AI (ixtiyoriy): masalan Groq — FALLBACK_LLM_URL=https://api.groq.com/openai/v1
 const FALLBACK_LLM = env.FALLBACK_LLM_URL && env.FALLBACK_LLM_KEY && env.FALLBACK_LLM_MODEL ? { url: env.FALLBACK_LLM_URL, key: env.FALLBACK_LLM_KEY, model: env.FALLBACK_LLM_MODEL } : undefined;
 const HEDGE_MS = env.GEMINI_HEDGE_MS !== undefined ? Number(env.GEMINI_HEDGE_MS) : 1500;
@@ -319,6 +320,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN),
       cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
       messagesLeft: freeLeft(req),
+      live: !!env.GEMINI_API_KEY && env.LIVE_DISABLED !== '1',
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
@@ -501,6 +503,38 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       const raw = await generateJson(feedbackBody(data, MODEL), gem(signal));
       json(res, 200, cleanFeedback(raw));
     }),
+
+  // Gemini Live: brauzer kalitni ko'rmaydi — server bir martalik token va sessiya sozlamasini beradi.
+  'POST /api/live/token': (req, res) => {
+    if (!env.GEMINI_API_KEY || env.LIVE_DISABLED === '1') return json(res, 503, { code: 'config', message: 'Jonli rejim hozircha yoqilmagan.' });
+    if (freeLeft(req) === 0) return json(res, 429, { code: 'daily_limit', message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Super bilan cheklovsiz davom eting 💜` });
+    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => parseTutorRequest({ ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' }) }, async (data, signal) => {
+      if (voiceLimited(req))
+        return json(res, 429, { code: 'voice_limit', message: `Bugungi ${FREE_VOICE_MIN} daqiqalik bepul ovozli suhbat tugadi, asalim. Super bilan cheklovsiz 💜` });
+      useFree(req);
+      const premium = isPremium(req);
+      const minutes = premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN);
+      const r = await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY! },
+        body: JSON.stringify({ uses: 1, expireTime: new Date(Date.now() + (minutes + 1) * 60_000).toISOString(), newSessionExpireTime: new Date(Date.now() + 90_000).toISOString() }),
+        signal,
+      });
+      const t = (await r.json().catch(() => ({}))) as { name?: string };
+      if (!r.ok || !t.name) return json(res, 503, { code: 'upstream', message: "Jonli rejimga ulanib bo'lmadi — oddiy rejimda davom eting." });
+      json(res, 200, {
+        token: t.name,
+        minutes,
+        setup: {
+          model: `models/${LIVE_MODEL}`,
+          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: GEMINI_TTS_VOICE } } } },
+          systemInstruction: { parts: [{ text: liveInstruction(data) }] },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+        },
+      });
+    });
+  },
 
   'POST /api/tutor/memory': (req, res) =>
     guarded(req, res, { bucket: 'feedback', maxBody: 120 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseMemoryRequest }, async (data, signal) => {

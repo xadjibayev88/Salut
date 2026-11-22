@@ -228,3 +228,13 @@ describe('xotira promptda', () => {
     expect(systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom' }) as TutorRequest)).not.toContain('XOTIRA —');
   });
 });
+
+describe('Gemini Live ko\'rsatmasi', () => {
+  it("belgilar va [fr] qoidasi yo'q, jonli qoidalar bor", async () => {
+    const { liveInstruction } = await import('./tutor.ts');
+    const t = liveInstruction(parseTutorRequest({ scenario: 'free', message: '[SUHBAT BOSHLANDI] x', mode: 'voice' }) as TutorRequest);
+    expect(t).toContain('JONLI OVOZLI SUHBAT');
+    expect(t.split('JONLI OVOZLI SUHBAT')[0]).not.toMatch(/\[fr\]|\[\[/);
+    expect(t).not.toContain('FRANSUZCHA (MAJBURIY)');
+  });
+});

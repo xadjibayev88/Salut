@@ -25,6 +25,8 @@ export interface VoicePrefs {
   explicit: boolean;
   /** «Qasos rejimi» mini-o'yini suhbat paytida. */
   game: boolean;
+  /** Jonli rejim (Gemini Live). */
+  live: boolean;
 }
 
 export interface Feedback {
@@ -67,6 +69,7 @@ export const DEFAULT_PREFS: VoicePrefs = {
   adultConfirmed: false,
   explicit: false,
   game: false,
+  live: false,
 };
 
 function read<T>(key: string, fallback: T): T {

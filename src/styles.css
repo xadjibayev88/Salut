@@ -1018,3 +1018,11 @@ html.lite .vivi * { animation: none !important; }
 .btn-social.apple { background: #000; border: 1px solid rgba(255, 255, 255, .25); }
 .btn-social.tg { background: #229ed9; }
 .tg-widget { display: flex; justify-content: center; min-height: 44px; }
+.live-badge { font-size: 11px; font-weight: 900; letter-spacing: 1px; padding: 4px 8px; border-radius: 8px; color: #fff; background: #ef4444; animation: hp-blink 1s infinite alternate; }
+.mic-lang-pill.off { opacity: .7; border-color: #ef4444; }
+.live-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; margin: 6px 0 10px; border: 1.5px solid var(--line); background: rgba(255, 255, 255, .05); cursor: pointer; text-align: left; width: 100%; color: var(--text); }
+.live-toggle.on { border-color: #f59e0b; background: rgba(245, 158, 11, .12); }
+.live-toggle b { display: block; font-size: 14.5px; } .live-toggle small { color: var(--muted); font-size: 12px; }
+.live-toggle .sw { margin-left: auto; width: 42px; height: 24px; border-radius: 12px; background: rgba(255,255,255,.15); position: relative; flex: none; }
+.live-toggle .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.live-toggle.on .sw { background: #f59e0b; } .live-toggle.on .sw::after { transform: translateX(18px); }
