@@ -14,9 +14,10 @@ export interface AccountUser {
 export type PlanId = 'week' | 'month' | 'quarter' | 'year';
 export interface BillingInfo {
   plans: { id: PlanId; name: string; label?: string; uzs: number; oldUzs?: number; days: number; period: string }[];
-  providers: ('payme' | 'click' | 'card')[];
+  providers: ('payme' | 'click' | 'card' | 'visa')[];
   anchor?: { label: string; uzs: number };
   card?: { number: string; owner: string; bank: string } | null;
+  visa?: { number: string; owner: string; bank: string } | null;
   /** Telegram to'lov boti ulangan bo'lsa true. */
   telegram?: boolean;
 }
@@ -96,7 +97,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void (async () => {
+      await refresh();
+      // Telegram ichida (Mini App) ochilgan bo'lsa — Telegram hisobi bilan avtomatik kirish.
+      const tg = (window as unknown as { Telegram?: { WebApp?: { initData?: string; ready?: () => void; expand?: () => void } } }).Telegram?.WebApp;
+      if (!tg?.initData) return;
+      tg.ready?.();
+      tg.expand?.();
+      const me0 = await api<Me>('me');
+      if (me0.ok && !me0.body.user) {
+        const r = await api('auth/telegram', { method: 'POST', body: JSON.stringify({ initData: tg.initData }) });
+        if (r.ok) await refresh();
+      }
+    })();
   }, [refresh]);
 
   // Kirgandan so'ng: serverdagi va qurilmadagi progressni solishtiramiz (yangisi yutadi).

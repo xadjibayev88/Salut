@@ -24,6 +24,7 @@ beforeEach(() => {
   resetDbForTests();
   process.env.PAY_CARD_NUMBER = '9860 0000 0000 0000';
   process.env.PAY_CARD_OWNER = 'TEST';
+  process.env.PAY_VISA_NUMBER = '4111 1111 1111 1111';
   process.env.ADMIN_EMAILS = 'boss@example.com';
   delete process.env.ADMIN_TELEGRAM_CHAT_ID;
 });
@@ -36,7 +37,13 @@ describe('telegram bot', () => {
     expect(t).toContain('<s>79 000</s>');
     expect(t).toContain("49 000 so'm");
     await bot.handle(cb(5, 'plan:month'));
+    const kb = JSON.stringify(calls.at(-1)!.body.reply_markup);
+    expect(kb).toContain('pay:card:month');
+    expect(kb).toContain('pay:visa:month');
+    await bot.handle(cb(5, 'pay:card:month'));
     expect(calls.at(-1)!.body.text).toContain('9860 0000 0000 0000');
+    await bot.handle(cb(5, 'pay:visa:month'));
+    expect(calls.at(-1)!.body.text).toContain('4111');
   });
 
   it('links an app account by code, takes a receipt, admin approves → Super', async () => {
@@ -51,6 +58,7 @@ describe('telegram bot', () => {
     await bot.handle(msg(7, { text: `/start pay_${createLinkCode(user.user.id)}` }));
     expect(calls.some((c) => String(c.body.text).includes('bog'))).toBe(true);
     await bot.handle(cb(7, 'plan:week'));
+    await bot.handle(cb(7, 'pay:card:week'));
     await bot.handle(msg(7, { photo: [{ file_id: 'small' }, { file_id: 'big' }] }));
     const toAdmin = calls.find((c) => c.method === 'sendPhoto');
     expect(toAdmin).toBeTruthy();
@@ -65,6 +73,14 @@ describe('telegram bot', () => {
     // Ikkinchi marta bosish hech narsa o'zgartirmaydi.
     await bot.handle(cb(900, 'no:1'));
     expect(activePlan(user.user.id).plan).toBe('week');
+  });
+
+  it('welcome message has the app button and the Super offer', async () => {
+    const { calls, bot } = setup();
+    await bot.handle(msg(9, { text: '/start' }));
+    const last = calls.at(-1)!;
+    expect(last.body.text).toContain('Assalomu alaykum');
+    expect(JSON.stringify(last.body.reply_markup)).toContain('web_app');
   });
 
   it('asks to choose a plan before a receipt', async () => {

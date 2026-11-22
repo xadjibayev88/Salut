@@ -11,7 +11,7 @@ export type Action = (typeof ACTIONS)[number];
 
 const AUDIO_TAGS = /\[(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|cries|sobs|sobbing|burps|burp|fart|farts|coughs|yawns|gasps|screams|shouts|angry|sarcastic)\]/gi;
 /** Ovozda aytilmaydigan, faqat tanani boshqaradigan teglar. */
-const SILENT_TAGS = /\[(fuck|boundaries)\]/gi;
+const SILENT_TAGS = /\[(fuck|boundaries|sneeze|spit|punch|slap|drama|kiss)\]/gi;
 
 /** Ovoz teglari Vivining tanasini ham harakatlantiradi (Preppy'dagi kabi). */
 function tagCues(text: string, cue: Cue) {
@@ -24,6 +24,8 @@ function tagCues(text: string, cue: Cue) {
   if (/\[(fart|farts)\]/.test(t)) cue.fx = 'fart';
   if (/\[(burps?|burp)\]/.test(t)) cue.fx = 'burp';
   if (/\[fuck\]/.test(t)) cue.actions.unshift('flip');
+  const sfx = /\[(sneeze|spit|punch|slap|drama|kiss)\]/.exec(t);
+  if (sfx) cue.sfx = sfx[1] as CueSfx;
   if (/\[boundaries\]/.test(t)) {
     cue.shape ??= 'tall';
     cue.actions.unshift('point');
@@ -37,7 +39,10 @@ export interface Cue {
   image?: string;
   /** Tana effekti: [fart] — yashil bulut, [burps] — pufak. */
   fx?: 'fart' | 'burp';
+  /** Ovoz effekti: [sneeze], [spit], [punch], [slap], [drama], [kiss]. */
+  sfx?: CueSfx;
 }
+export type CueSfx = 'sneeze' | 'spit' | 'punch' | 'slap' | 'drama' | 'kiss' | 'laugh';
 
 /**
  * Model ba'zan belgilarni noto'g'ri yozadi: [img:x], [do:flip], [[fr]...[/fr]], [/fr]] —

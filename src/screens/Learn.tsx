@@ -14,6 +14,9 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
   const [guide, setGuide] = useState<Unit | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const activeRef = useRef<HTMLLIElement>(null);
+  // Tezlik: uzoqdagi yopiq liniyalarning bekatlari chizilmaydi (bosilsa ochiladi).
+  const [peek, setPeek] = useState<Set<string>>(() => new Set());
+  const firstLocked = COURSE.findIndex((u) => !isLessonUnlocked(state, u.lessons[0].id));
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
@@ -60,6 +63,11 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
                 📘
               </button>
             </header>
+            {locked && firstLocked >= 0 && ui > firstLocked + 1 && !peek.has(u.id) ? (
+              <button type="button" className="line-peek" onClick={() => setPeek((p) => new Set(p).add(u.id))}>
+                🔒 {u.lessons.length} ta dars — ko'rish
+              </button>
+            ) : (
             <ol className="stations">
               {buildPath(ui).map((node) => (
                 <Station
@@ -72,6 +80,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
                 />
               ))}
             </ol>
+            )}
           </section>
           </div>
         );

@@ -1045,6 +1045,7 @@ html.lite .vivi * { animation: none !important; }
 .plan-card .plan-pop { position: absolute; top: -9px; left: 6px; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 8px; color: #0b0d24; background: var(--grad); }
 .btn-pay.card { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; }
 .btn-pay.telegram { background: linear-gradient(135deg, #27a7e7, #1c8adb); color: #fff; }
+.btn-pay.visa { background: linear-gradient(135deg, #1a1f71, #2b4bd8); color: #fff; }
 .review-note { padding: 10px 12px; border-radius: 12px; background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .35); font-size: 13.5px; margin-bottom: 10px; }
 .card-pay { text-align: left; align-items: stretch; }
 .card-steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; font-size: 14px; }
@@ -1065,3 +1066,35 @@ html.lite .vivi * { animation: none !important; }
 .plan-card .plan-pop { top: auto; bottom: -9px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 .plan-card.popular { padding-bottom: 14px; }
 .plan-grid { margin-top: 10px; }
+
+/* ---------- Telefon: tezlik (qotmasligi uchun) ----------
+   Har bir kartadagi backdrop-filter va harakatlanuvchi fon telefonda har kadrda qayta chiziladi.
+   Telefonda faqat yuqori/pastki panel shisha bo'lib qoladi, kartalar — yarim shaffof rang. */
+@media (hover: none), (max-width: 760px) {
+  body::before { animation: none; inset: 0; }
+  .line, .panel, .pcard, .word-list, .board, .scard, .xp-chart, .ach-list, .settings, .shop-item, .gem-balance,
+  .vh-section, .char-card, .fb-card, .fb-counter, .rcard, .bonus-list li, .stat, .pick-card, .choice, .token,
+  .match-card, .option, .bubble, .msg-bubble, .composer, .type-input, .scenario, .role-chip, .suggestion, .guide-card,
+  .vocab, .rest-card, .sub-tutor, .intro-beats li, .mic-lang-pill, .accent-key, .speaker-slow, .text-input, .msg-avatar,
+  .recent-icon, .pop-words button, .ach-big, .empty, .league-hint, .vh-field select, .custom-role textarea,
+  .auth-card, .learn-quests .quests, .rv-hud, .img-pop, .modal-back, .foot-inner, .result-foot, .call-top, .guide-head {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  }
+  .line, .panel, .pcard, .word-list, .board, .scard, .xp-chart, .ach-list, .settings, .shop-item, .gem-balance,
+  .vh-section, .char-card, .fb-card, .fb-counter, .rcard, .stat, .pick-card, .choice, .token, .match-card, .option,
+  .bubble, .msg-bubble, .composer, .scenario, .suggestion, .guide-card, .vocab, .rest-card, .auth-card, .learn-quests .quests {
+    background: rgba(28, 31, 72, 0.88);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  }
+  .topbar, .bottombar { -webkit-backdrop-filter: blur(14px) !important; backdrop-filter: blur(14px) !important; }
+  .topbar { background: rgba(11, 13, 36, 0.86); }
+  .bottombar { background: rgba(24, 27, 64, 0.9); }
+  /* Ko'rinmaydigan o'ng panel umuman chizilmasin */
+  .rightbar { display: none; }
+  /* Doimiy kichik animatsiyalar (pastki menyudagi mushuk) — telefonda to'xtaydi */
+  .tab-cat * { animation: none !important; }
+}
+.page-loading { min-height: 60vh; }
+/* Ekrandan tashqaridagi bo'limlar chizilmaydi (50+ bo'limli kurs xaritasi tez ochiladi). */
+.line, .ach-list, .word-list > *, .vh-section { content-visibility: auto; contain-intrinsic-size: auto 520px; }
+.line-peek { display: block; width: 100%; margin: 4px 0 2px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.05); color: var(--muted); font-weight: 700; text-align: center; }

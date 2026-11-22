@@ -1,22 +1,53 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import { grantSuperFreeze, LEAGUES, MAX_HEARTS, msToNextHeart, streakActiveToday } from './engine/game';
 import { dayKey } from './engine/time';
 import { useStore } from './state/store';
 import { useAccount } from './state/account';
 import { Learn } from './screens/Learn';
 import { Practice } from './screens/Practice';
-import { Leagues } from './screens/Leagues';
-import { Profile } from './screens/Profile';
-import { Shop } from './screens/Shop';
-import { Tutor } from './screens/Tutor';
-import { About } from './screens/About';
-import { Admin } from './screens/Admin';
 import { Onboarding } from './screens/Onboarding';
-import { Session, type SessionConfig } from './screens/Session';
+import type { SessionConfig } from './screens/Session';
 import { WeekStrip } from './screens/Result';
 import { Mascot } from './components/Mascot';
 import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
+// Og'ir sahifalar alohida yuklanadi (birinchi ochilish tezroq), bo'sh paytda oldindan olib qo'yiladi.
+const loaders = {
+  Tutor: () => import('./screens/Tutor').then((m) => ({ default: m.Tutor })),
+  Leagues: () => import('./screens/Leagues').then((m) => ({ default: m.Leagues })),
+  Profile: () => import('./screens/Profile').then((m) => ({ default: m.Profile })),
+  Shop: () => import('./screens/Shop').then((m) => ({ default: m.Shop })),
+  About: () => import('./screens/About').then((m) => ({ default: m.About })),
+  Admin: () => import('./screens/Admin').then((m) => ({ default: m.Admin })),
+  Session: () => import('./screens/Session').then((m) => ({ default: m.Session })),
+};
+const Tutor = lazy(loaders.Tutor);
+const Leagues = lazy(loaders.Leagues);
+const Profile = lazy(loaders.Profile);
+const Shop = lazy(loaders.Shop);
+const About = lazy(loaders.About);
+const Admin = lazy(loaders.Admin);
+const Session = lazy(loaders.Session);
+if (typeof window !== 'undefined') {
+  const idle = (window as Window & { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1500));
+  idle(() => Object.values(loaders).forEach((l) => void l().catch(() => undefined)));
+}
+
+/** Ekran kengligi sharti (o'ng/chap panellar faqat kompyuterda chiziladi). */
+function useMedia(q: string): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(q);
+      m.addEventListener('change', cb);
+      return () => m.removeEventListener('change', cb);
+    },
+    () => window.matchMedia(q).matches,
+    () => false,
+  );
+}
+
+const Loading = () => <div className="page-loading" aria-busy="true" />;
+
 import { initAds, loadAdsense, maybeInterstitial, setImmersive } from './engine/ads';
 
 type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop' | 'about' | 'admin';
@@ -59,6 +90,7 @@ export function App() {
     if (premium && state.onboarded) update((s) => grantSuperFreeze(s));
   }, [premium, state.onboarded, update]);
 
+  const wide = useMedia('(min-width: 1180px)');
   const go = (t: Tab) => {
     location.hash = `#/${t}`;
     setTab(t);
@@ -76,6 +108,7 @@ export function App() {
   if (!state.onboarded) return <Onboarding />;
   if (session)
     return (
+      <Suspense fallback={<Loading />}>
       <Session
         config={session}
         onExit={(completed?: boolean) => {
@@ -83,6 +116,7 @@ export function App() {
           if (completed) void maybeInterstitial();
         }}
       />
+      </Suspense>
     );
 
   return (
@@ -106,6 +140,7 @@ export function App() {
       <div className="main">
         <TopBar onShop={() => go('shop')} onProfile={() => go('profile')} />
         <div className="content">
+          <Suspense fallback={<Loading />}>
           {tab === 'learn' && <Learn onStart={start} />}
           {tab === 'tutor' && <Tutor />}
           {tab === 'practice' && <Practice onStart={start} />}
@@ -114,12 +149,15 @@ export function App() {
           {tab === 'shop' && <Shop />}
           {tab === 'about' && <About />}
           {tab === 'admin' && <Admin />}
+          </Suspense>
         </div>
       </div>
 
-      <aside className="rightbar">
-        <SidePanels onGo={go} />
-      </aside>
+      {wide && (
+        <aside className="rightbar">
+          <SidePanels onGo={go} />
+        </aside>
+      )}
 
       <nav className="bottombar">
         {TABS.map((t) => (

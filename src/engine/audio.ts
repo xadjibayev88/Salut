@@ -85,6 +85,24 @@ function tone(freq: number, start: number, dur: number, type: OscillatorType = '
   o.stop(t0 + dur + 0.05);
 }
 
+/** Chastotasi siljiydigan ohang (kulgi, nafas). */
+function sweep(f0: number, f1: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.12) {
+  const c = ac();
+  if (!c) return;
+  const t0 = c.currentTime + start;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t0);
+  o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t0);
+  o.stop(t0 + dur + 0.05);
+}
+
 /** Qisqa shovqin (zarba, portlash) — filtrlangan oq shovqin. */
 function noise(start: number, dur: number, freq = 900, gain = 0.3) {
   const c = ac();
@@ -104,7 +122,7 @@ function noise(start: number, dur: number, freq = 900, gain = 0.3) {
   src.start(c.currentTime + start);
 }
 
-export type Sfx = 'correct' | 'wrong' | 'complete' | 'tap' | 'chest' | 'match' | 'hit' | 'whack' | 'shot' | 'boom' | 'pop' | 'squeak' | 'fart';
+export type Sfx = 'correct' | 'wrong' | 'complete' | 'tap' | 'chest' | 'match' | 'hit' | 'whack' | 'shot' | 'boom' | 'pop' | 'squeak' | 'fart' | 'sneeze' | 'spit' | 'punch' | 'slap' | 'drama' | 'laugh' | 'kiss';
 
 export function playSfx(kind: Sfx, enabled = true): void {
   if (!enabled) return;
@@ -146,6 +164,39 @@ export function playSfx(kind: Sfx, enabled = true): void {
     case 'squeak':
       tone(1200, 0, 0.08, 'triangle', 0.12);
       tone(1600, 0.06, 0.1, 'triangle', 0.1);
+      break;
+    case 'sneeze':
+      // «Aaa… apchxi!» — ko'tariluvchi nafas, so'ng keskin shovqin portlashi.
+      sweep(320, 620, 0, 0.45, 'triangle', 0.08);
+      noise(0.5, 0.35, 4200, 0.55);
+      noise(0.52, 0.2, 1200, 0.4);
+      break;
+    case 'spit':
+      noise(0, 0.08, 2600, 0.25);
+      noise(0.1, 0.22, 5200, 0.45);
+      tone(1400, 0.12, 0.05, 'square', 0.05);
+      break;
+    case 'punch':
+      noise(0, 0.12, 900, 0.7);
+      tone(70, 0, 0.25, 'sine', 0.5);
+      break;
+    case 'slap':
+      noise(0, 0.07, 6000, 0.6);
+      noise(0.01, 0.12, 2400, 0.35);
+      break;
+    case 'drama':
+      // «Dan-dan-daaan!»
+      tone(196, 0, 0.22, 'sawtooth', 0.12);
+      tone(185, 0.26, 0.22, 'sawtooth', 0.12);
+      tone(146.8, 0.52, 1.1, 'sawtooth', 0.14);
+      tone(73.4, 0.52, 1.1, 'sine', 0.2);
+      break;
+    case 'laugh':
+      for (let i = 0; i < 5; i++) sweep(520 - i * 18, 380 - i * 18, i * 0.13, 0.1, 'triangle', 0.1);
+      break;
+    case 'kiss':
+      sweep(900, 2200, 0, 0.09, 'sine', 0.12);
+      noise(0.08, 0.04, 3000, 0.2);
       break;
     case 'fart':
       tone(90, 0, 0.45, 'sawtooth', 0.12);

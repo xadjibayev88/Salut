@@ -278,6 +278,21 @@ function useFree(req: IncomingMessage) {
 const GEMINI_TTS_MODELS = (env.GEMINI_TTS_MODELS ?? 'gemini-3.8-flash-lite-tts,gemini-3.8-flash-tts').split(',').map((m) => m.trim()).filter(Boolean);
 const GEMINI_TTS_VOICE = env.GEMINI_TTS_VOICE || 'Leda';
 const LIVE_MODEL = env.GEMINI_LIVE_MODEL || 'gemini-3.8-live';
+// Jonli rejimda Vivining mimikasi: model gapirayotib shu funksiyani chaqiradi (javob kutmaydi).
+const LIVE_REACT_TOOL = {
+  name: 'vivi',
+  description: "Ekrandagi Vivi maskotining yuzi, imo-ishorasi va ovoz effektini o'zgartiradi. Har javobda gapirishdan oldin chaqir.",
+  behavior: 'NON_BLOCKING',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      face: { type: 'STRING', enum: ['happy', 'angry', 'love', 'star', 'sad', 'shocked', 'confused'] },
+      gesture: { type: 'STRING', enum: ['none', 'flip', 'hop', 'giggle', 'squish', 'wave', 'point'] },
+      sfx: { type: 'STRING', enum: ['none', 'sneeze', 'spit', 'punch', 'slap', 'drama', 'laugh', 'fart', 'burp', 'kiss'] },
+    },
+    required: ['face'],
+  },
+};
 // Zaxira AI (ixtiyoriy): masalan Groq — FALLBACK_LLM_URL=https://api.groq.com/openai/v1
 const FALLBACK_LLM = env.FALLBACK_LLM_URL && env.FALLBACK_LLM_KEY && env.FALLBACK_LLM_MODEL ? { url: env.FALLBACK_LLM_URL, key: env.FALLBACK_LLM_KEY, model: env.FALLBACK_LLM_MODEL } : undefined;
 /** Yangi chek haqida admin Telegram'iga xabar (TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID bo'lsa). */
@@ -487,8 +502,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
     const limited = take('billing', clientIp(req));
     if (limited) return json(res, 429, { message: limited });
-    const b = (await readBody(req, 4_500_000).catch(() => ({}))) as { plan?: unknown; receipt?: unknown };
-    const r = createCardOrder(uid, b.plan, b.receipt);
+    const b = (await readBody(req, 4_500_000).catch(() => ({}))) as { plan?: unknown; receipt?: unknown; kind?: unknown };
+    const r = createCardOrder(uid, b.plan, b.receipt, b.kind === 'visa' ? 'visa' : 'card');
     if ('error' in r) return json(res, (r as { status: number }).status, { message: r.error });
     const b2 = bot();
     if (b2) void b2.notifyReceipt(r.id, r.plan, r.amountUzs, `${getUser(uid)?.name ?? ''} · ${getUser(uid)?.email ?? uid} (ilova)`, b.receipt as string);
@@ -521,7 +536,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     const orderUser = (receiptOwner(Number(b.id)));
     const ok = decideOrder(Number(b.id), b.action === 'approve');
     if (!ok) return json(res, 409, { message: "Buyurtma allaqachon ko'rib chiqilgan yoki topilmadi" });
-    if (orderUser) void bot()?.notifyDecision(orderUser, b.action === 'approve');
+    if (orderUser && b.action !== 'approve') void bot()?.notifyDecision(orderUser, false);
     json(res, 200, { ok: true });
   },
 
@@ -626,6 +641,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
           systemInstruction: { parts: [{ text: liveInstruction(data) }] },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          tools: [{ functionDeclarations: [LIVE_REACT_TOOL] }],
         },
       });
     });

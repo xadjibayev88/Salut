@@ -5,7 +5,7 @@
 import { randomBytes } from 'node:crypto';
 import { db } from './db.ts';
 import { getUser, upsertSocialUser } from './accounts.ts';
-import { PLANS, activePlan, createCardOrder, decideOrder, isAdmin, oldPriceUzs, plansPayload, priceUzs, visiblePlans, type PlanId } from './billing.ts';
+import { PLANS, activePlan, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
 
 type Tg = (method: string, body: Record<string, unknown>) => Promise<any>;
 type From = { id: number; first_name?: string; last_name?: string; username?: string };
@@ -51,13 +51,58 @@ export function adminChats(): string[] {
   return [...set];
 }
 
-const setPlan = (chat: string, plan: PlanId | null) =>
+type Kind = 'card' | 'visa';
+const setPlan = (chat: string, plan: `${PlanId}:${Kind}` | null) =>
   db().prepare('INSERT INTO tg_state (chat_id, plan, updated_at) VALUES (?, ?, ?) ON CONFLICT(chat_id) DO UPDATE SET plan = excluded.plan, updated_at = excluded.updated_at').run(chat, plan, Date.now());
-const planOf = (chat: string) => (db().prepare('SELECT plan FROM tg_state WHERE chat_id = ?').get(chat) as { plan: PlanId | null } | undefined)?.plan ?? null;
+function planOf(chat: string): { plan: PlanId; kind: Kind } | null {
+  const v = (db().prepare('SELECT plan FROM tg_state WHERE chat_id = ?').get(chat) as { plan: string | null } | undefined)?.plan;
+  if (!v) return null;
+  const [plan, kind] = v.split(':') as [PlanId, Kind | undefined];
+  return plan in PLANS ? { plan, kind: kind === 'visa' ? 'visa' : 'card' } : null;
+}
 
 // ---------- Matnlar ----------
 
-const MAIN_KB = { inline_keyboard: [[{ text: '💎 Super tariflari', callback_data: 'plans' }], [{ text: '👤 Mening obunam', callback_data: 'me' }, { text: '📱 Ilovani ochish', url: appUrl() }]] };
+const mainKb = () => ({
+  inline_keyboard: [
+    [{ text: '🚀 Ilovaga kirish (Bepul)', web_app: { url: appUrl() } }],
+    [{ text: `💎 Super obuna olish (${som(priceUzs('month'))} so'm)`, callback_data: 'plans' }],
+    [{ text: '👤 Mening obunam', callback_data: 'me' }],
+  ],
+});
+
+/** Kutib olish xabari: og'riqli nuqtalar → yechim → narx → ikki tugma. */
+function welcomeText(name: string): string {
+  return [
+    `Assalomu alaykum, <b>${esc(name)}</b>! 👋`,
+    "",
+    "Fransuz tilini oylab o'rgansangiz ham, nega hali erkin gapira olmaysiz? 🤔",
+    "",
+    "Ko'pchilik til o'rganishda eng qimmatli narsasi — <b>VAQTINI</b> yo'qotadi:",
+    "❌ Grammatika jadvallarini quruq yodlash bilan soatlab vaqt ketadi;",
+    "❌ Yodlangan so'zlar 3 kunda unutiladi, chunki amaliyotda ishlatilmaydi;",
+    "❌ Gapirishga kelganda esa sherik yo'q yoki xato qilishdan qo'rquv to'sqinlik qiladi.",
+    "",
+    "Bizning maqsadimiz — <b>fransuz tilini qiziqarli va vaqtingizni tejaydigan qilish!</b> 🚀",
+    "",
+    "<b>Voilà!</b> da hammasi yangicha ishlaydi:",
+    "",
+    "🐱 <b>1. Vivi — AI ustoz bilan jonli suhbat</b>",
+    "Vivi bilan 24/7 istalgan mavzuda ovozli gaplashasiz. U xatolaringizni hazil bilan (ba'zan qattiq 😼) to'g'rilaydi va talaffuzingizni o'stiradi.",
+    "",
+    "🎮 <b>2. O'yin tariqasida darslar</b>",
+    "A1 dan C2 gacha 50 ta liniya: mashqlar, diktant, turnir va kunlik seriya — so'zlar o'zi yodda qoladi.",
+    "",
+    "🎭 <b>3. Har xil xarakterlar</b>",
+    "Mehribon ustoz, qattiqqo'l Professor, hazilkash yoki 18+ «bezori» Vivi — kim bilan o'rganishni o'zingiz tanlaysiz.",
+    "",
+    "Vaqtingizni qadrlang va tilni zamonaviy texnologiyalar bilan oson o'rganing! 💡",
+    "",
+    `💎 <b>1 oylik to'liq Super imkoniyat</b> — atigi <b>${som(priceUzs('month'))} so'm</b> (bitta kitob narxida).`,
+    "",
+    "Hoziroq birinchi darsni bepul sinab ko'ring: 👇",
+  ].join('\n');
+}
 
 function plansText(): string {
   const anchor = plansPayload().anchor;
@@ -87,16 +132,35 @@ function plansText(): string {
 }
 
 function plansKb() {
-  return { inline_keyboard: [...visiblePlans().map((id) => [{ text: `${PLANS[id].label} — ${som(priceUzs(id))} so'm`, callback_data: `plan:${id}` }]), [{ text: '⬅️ Orqaga', callback_data: 'home' }]] };
+  return { inline_keyboard: [...visiblePlans().map((id) => [{ text: `${id === 'month' ? '🔥 ' : ''}${PLANS[id].label} — ${som(priceUzs(id))} so'm`, callback_data: `plan:${id}` }]), [{ text: '⬅️ Orqaga', callback_data: 'home' }]] };
 }
 
-function payText(plan: PlanId): string {
-  const c = plansPayload().card;
+function methodsText(plan: PlanId): string {
+  return [`🧾 <b>${PLANS[plan].name}</b>`, `To'lov summasi: <b>${som(priceUzs(plan))} so'm</b>`, '', "To'lov usulini tanlang 👇"].join('\n');
+}
+
+/** Payme/Click — tayyor to'lov havolasi (to'lansa Super avtomatik yoqiladi); karta/Visa — chek orqali. */
+function methodsKb(plan: PlanId, userId: string) {
+  const on = providers();
+  const rows: Record<string, unknown>[][] = [];
+  for (const p of ['payme', 'click'] as const) {
+    if (!on.includes(p)) continue;
+    const r = createOrder(userId, plan, p, appUrl());
+    if ('payUrl' in r && r.payUrl) rows.push([{ text: p === 'payme' ? '🟦 Payme orqali to\'lash' : '🔵 Click orqali to\'lash', url: r.payUrl }]);
+  }
+  if (on.includes('card')) rows.push([{ text: '💳 Uzcard / Humo karta', callback_data: `pay:card:${plan}` }]);
+  if (on.includes('visa')) rows.push([{ text: '🌍 Visa / Mastercard', callback_data: `pay:visa:${plan}` }]);
+  rows.push([{ text: '⬅️ Boshqa tarif', callback_data: 'plans' }]);
+  return { inline_keyboard: rows };
+}
+
+function payText(plan: PlanId, kind: Kind = 'card'): string {
+  const c = kind === 'visa' ? plansPayload().visa : plansPayload().card;
   return [
     `🧾 <b>${PLANS[plan].name}</b>`,
-    `To'lov summasi: <b>${som(priceUzs(plan))} so'm</b>`,
+    `To'lov summasi: <b>${som(priceUzs(plan))} so'm</b>${kind === 'visa' ? ' (yoki shu summaga teng dollar)' : ''}`,
     '',
-    '💳 Quyidagi kartaga o\'tkazing:',
+    kind === 'visa' ? '🌍 Quyidagi Visa kartaga o\'tkazing:' : '💳 Quyidagi kartaga o\'tkazing:',
     `<code>${esc(c?.number ?? '—')}</code>`,
     ...(c?.owner ? [`👤 ${esc(c.owner)}${c.bank ? ` · ${esc(c.bank)}` : ''}`] : []),
     '',
@@ -150,7 +214,7 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
       approve
         ? `🎉 <b>To'lov tasdiqlandi!</b>\n💎 Super faollashdi — ${esc(meText(userId).split('\n').slice(2).join(' '))}\n\nIlovani oching va Vivi bilan cheksiz gaplashing!`
         : "❌ Chek tasdiqlanmadi. Summa yoki chek noto'g'ri bo'lishi mumkin. Savol bo'lsa shu yerga yozing.",
-      { reply_markup: approve ? { inline_keyboard: [[{ text: '📱 Ilovani ochish', url: appUrl() }]] } : MAIN_KB },
+      { reply_markup: approve ? { inline_keyboard: [[{ text: '📱 Ilovani ochish', url: appUrl() }]] } : mainKb() },
     ).catch(() => {});
   }
 
@@ -166,33 +230,34 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
       if (arg.startsWith('pay_')) uid = linkByCode(arg.slice(4), String(from.id));
       const linked = !!uid;
       uid ??= userOf(from);
-      const name = esc(from.first_name || 'do\'stim');
-      await send(chat, `Bonjour, ${name}! 🐱\nMen <b>Voilà!</b> botiman — bu yerda Super obunani tez va oson olasiz.${linked ? '\n\n✅ Ilovadagi hisobingiz bog\'landi.' : ''}`, { reply_markup: MAIN_KB });
-      if (arg.startsWith('pay_') || arg === 'plans') await send(chat, plansText(), { reply_markup: plansKb() });
+      const name = [from.first_name, from.last_name].filter(Boolean).join(' ') || "do'stim";
+      if (linked) await send(chat, "✅ Ilovadagi hisobingiz botga bog'landi.");
+      if (arg.startsWith('pay_') || arg === 'plans') return send(chat, plansText(), { reply_markup: plansKb() });
+      await send(chat, welcomeText(name), { reply_markup: mainKb() });
       return;
     }
     if (text === '/plans' || text === '/tariflar') return send(chat, plansText(), { reply_markup: plansKb() });
     if (text === '/id' || text === '/myid') return send(chat, `Sizning chat ID: <code>${chat}</code>`);
-    if (text === '/me') return send(chat, meText(userOf(from)), { reply_markup: MAIN_KB });
+    if (text === '/me') return send(chat, meText(userOf(from)), { reply_markup: mainKb() });
 
     const file = msg.photo?.length ? { id: msg.photo[msg.photo.length - 1].file_id, mime: 'image/jpeg' } : msg.document ? { id: msg.document.file_id, mime: msg.document.mime_type || '' } : null;
     if (file) {
-      const plan = planOf(chat);
-      if (!plan) return send(chat, '📸 Chekni yuborishdan oldin tarifni tanlang 👇', { reply_markup: plansKb() });
+      const st = planOf(chat);
+      if (!st) return send(chat, '📸 Chekni yuborishdan oldin tarifni tanlang 👇', { reply_markup: plansKb() });
       if (!/^(image\/(png|jpe?g|webp|heic)|application\/pdf)$/.test(file.mime)) return send(chat, '⚠️ Chekni rasm yoki PDF ko\'rinishida yuboring.');
       const got = await download(file.id).catch(() => null);
       if (!got || got.data.length > 2_900_000) return send(chat, '⚠️ Faylni yuklab bo\'lmadi (3 MB gacha bo\'lsin). Qayta yuboring.');
       const uid = userOf(from);
       const receipt = `data:${file.mime === 'image/jpg' ? 'image/jpeg' : file.mime || got.mime};base64,${got.data.toString('base64')}`;
-      const r = createCardOrder(uid, plan, receipt);
+      const r = createCardOrder(uid, st.plan, receipt, st.kind);
       if ('error' in r) return send(chat, `⚠️ ${esc(r.error)}`);
       setPlan(chat, null);
       await send(chat, `✅ Chek qabul qilindi (#${r.id}).\n⏱ Admin tekshirgach, Super avtomatik yoqiladi va sizga xabar beraman.`);
       const who = [from.first_name, from.last_name].filter(Boolean).join(' ') + (from.username ? ` @${from.username}` : '') + ` (tg ${from.id})`;
-      await notifyReceipt(r.id, r.plan, r.amountUzs, who, receipt);
+      await notifyReceipt(r.id, r.plan, r.amountUzs, `${who}${st.kind === 'visa' ? ' · VISA' : ''}`, receipt);
       return;
     }
-    return send(chat, 'Quyidagi tugmalardan foydalaning 👇', { reply_markup: MAIN_KB });
+    return send(chat, 'Quyidagi tugmalardan foydalaning 👇', { reply_markup: mainKb() });
   }
 
   async function onCallback(q: any) {
@@ -201,15 +266,23 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
     const ack = (text = '', alert = false) => tg('answerCallbackQuery', { callback_query_id: q.id, text, show_alert: alert }).catch(() => {});
 
     if (data === 'plans') return ack(), send(chat, plansText(), { reply_markup: plansKb() });
-    if (data === 'home') return ack(), send(chat, 'Asosiy menyu 👇', { reply_markup: MAIN_KB });
-    if (data === 'me') return ack(), send(chat, meText(userOf(q.from)), { reply_markup: MAIN_KB });
+    if (data === 'home') return ack(), send(chat, 'Asosiy menyu 👇', { reply_markup: mainKb() });
+    if (data === 'me') return ack(), send(chat, meText(userOf(q.from)), { reply_markup: mainKb() });
     if (data.startsWith('plan:')) {
       const plan = data.slice(5) as PlanId;
       if (!(plan in PLANS)) return ack();
-      if (!plansPayload().card) return ack("Karta orqali to'lov hozircha yoqilmagan", true);
-      setPlan(chat, plan);
+      if (!providers().length) return ack("To'lov hozircha yoqilmagan", true);
       await ack();
-      return send(chat, payText(plan), { reply_markup: { inline_keyboard: [[{ text: '⬅️ Boshqa tarif', callback_data: 'plans' }]] } });
+      return send(chat, methodsText(plan), { reply_markup: methodsKb(plan, userOf(q.from)) });
+    }
+    const pay = /^pay:(card|visa):(\w+)$/.exec(data);
+    if (pay) {
+      const kind = pay[1] as Kind;
+      const plan = pay[2] as PlanId;
+      if (!(plan in PLANS) || !providers().includes(kind)) return ack("Bu usul yoqilmagan", true);
+      setPlan(chat, `${plan}:${kind}`);
+      await ack();
+      return send(chat, payText(plan, kind), { reply_markup: { inline_keyboard: [[{ text: '⬅️ Boshqa usul', callback_data: `plan:${plan}` }]] } });
     }
     const m = /^(ok|no):(\d+)$/.exec(data);
     if (m) {
@@ -226,7 +299,8 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
           chat_id: q.message.chat.id, message_id: q.message.message_id, [q.message.caption !== undefined ? 'caption' : 'text']: cap, reply_markup: { inline_keyboard: [] },
         }).catch(() => {});
       }
-      if (done && order) await notifyDecision(order.user_id, approve);
+      // Tasdiqlansa — xabarni onGrant yuboradi; rad etilsa — shu yerdan.
+      if (done && order && !approve) await notifyDecision(order.user_id, false);
       return;
     }
     return ack();
@@ -240,6 +314,9 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
       console.error('bot:', (e as Error).message);
     }
   }
+
+  // Har qanday usulda (Payme, Click, karta, Visa) obuna yoqilsa — foydalanuvchiga xabar.
+  onGrant((userId) => void notifyDecision(userId, true));
 
   return { handle, notifyReceipt, notifyDecision };
 }
@@ -280,6 +357,10 @@ export function startBot(token = env('TELEGRAM_BOT_TOKEN')): Bot | null {
     await tg('deleteWebhook', {}).catch(() => {});
     const me = (await tg('getMe', {}).catch(() => null)) as { username?: string } | null;
     if (me?.username) username = me.username;
+    const url = appUrl();
+    await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Voilà App 🚀', web_app: { url } } }).catch(() => {});
+    await tg('setMyShortDescription', { short_description: "Vivi — fransuz tilini hazil bilan o'rgatadigan AI ustoz 🐱 A1→C2, jonli ovozli suhbat." }).catch(() => {});
+    await tg('setMyDescription', { description: "🇫🇷 Voilà! — fransuz tilini o'zbek tilida o'rganing.\n\n🐱 Vivi AI bilan jonli ovozli suhbat\n🎮 O'yin tariqasida darslar A1→C2\n💎 Super obuna — Payme, Click, karta yoki Visa orqali\n\nBoshlash uchun «Start» ni bosing 👇" }).catch(() => {});
     await tg('setMyCommands', { commands: [{ command: 'start', description: 'Boshlash' }, { command: 'plans', description: '💎 Super tariflari' }, { command: 'me', description: 'Mening obunam' }] }).catch(() => {});
     let offset = 0;
     for (;;) {

@@ -116,7 +116,10 @@ export function KruaLive({
   fx = null,
   fxKey = 0,
   sound = true,
+  burnKey = 0,
 }: {
+  /** O'zgarganda boshida olov yonadi (jahl), imo-ishoradan qat'i nazar. */
+  burnKey?: number;
   /** Tana effekti: yashil bulut yoki pufak. */
   fx?: 'fart' | 'burp' | null;
   fxKey?: number;
@@ -139,6 +142,12 @@ export function KruaLive({
     const t = setTimeout(() => setFlare(false), action === 'flip' ? 2200 : 1800);
     return () => clearTimeout(t);
   }, [action, actionKey, sound]);
+  useEffect(() => {
+    if (!burnKey) return;
+    setFlare(true);
+    const t = setTimeout(() => setFlare(false), 2600);
+    return () => clearTimeout(t);
+  }, [burnKey]);
   const [fxOn, setFxOn] = useState<typeof fx>(null);
   useEffect(() => {
     if (!fx) return;

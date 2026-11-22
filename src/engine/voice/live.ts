@@ -3,7 +3,20 @@
 // Vivi ovozi: PCM16 24 kHz. Gapni bo'lish, subtitrlar (transkripsiya), taymer va suhbat yozuvi.
 import type { CharacterId, ExplainLang, RoleId } from '../../data/characters';
 import type { SessionRecord } from './prefs';
-import { talkStats } from './markers';
+import { talkStats, type Action, type Shape } from './markers';
+import { playSfx, type Sfx } from '../audio';
+
+/** Vivining jonli mimikasi (model `vivi` funksiyasini chaqirganda). */
+export interface LiveCue {
+  shape: Shape;
+  action: Action | null;
+  /** Boshida olov (jahl). */
+  angry: boolean;
+  fx: 'fart' | 'burp' | null;
+  key: number;
+}
+const FACE_SHAPE: Record<string, Shape> = { happy: 'pill', angry: 'pill', love: 'heart', star: 'star', sad: 'drop', shocked: 'circle', confused: 'cloud' };
+const SFX = new Set(['sneeze', 'spit', 'punch', 'slap', 'drama', 'laugh', 'kiss']);
 
 export type LivePhase = 'connecting' | 'listening' | 'speaking' | 'ended';
 
@@ -21,6 +34,7 @@ export interface LiveSnap {
   muted: boolean;
   error: string | null;
   endReason: 'user' | 'limit' | 'error' | null;
+  cue: LiveCue;
 }
 
 export interface LiveOptions {
@@ -79,7 +93,7 @@ export class LiveSession {
   private readonly id = `live-${Date.now()}`;
 
   constructor(private o: LiveOptions) {
-    this.snap = { phase: 'connecting', level: 0, micLevel: 0, turns: [], liveUser: '', liveTutor: '', elapsedMs: 0, limitMs: 5 * 60_000, muted: false, error: null, endReason: null };
+    this.snap = { phase: 'connecting', level: 0, micLevel: 0, turns: [], liveUser: '', liveTutor: '', elapsedMs: 0, limitMs: 5 * 60_000, muted: false, error: null, endReason: null, cue: { shape: 'pill', action: null, angry: false, fx: null, key: 0 } };
   }
 
   private set(p: Partial<LiveSnap>) {
@@ -138,6 +152,7 @@ export class LiveSession {
     let m: {
       setupComplete?: unknown;
       goAway?: unknown;
+      toolCall?: { functionCalls?: { id: string; name: string; args?: Record<string, string> }[] };
       serverContent?: {
         modelTurn?: { parts?: { inlineData?: { data: string; mimeType?: string } }[] };
         outputTranscription?: { text?: string };
@@ -162,6 +177,11 @@ export class LiveSession {
       return;
     }
     if (m.goAway) return this.end('limit');
+    if (m.toolCall?.functionCalls?.length) {
+      for (const f of m.toolCall.functionCalls) this.react(f.args ?? {});
+      this.ws?.send(JSON.stringify({ toolResponse: { functionResponses: m.toolCall.functionCalls.map((f) => ({ id: f.id, name: f.name, response: { ok: true }, scheduling: 'WHEN_IDLE' })) } }));
+      return;
+    }
     const sc = m.serverContent;
     if (!sc) return;
     if (sc.interrupted) {
@@ -174,6 +194,7 @@ export class LiveSession {
     if (sc.inputTranscription?.text) {
       // Vivi gapira boshlasa, o'quvchining gapi yakunlangan hisoblanadi.
       this.set({ liveUser: this.snap.liveUser + sc.inputTranscription.text });
+      if (this.snap.liveUser.length < 400) this.guessCueOnce();
     }
     if (sc.outputTranscription?.text) {
       if (this.snap.liveUser.trim()) {
@@ -186,6 +207,36 @@ export class LiveSession {
       if (this.snap.liveUser.trim()) this.pushTurn('user', this.snap.liveUser.trim());
       if (this.snap.liveTutor.trim()) this.pushTurn('tutor', this.snap.liveTutor.trim());
       this.set({ liveUser: '', liveTutor: '' });
+    }
+  }
+
+  /** Model chaqirgan mimika: yuz shakli, imo-ishora, ovoz effekti. */
+  private react(a: Record<string, string>) {
+    const face = a.face ?? 'happy';
+    const gesture = a.gesture && a.gesture !== 'none' ? a.gesture : null;
+    const allowFlip = this.o.explicit || this.o.character === 'adult';
+    const action = (gesture === 'flip' && !allowFlip ? 'squish' : gesture) as Action | null;
+    const sfx = a.sfx && a.sfx !== 'none' ? a.sfx : null;
+    const fx = sfx === 'fart' || sfx === 'burp' ? sfx : null;
+    if (sfx && SFX.has(sfx)) playSfx(sfx as Sfx);
+    this.set({ cue: { shape: FACE_SHAPE[face] ?? 'pill', action: action ?? (face === 'angry' ? 'flare' : face === 'star' ? 'hop' : null), angry: face === 'angry', fx, key: this.snap.cue.key + 1 } });
+  }
+
+  /** Funksiya chaqirilmasa ham: matndan oddiy his-tuyg'ularni taxmin qilamiz. */
+  private guessCue(text: string) {
+    const t = text.toLowerCase();
+    if (/(chatgpt|chat gpt|duolingo|gemini|boshqa ustoz)/.test(t)) this.react({ face: 'angry' });
+  }
+
+  private guessed = '';
+  private lastEmit = 0;
+  private guessCueOnce() {
+    // Bir gapda bir marta: o'quvchi ChatGPT'ni tilga olsa — rashk (model chaqirmasa ham).
+    const u = this.snap.liveUser;
+    if (this.guessed && u.startsWith(this.guessed)) return;
+    if (/(chatgpt|chat gpt|duolingo)/i.test(u)) {
+      this.guessed = u;
+      this.guessCue(u);
     }
   }
 
@@ -257,7 +308,12 @@ export class LiveSession {
       }
       const playing = this.ctxOut ? this.nextTime > this.ctxOut.currentTime : false;
       const phase: LivePhase = playing ? 'speaking' : 'listening';
-      if (phase !== this.snap.phase || Math.abs(level - this.snap.level) > 0.04) this.set({ phase, level });
+      // Telefonda qotmasligi uchun: ekran ~15 marta/soniya yangilanadi, holat o'zgarsa — darhol.
+      const now = performance.now();
+      if (phase !== this.snap.phase || (now - this.lastEmit > 66 && Math.abs(level - this.snap.level) > 0.06)) {
+        this.lastEmit = now;
+        this.set({ phase, level });
+      }
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);

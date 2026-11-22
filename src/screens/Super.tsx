@@ -46,9 +46,9 @@ async function fileToDataUrl(f: File): Promise<string> {
   }
 }
 
-function CardPay({ plan, amount, onDone, onClose }: { plan: PlanId; amount: number; onDone: (orderId: number) => void; onClose: () => void }) {
+function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanId; amount: number; kind?: 'card' | 'visa'; onDone: (orderId: number) => void; onClose: () => void }) {
   const { me } = useAccount();
-  const card = me.billing.card!;
+  const card = (kind === 'visa' ? me.billing.visa : me.billing.card)!;
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +69,7 @@ function CardPay({ plan, amount, onDone, onClose }: { plan: PlanId; amount: numb
     setErr(null);
     try {
       const receipt = await fileToDataUrl(file);
-      const r = await accountApi<{ id?: number; message?: string }>('billing/card', { method: 'POST', body: JSON.stringify({ plan, receipt }) });
+      const r = await accountApi<{ id?: number; message?: string }>('billing/card', { method: 'POST', body: JSON.stringify({ plan, receipt, kind }) });
       if (!r.ok || !r.body.id) return setErr(r.body.message ?? "Yuborib bo'lmadi");
       onDone(r.body.id);
     } catch {
@@ -128,6 +128,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
   const [needAuth, setNeedAuth] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const [cardKind, setCardKind] = useState<'card' | 'visa'>('card');
   const [review, setReview] = useState<{ id: number; status: string } | null>(null);
   const sel = plans.find((p) => p.id === plan) ?? plans[0];
   const anchor = me.billing.anchor;
@@ -158,9 +159,12 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
     };
   }, [refresh, review?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pay = async (provider: 'payme' | 'click' | 'card' | 'telegram') => {
+  const pay = async (provider: 'payme' | 'click' | 'card' | 'visa' | 'telegram') => {
     if (!me.user) return setNeedAuth(true);
-    if (provider === 'card') return setCardOpen(true);
+    if (provider === 'card' || provider === 'visa') {
+      setCardKind(provider);
+      return setCardOpen(true);
+    }
     if (provider === 'telegram') {
       // Oynani darhol ochamiz (iOS Safari popup blokidan qochish uchun), havolani keyin beramiz.
       const w = window.open('', '_blank');
@@ -289,6 +293,11 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
               💳 Karta orqali (Uzcard / Humo)
             </button>
           )}
+          {me.billing.providers.includes('visa') && (
+            <button type="button" className="btn btn-pay visa" disabled={!!busy} onClick={() => pay('visa')}>
+              🌍 Visa / Mastercard
+            </button>
+          )}
           {me.billing.telegram && (
             <button type="button" className="btn btn-pay telegram" disabled={!!busy} onClick={() => pay('telegram')}>
               {busy === 'telegram' ? 'Kuting…' : "✈️ Telegram bot orqali to'lash"}
@@ -302,6 +311,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
       <p className="super-fine muted">Obuna avtomatik yangilanmaydi — muddati tugagach qayta to'laysiz.</p>
       {cardOpen && sel && (
         <CardPay
+          kind={cardKind}
           plan={sel.id}
           amount={sel.uzs}
           onClose={() => setCardOpen(false)}

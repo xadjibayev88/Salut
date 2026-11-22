@@ -7,6 +7,7 @@ import { answerLang, displayText, extractCues, SentenceSplitter, talkStats, type
 import { Mic, type MicError } from './mic';
 import { browserSttSupported, cloudSttSupported, CloudStt, HybridStt, WebSpeechStt, type Stt, type SttError } from './stt';
 import { TtsQueue } from './tts';
+import { playSfx } from '../audio';
 import type { InputMode, SessionRecord, SttEngine } from './prefs';
 
 export type Phase = 'connecting' | 'ready' | 'user' | 'thinking' | 'speaking' | 'ended';
@@ -150,6 +151,7 @@ export class VoiceCall {
       const patch: Partial<Snapshot> = { phase: 'speaking' };
       if (cue.shape) patch.shape = cue.shape;
       if (cue.fx) patch.fx = { kind: cue.fx, key: (this.snap.fx?.key ?? 0) + 1 };
+      if (cue.sfx) playSfx(cue.sfx);
       if (cue.image) patch.image = { q: cue.image, key: (this.snap.image?.key ?? 0) + 1 };
       if (cue.actions.length) {
         patch.action = cue.actions[0];
