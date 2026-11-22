@@ -28,6 +28,8 @@ export interface LeagueState {
 export interface GameState {
   version: 1;
   name: string;
+  /** Avatar: emoji yoki rasm (data:/https: URL). */
+  avatar?: string;
   onboarded: boolean;
   dailyGoal: number;
   createdAt: number;
@@ -201,7 +203,7 @@ function weekProgress(wid: string, now: Date): number {
   return Math.min(1, Math.max(0, (now.getTime() - start) / (7 * 86_400_000)));
 }
 
-export function leagueStandings(league: LeagueState, now = new Date(), name = 'Siz'): LeagueRow[] {
+export function leagueStandings(league: LeagueState, now = new Date(), name = 'Siz', avatar = '🐱'): LeagueRow[] {
   const r = rng(hashString(`${league.weekId}:${league.tier}`));
   const p = weekProgress(league.weekId, now);
   const pool = BOT_NAMES.slice();
@@ -215,7 +217,7 @@ export function leagueStandings(league: LeagueState, now = new Date(), name = 'S
     const curve = Math.pow(p, 0.85 + r() * 0.4);
     rows.push({ id: `b${i}`, name: botName, avatar: AVATARS[Math.floor(r() * AVATARS.length)], xp: Math.round(activity * jitter * curve), isMe: false });
   }
-  rows.push({ id: 'me', name: name || 'Siz', avatar: '🐱', xp: league.weeklyXp, isMe: true });
+  rows.push({ id: 'me', name: name || 'Siz', avatar: avatar || '🐱', xp: league.weeklyXp, isMe: true });
   return rows.sort((a, b) => b.xp - a.xp || (a.isMe ? -1 : b.isMe ? 1 : 0));
 }
 

@@ -969,3 +969,16 @@ html.lite .vivi * { animation: none !important; }
 .lv-C1 .level-badge, .lv-C2 .level-badge { background: linear-gradient(135deg, #f59e0b, #ef4444); }
 .msg-upsell { margin-top: 10px; width: 100%; padding: 10px 12px; font-size: 14px; }
 .vh-quota { font-size: 12.5px; color: var(--muted); text-align: center; margin: 6px 12px 10px; } .vh-quota a { color: #a5b4fc; font-weight: 700; }
+/* Avatar */
+.avatar-big { position: relative; border: none; cursor: pointer; overflow: hidden; padding: 0; }
+.avatar-big .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-edit { position: absolute; right: 4px; bottom: 4px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #0b0d24; background: var(--grad); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+.avatar-img { border-radius: 50%; object-fit: cover; display: inline-block; vertical-align: middle; }
+.avatar-emoji { line-height: 1; display: inline-block; }
+.avatar-sheet { max-height: 86vh; overflow-y: auto; }
+.avatar-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 6px 0 14px; }
+.avatar-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; }
+.avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.avatar-opt { aspect-ratio: 1; font-size: 28px; border-radius: 14px; border: 1.5px solid var(--line); background: rgba(255, 255, 255, .05); cursor: pointer; }
+.avatar-opt.on { border-color: #a5b4fc; background: rgba(165, 180, 252, .18); }
+.bavatar .avatar-img { width: 30px; height: 30px; }

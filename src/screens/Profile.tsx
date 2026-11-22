@@ -4,11 +4,15 @@ import { addDays, dayKey } from '../engine/time';
 import { useStore } from '../state/store';
 import { WeekStrip } from './Result';
 import { AccountCard } from '../components/AccountCard';
+import { Avatar, AvatarPicker } from '../components/Avatar';
+import { useAccount } from '../state/account';
 
 export function Profile() {
   const { state, update, reset } = useStore();
   const [confirmReset, setConfirmReset] = useState(false);
   const [name, setName] = useState(state.name);
+  const [picking, setPicking] = useState(false);
+  const { me } = useAccount();
   const words = Object.keys(state.words).length;
   const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
   const c = new Date(state.createdAt);
@@ -23,12 +27,17 @@ export function Profile() {
     <div className="page">
       <AccountCard />
       <div className="profile-head">
-        <div className="avatar-big">🐱</div>
+        <button type="button" className="avatar-big" onClick={() => setPicking(true)} aria-label="Avatarni o'zgartirish">
+          <Avatar value={state.avatar} size={72} />
+          <span className="avatar-edit">✎</span>
+        </button>
         <div>
           <input className="name-input" value={name} placeholder="Ismingiz" onChange={(e) => setName(e.target.value)} onBlur={() => update((s) => ({ ...s, name: name.trim() }))} />
           <p className="muted">{since} dan beri · 🇺🇿 → 🇫🇷</p>
         </div>
       </div>
+
+      {picking && <AvatarPicker value={state.avatar} googlePhoto={me.user?.avatar} onPick={(v) => update((s) => ({ ...s, avatar: v }))} onClose={() => setPicking(false)} />}
 
       <h2 className="section-title">Statistika</h2>
       <div className="stats-grid">

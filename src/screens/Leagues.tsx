@@ -1,3 +1,4 @@
+import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
 import { DEMOTE, LEAGUE_SIZE, LEAGUES, leagueStandings, PROMOTE } from '../engine/game';
 import { weekStart } from '../engine/time';
@@ -24,7 +25,7 @@ export function Leagues() {
     return () => clearInterval(id);
   }, []);
   const lg = state.league;
-  const rows = leagueStandings(lg, new Date(), state.name);
+  const rows = leagueStandings(lg, new Date(), state.name, state.avatar);
   const res = lg.lastResult && !lg.lastResult.seen ? lg.lastResult : null;
 
   return (
@@ -50,7 +51,7 @@ export function Leagues() {
               {rank === PROMOTE + 1 && <div className="zone-line up">▲ KO'TARILISH ZONASI</div>}
               {rank === LEAGUE_SIZE - DEMOTE + 1 && lg.tier > 0 && <div className="zone-line down">▼ TUSHISH ZONASI</div>}
               <span className={`brank r${rank}`}>{rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}</span>
-              <span className="bavatar">{r.avatar}</span>
+              <span className="bavatar"><Avatar value={r.avatar} size={30} /></span>
               <span className="bname">{r.isMe ? `${r.name} (siz)` : r.name}</span>
               <span className="bxp">{r.xp} ball</span>
             </li>
