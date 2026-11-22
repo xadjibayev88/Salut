@@ -9,6 +9,7 @@ import { Onboarding } from './screens/Onboarding';
 import type { SessionConfig } from './screens/Session';
 import { WeekStrip } from './screens/Result';
 import { Mascot } from './components/Mascot';
+import { TabIcon } from './components/TabIcons';
 import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
 // Og'ir sahifalar alohida yuklanadi (birinchi ochilish tezroq), bo'sh paytda oldindan olib qo'yiladi.
@@ -53,8 +54,8 @@ import { initAds, loadAdsense, maybeInterstitial, setImmersive } from './engine/
 type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop' | 'about' | 'admin';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'learn', label: "Metro", icon: '🚇' },
-  { id: 'tutor', label: 'Vivi ustoz', icon: '🐱' },
+  { id: 'learn', label: 'Darslar', icon: '🚇' },
+  { id: 'tutor', label: 'Vivi', icon: '🐱' },
   { id: 'practice', label: 'Mashq', icon: '🏋️' },
   { id: 'leagues', label: 'Turnir', icon: '🗼' },
   { id: 'shop', label: "Do'kon", icon: '🛍️' },
@@ -91,6 +92,7 @@ export function App() {
   }, [premium, state.onboarded, update]);
 
   const wide = useMedia('(min-width: 1180px)');
+  const [tapped, setTapped] = useState<{ id: Tab; n: number } | null>(null);
   const go = (t: Tab) => {
     location.hash = `#/${t}`;
     setTab(t);
@@ -127,7 +129,7 @@ export function App() {
         </div>
         {TABS.map((t) => (
           <button key={t.id} type="button" className={`nav-item ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)}>
-            <span className="nav-icon">{t.id === 'tutor' ? <Mascot size={30} mood="happy" className="nav-cat" /> : t.icon}</span>
+            <span className="nav-icon"><TabIcon id={t.id} on={tab === t.id} /></span>
             <span>{t.label}</span>
           </button>
         ))}
@@ -159,10 +161,26 @@ export function App() {
         </aside>
       )}
 
-      <nav className="bottombar">
+      <nav className="bottombar" style={{ ['--tabs' as string]: TABS.length, ['--i' as string]: Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
+        {/* Faol bo'lim ostidagi «shisha linza» — bo'limlar orasida suzib o'tadi */}
+        <span className={`tab-lens ${TABS.some((t) => t.id === tab) ? '' : 'hidden'}`} aria-hidden="true" />
         {TABS.map((t) => (
-          <button key={t.id} type="button" className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)} aria-label={t.label}>
-            <span>{t.id === 'tutor' ? <Mascot size={34} mood="happy" className="tab-cat" /> : t.icon}</span>
+          <button
+            key={t.id}
+            type="button"
+            className={`tab ${tab === t.id ? 'active' : ''} ${tapped?.id === t.id ? 'tapped' : ''}`}
+            onClick={() => {
+              setTapped({ id: t.id, n: (tapped?.n ?? 0) + 1 });
+              if (navigator.vibrate) navigator.vibrate(8);
+              go(t.id);
+            }}
+            aria-label={t.label}
+            aria-current={tab === t.id ? 'page' : undefined}
+          >
+            <span className="tab-ico-wrap" key={tapped?.id === t.id ? tapped.n : 0}>
+              <TabIcon id={t.id} on={tab === t.id} />
+            </span>
+            <small>{t.label}</small>
           </button>
         ))}
       </nav>

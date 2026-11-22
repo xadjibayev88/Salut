@@ -9,6 +9,7 @@ import { configureRotation, friendlyError, generateJson, isExhausted, markExhaus
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
+import { parseTranslateRequest, translateBody } from './voice.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
@@ -48,6 +49,7 @@ const BUCKETS: Record<string, Bucket> = {
   'tts-free-el': { perMinute: 1_000_000, perDay: 1_000_000 },
   tts: { perMinute: num('TTS_PER_MINUTE', 60), perDay: num('TTS_PER_DAY', 1200) },
   feedback: { perMinute: 4, perDay: num('FEEDBACK_PER_DAY', 40) },
+  translate: { perMinute: 20, perDay: num('TRANSLATE_PER_DAY', 300) },
   auth: { perMinute: 10, perDay: 200 },
   billing: { perMinute: 10, perDay: 100 },
 };
@@ -661,6 +663,13 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       });
     });
   },
+
+  // Chatdagi yashil fransuzcha iboraga bosilganda — o'zbekcha tarjima.
+  'POST /api/translate': (req, res) =>
+    guarded(req, res, { bucket: 'translate', maxBody: 4 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseTranslateRequest }, async (data, signal) => {
+      const raw = (await generateJson(translateBody(data, MODEL), gem(signal))) as { uz?: unknown; say?: unknown };
+      json(res, 200, { uz: typeof raw?.uz === 'string' ? raw.uz.slice(0, 200) : '', say: typeof raw?.say === 'string' ? raw.say.slice(0, 100) : '' });
+    }),
 
   'POST /api/tutor/memory': (req, res) =>
     guarded(req, res, { bucket: 'feedback', maxBody: 120 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseMemoryRequest }, async (data, signal) => {

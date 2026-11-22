@@ -1,3 +1,4 @@
+import { themePref, setThemePref, type ThemePref } from '../engine/theme';
 import { useState } from 'react';
 import { ACHIEVEMENTS, LEAGUES } from '../engine/game';
 import { addDays, dayKey } from '../engine/time';
@@ -127,6 +128,7 @@ export function Profile() {
 
       <h2 className="section-title">Sozlamalar</h2>
       <div className="settings">
+        <ThemeSetting />
         <label className="setting">
           <span>⚡ Yengil rejim (sekin telefonlar uchun)</span>
           <input
@@ -196,6 +198,37 @@ export function Profile() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ThemeSetting() {
+  const [pref, setPref] = useState<ThemePref>(themePref());
+  const opts: { id: ThemePref; label: string }[] = [
+    { id: 'auto', label: '🌗 Avto' },
+    { id: 'light', label: '☀️ Kunduzgi' },
+    { id: 'dark', label: '🌙 Tungi' },
+  ];
+  return (
+    <div className="setting theme-setting">
+      <span>🎨 Ko'rinish</span>
+      <div className="seg" role="radiogroup" aria-label="Ko'rinish">
+        {opts.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={pref === o.id}
+            className={pref === o.id ? 'on' : ''}
+            onClick={() => {
+              setPref(o.id);
+              setThemePref(o.id);
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

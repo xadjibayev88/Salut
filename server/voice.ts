@@ -401,3 +401,38 @@ export async function azureTts(
   if (!res.ok) throw Object.assign(new Error(`Azure TTS ${res.status}`), { status: res.status });
   return { audio: Buffer.from(await res.arrayBuffer()), mime: 'audio/mpeg' };
 }
+
+// ---------- Tarjima: chatdagi fransuzcha ibora → o'zbekcha ----------
+
+export interface TranslateRequest {
+  text: string;
+  context: string;
+}
+
+export function parseTranslateRequest(body: unknown): TranslateRequest | string {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const text = typeof b.text === 'string' ? b.text.trim().slice(0, 200) : '';
+  if (!text) return "Matn bo'sh";
+  return { text, context: typeof b.context === 'string' ? b.context.slice(0, 400) : '' };
+}
+
+export function translateBody(req: TranslateRequest, model: string): Record<string, unknown> {
+  const thinking = thinkingFor(model);
+  return {
+    systemInstruction: {
+      parts: [
+        {
+          text: "Fransuzcha so'z yoki iborani o'zbek tiliga (lotin yozuvida) qisqa va aniq tarjima qil. Agar ibora so'zma-so'z emas, ma'nosi bilan tarjima qilinsa — ma'nosini ber. Kontekst faqat ma'noni aniqlash uchun. Talaffuzni o'zbek harflarida yoz (masalan «bonjur»). Faqat JSON: {\"uz\": \"tarjima\", \"say\": \"talaffuz\"}",
+        },
+      ],
+    },
+    contents: [{ role: 'user', parts: [{ text: `Ibora: ${req.text}${req.context ? `\nKontekst: ${req.context}` : ''}` }] }],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 120,
+      responseMimeType: 'application/json',
+      responseSchema: { type: 'OBJECT', properties: { uz: { type: 'STRING' }, say: { type: 'STRING' } }, required: ['uz'] },
+      ...(thinking ? { thinkingConfig: thinking } : {}),
+    },
+  };
+}

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyChatTurn } from '../engine/game';
-import { playSfx, speak, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio';
+import { playSfx, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio';
 import { askTutor, updateMemory, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, type ChatMessage, type Scenario } from '../engine/tutor';
 import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
+import { FrChip } from '../components/FrChip';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
 import { answerLang, extractCues } from '../engine/voice/markers';
@@ -47,14 +48,13 @@ const SpeechRec: (new () => SR) | undefined =
 export function RichText({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const { state } = useStore();
   const segs = useMemo(() => parseRich(text, streaming), [text, streaming]);
+  // Tarjima uchun kontekst: shu xabarning o'zbekcha qismi (qisqa).
+  const ctx = useMemo(() => segs.filter((x) => x.kind !== 'fr').map((x) => x.text).join(' ').slice(0, 300), [segs]);
   return (
     <>
       {segs.map((s, i) =>
         s.kind === 'fr' ? (
-          <button key={i} type="button" className="fr-chip" onClick={() => speak(s.text, state.settings.ttsRate)} title="Tinglash">
-            {s.text}
-            {ttsSupported() && <span className="fr-chip-icon">🔊</span>}
-          </button>
+          <FrChip key={i} text={s.text} context={ctx} rate={state.settings.ttsRate} />
         ) : s.kind === 'bold' ? (
           <b key={i}>{s.text}</b>
         ) : (
