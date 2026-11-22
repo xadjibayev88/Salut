@@ -19,6 +19,8 @@ export interface LearnerContext {
   words: string[];
   mistakes: string[];
   streak: number;
+  /** Uzoq muddatli xotira: o'quvchi haqida avvalgi suhbatlardan yig'ilgan faktlar. */
+  memory: string;
 }
 
 export interface TutorRequest {
@@ -77,6 +79,7 @@ export function parseTutorRequest(body: unknown): TutorRequest | string {
     words: strList(c.words, LIMITS.words, 40),
     mistakes: strList(c.mistakes, LIMITS.mistakes, 160),
     streak: typeof c.streak === 'number' && Number.isFinite(c.streak) ? Math.max(0, Math.min(10000, Math.floor(c.streak))) : 0,
+    memory: str(c.memory, 1400),
   };
   const customRole = str(b.customRole, LIMITS.role);
   if (scenario === 'custom' && customRole.length < 20) return "O'z rolingiz kamida 20 ta belgidan iborat bo'lsin";
@@ -192,6 +195,10 @@ export function systemInstruction(req: TutorRequest): string {
   if (req.mode === 'voice') parts.push(voiceRules(req.audioTags, rude));
   else parts.push(`MATNLI CHAT EFFEKTLARI (belgilar ko'rinmaydi, faqat maskot va rasmni boshqaradi):\n${mascotRules(rude)}`);
   parts.push(`O'QUVCHI HAQIDA (ma'lumot):\n${JSON.stringify(learner)}`);
+  if (c.memory)
+    parts.push(`XOTIRA — avvalgi suhbatlardan bilganlaring (ma'lumot):\n${c.memory}\nUndan TABIIY foydalan: o'tgan mavzular, qiziqishlari va hayotidan misollar keltir, «o'tgan safar ... degandingiz» kabi eslat (har javobda emas, o'rinli joyda). Xotirada yo'q narsani to'qima.`);
+  if (req.message.startsWith('[SUHBAT BOSHLANDI]'))
+    parts.push("YANGI SUHBAT BOSHLANDI: o'quvchini ismi bilan erkalab salomlash, xotiradan bitta narsani hazil bilan eslatib, bitta savol ber. Ko'pi bilan 2 qisqa gap.");
   return parts.join('\n\n');
 }
 

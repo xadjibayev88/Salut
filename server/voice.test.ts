@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseTutorRequest, systemInstruction, type TutorRequest } from './tutor.ts';
-import { cleanFeedback, feedbackBody, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { cleanFeedback, cleanMemory, feedbackBody, memoryBody, parseMemoryRequest, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const base = { scenario: 'free', message: 'Salom', history: [], context: {} };
 
@@ -88,5 +88,23 @@ describe('Gemini ovozi (bepul)', () => {
     expect(r.mime).toBe('audio/wav');
     expect(r.audio.subarray(0, 4).toString('ascii')).toBe('RIFF');
     expect(r.audio.length).toBe(44 + 480);
+  });
+});
+
+describe('xotira', () => {
+  it("so'rovni tekshiradi va natijani tozalaydi", () => {
+    expect(typeof parseMemoryRequest({ turns: [{ role: 'tutor', text: 'Salom' }] })).toBe('string');
+    const r = parseMemoryRequest({ memory: '- Ali', name: 'Ali', turns: [{ role: 'user', text: "Men Toshkentda dasturchiman [[shape:star]]" }] });
+    expect(typeof r).not.toBe('string');
+    expect(JSON.stringify(memoryBody(r as never, 'gemini-3.5-flash-lite'))).toContain('Toshkentda dasturchiman');
+    expect(cleanMemory({ memory: 'Ismi Ali\n- Dasturchi\n\n- Parijga bormoqchi' })).toBe('- Ismi Ali\n- Dasturchi\n- Parijga bormoqchi');
+    expect(cleanMemory({})).toBe('');
+  });
+});
+
+describe('xotira formati', () => {
+  it('massiv va bitta qatorli matnni ham qatorlarga ajratadi', () => {
+    expect(cleanMemory({ memory: ['Ismi Ali', '- Dasturchi'] })).toBe('- Ismi Ali\n- Dasturchi');
+    expect(cleanMemory({ memory: '- Ismi: Ali. - Shahri: Toshkent. - Ishi: Dasturchi.' })).toBe('- Ismi: Ali.\n- Shahri: Toshkent.\n- Ishi: Dasturchi.');
   });
 });

@@ -200,6 +200,12 @@ export class VoiceCall {
     this.mic.vadEnabled = this.o.inputMode === 'handsfree';
     this.startedAt = Date.now();
     this.timer = window.setInterval(() => this.tick(), 500);
+    // Xotira bo'lsa — Vivi o'tgan suhbatlarni eslab, o'zi salomlashadi.
+    const memory = (this.o.context() as { memory?: string })?.memory;
+    if (memory && memory.trim()) {
+      void this.ask("[SUHBAT BOSHLANDI] Salomlash va xotiradan bir narsani eslat.");
+      return;
+    }
     // Salomlashish: LLM kutmasdan darhol gapiradi.
     const role = ROLES.find((r) => r.id === this.o.role) ?? ROLES[0];
     const greet = role.voiceGreet(this.o.name);
@@ -435,6 +441,11 @@ export class VoiceCall {
       }
       if (acc.trim()) this.addTurn('tutor', acc.trim());
       this.tts.end();
+      if (code === 'voice_limit') {
+        // Bepul ovozli suhbat limiti tugadi — suhbat yakunlanadi (tahlil va dam olish ekrani).
+        this.notice('upstream', (e as Error).message, 6000);
+        return this.end('limit');
+      }
       this.notice(code === 'rate_limited' || code === 'busy' ? 'rateLimited' : 'upstream', (e as Error).message, 6000);
       if (!acc) this.toReady();
     }

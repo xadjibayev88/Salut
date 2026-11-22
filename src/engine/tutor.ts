@@ -84,7 +84,24 @@ export function learnerContext(s: GameState) {
       return '';
     })
     .filter(Boolean);
-  return { name: s.name, lessons: lessons.map((l) => l.title), words, mistakes, streak: s.streak };
+  return { name: s.name, lessons: lessons.map((l) => l.title), words, mistakes, streak: s.streak, memory: s.memory ?? '' };
+}
+
+/** Suhbatdan keyin Vivi xotirasini yangilaydi (o'quvchi haqidagi uzoq muddatli faktlar). */
+export async function updateMemory(memory: string, turns: { role: 'user' | 'tutor'; text: string }[], name: string): Promise<string | null> {
+  if (!turns.some((t) => t.role === 'user')) return null;
+  try {
+    const res = await fetch('./api/tutor/memory', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ memory, turns: turns.slice(-40), name }),
+    });
+    if (!res.ok) return null;
+    const b = (await res.json()) as { memory?: string };
+    return typeof b.memory === 'string' && b.memory.trim() ? b.memory : null;
+  } catch {
+    return null;
+  }
 }
 
 export class TutorError extends Error {

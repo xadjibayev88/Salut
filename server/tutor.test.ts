@@ -217,3 +217,14 @@ describe('zaxira AI xizmati', () => {
     expect(out).toBe('Salut jonim!');
   });
 });
+
+describe('xotira promptda', () => {
+  it("xotira va yangi suhbat ko'rsatmasi qo'shiladi", () => {
+    const r = parseTutorRequest({ scenario: 'free', message: '[SUHBAT BOSHLANDI] salom', context: { memory: '- Parijga bormoqchi' } }) as TutorRequest;
+    const sys = systemInstruction(r);
+    expect(sys).toContain('XOTIRA');
+    expect(sys).toContain('Parijga bormoqchi');
+    expect(sys).toContain('YANGI SUHBAT BOSHLANDI');
+    expect(systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom' }) as TutorRequest)).not.toContain('XOTIRA —');
+  });
+});

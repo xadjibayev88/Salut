@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyChatTurn } from '../engine/game';
 import { playSfx, speak, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio';
-import { askTutor, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, type ChatMessage, type Scenario } from '../engine/tutor';
+import { askTutor, updateMemory, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, type ChatMessage, type Scenario } from '../engine/tutor';
 import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
 import { VoiceHub } from './voice/VoiceHub';
@@ -128,6 +128,12 @@ function TextChat() {
       }, ac.signal);
       const reply: ChatMessage = { id: uid(), role: 'tutor', text: acc.trim() || '...', ts: Date.now() };
       setMessages((m) => [...m, reply]);
+      // Har 6 ta xabardan keyin Vivi xotirasini yangilaymiz (fon rejimida).
+      const userCount = messages.filter((m) => m.role === 'user').length + 1;
+      if (userCount % 6 === 0) {
+        const recent = [...messages, userMsg, reply].filter((m) => !m.error).slice(-20).map((m) => ({ role: m.role, text: m.text }));
+        void updateMemory(state.memory ?? '', recent, state.name).then((mem) => mem && update((s) => ({ ...s, memory: mem })));
+      }
       // Mikrofon tili avtomatik: Vivi fransuzcha javob kutsa — FR, aks holda UZ.
       const want = answerLang(reply.text);
       if (want) setMicLang(want === 'fr' ? 'fr-FR' : 'uz-UZ');

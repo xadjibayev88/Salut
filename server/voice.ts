@@ -292,3 +292,66 @@ function wavHeader(dataLen: number, rate: number, channels = 1, bits = 16): Buff
   h.writeUInt32LE(dataLen, 40);
   return h;
 }
+
+
+// ---------- Uzoq muddatli xotira ----------
+export interface MemoryRequest {
+  memory: string;
+  turns: { role: 'user' | 'tutor'; text: string }[];
+  name: string;
+}
+
+export function parseMemoryRequest(body: unknown): MemoryRequest | string {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const turns = Array.isArray(b.turns)
+    ? b.turns
+        .slice(-40)
+        .map((t) => {
+          const o = (t ?? {}) as Record<string, unknown>;
+          const role = o.role === 'user' || o.role === 'tutor' ? o.role : null;
+          const text = typeof o.text === 'string' ? o.text.replace(/\[\[[^\]]*\]\]/g, '').trim().slice(0, 600) : '';
+          return role && text ? { role, text } : null;
+        })
+        .filter((t): t is { role: 'user' | 'tutor'; text: string } => t !== null)
+    : [];
+  if (!turns.some((t) => t.role === 'user')) return "Suhbat bo'sh";
+  return { memory: typeof b.memory === 'string' ? b.memory.slice(0, 1400) : '', turns, name: typeof b.name === 'string' ? b.name.slice(0, 40) : '' };
+}
+
+export function memoryBody(req: MemoryRequest, model: string): Record<string, unknown> {
+  const thinking = thinkingFor(model);
+  const transcript = req.turns.map((t) => `${t.role === 'user' ? "O'quvchi" : 'Vivi'}: ${t.text}`).join('\n');
+  return {
+    systemInstruction: {
+      parts: [
+        {
+          text: `Sen AI ustoz Vivi'ning xotira muharririsan. Mavjud xotira va yangi suhbatdan o'quvchi haqidagi UZOQ MUDDATLI faktlarni yangilangan ro'yxat qilib qaytar (o'zbek tilida, lotin yozuvida).
+Saqla: ismi, yoshi, shahri, ishi/o'qishi, oilasi, uy hayvonlari, qiziqishlari, fransuz tilini o'rganish maqsadi (sayohat, imtihon, ish...), yoqtirgan uslubi (hazil, qattiqqo'llik), muhim voqealar, qaysi mavzularda gaplashilgani (qisqa), takroriy xatolari, yaxshi o'zlashtirgan iboralari.
+Qoidalar: har bir fakt — ro'yxatning alohida elementi, qisqa (ko'pi bilan 100 belgi); ko'pi bilan 14 ta; takroriy xatolarni albatta yoz; eng muhimi tepada; eskirgan yoki qarama-qarshi faktni yangisiga almashtir; vaqtinchalik narsalar («hozir charchadim») va Vivi'ning gaplari kirmaydi; parol, telefon, manzil, karta kabi maxfiy ma'lumotlarni HECH QACHON saqlama; o'quvchi aytmagan narsani qo'shma. Faqat JSON: {"memory": ["fakt 1", "fakt 2", ...]}`,
+        },
+      ],
+    },
+    contents: [{ role: 'user', parts: [{ text: `O'quvchi ismi: ${req.name || "noma'lum"}\nMAVJUD XOTIRA:\n${req.memory || "(bo'sh)"}\n\nYANGI SUHBAT:\n${transcript}` }] }],
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 900,
+      responseMimeType: 'application/json',
+      responseSchema: { type: 'OBJECT', properties: { memory: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['memory'] },
+      ...(thinking ? { thinkingConfig: thinking } : {}),
+    },
+  };
+}
+
+export function cleanMemory(raw: unknown): string {
+  const m = (raw as { memory?: unknown })?.memory;
+  const items = Array.isArray(m) ? m.filter((x): x is string => typeof x === 'string') : typeof m === 'string' ? m.split(/\r?\n|\s+-\s+(?=[A-ZА-ЯЎҚҒҲ'"«])/) : [];
+  if (!items.length) return '';
+  return items
+    .map((l) => l.replace(/^[-•*]\s*/, ''))
+    .map((l) => l.trim())
+    .map((l) => l.trim())
+    .filter((l) => l.length > 2)
+    .map((l) => `- ${l}`.slice(0, 140))
+    .slice(0, 14)
+    .join('\n');
+}

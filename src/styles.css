@@ -983,3 +983,7 @@ html.lite .vivi * { animation: none !important; }
 .avatar-opt.on { border-color: #a5b4fc; background: rgba(165, 180, 252, .18); }
 .bavatar .avatar-img { width: 30px; height: 30px; }
 .avatar-sheet .avatar-grid, .avatar-sheet .avatar-actions { width: 100%; align-self: stretch; } .avatar-sheet { background: linear-gradient(160deg, rgba(30, 34, 80, 0.98), rgba(18, 20, 52, 0.99)) !important; }
+.memory-card .memory-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.memory-card .memory-head .btn { padding: 4px 8px; font-size: 13px; }
+.memory-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
+.memory-card .small { font-size: 13px; margin: 0; }

@@ -30,6 +30,8 @@ export interface GameState {
   name: string;
   /** Avatar: emoji yoki rasm (data:/https: URL). */
   avatar?: string;
+  /** Vivi'ning uzoq muddatli xotirasi (o'quvchi haqidagi faktlar). */
+  memory?: string;
   onboarded: boolean;
   dailyGoal: number;
   createdAt: number;

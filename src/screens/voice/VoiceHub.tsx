@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CHARACTERS, CUSTOM_ROLE_MAX, CUSTOM_ROLE_MIN, EXPLAIN_LANGS, ROLES } from '../../data/characters';
 import { applyChatTurn } from '../../engine/game';
-import { learnerContext } from '../../engine/tutor';
+import { learnerContext, updateMemory } from '../../engine/tutor';
 import type { CallOptions, VoiceCall, VoiceConfig } from '../../engine/voice/call';
 import { loadHistory, loadPrefs, restUntil, savePrefs, setRestUntil, type SessionRecord, type VoicePrefs } from '../../engine/voice/prefs';
 import { browserSttSupported, cloudSttSupported } from '../../engine/voice/stt';
@@ -95,14 +95,19 @@ export function VoiceHub() {
   const onEnded = useCallback(
     (c: VoiceCall) => {
       const rec = c.record();
-      if (c.snap.endReason === 'limit' && config) setRestUntil(Date.now() + config.cooldownMinutes * 60_000);
+      const talked = rec.turns.filter((t) => t.role === 'user').length > 0;
+      // Bepul: kunlik sessiya ishlatildi — qanday tugaganidan qat'i nazar (keyingisi ertaga). Super: faqat limitda.
+      if (config && config.cooldownMinutes > 0 && (c.snap.endReason === 'limit' || (talked && !config.premium))) setRestUntil(Date.now() + config.cooldownMinutes * 60_000);
+      // Xotirani yangilash (fon rejimida).
+      if (talked)
+        void updateMemory(state.memory ?? '', rec.turns.map((t) => ({ role: t.role, text: t.text })), state.name).then((m) => m && update((s) => ({ ...s, memory: m })));
       if (c.snap.error || rec.turns.filter((t) => t.role === 'user').length === 0) {
         setView({ kind: 'hub' });
         return;
       }
       setView({ kind: 'feedback', record: rec });
     },
-    [config],
+    [config, state.memory, state.name, update],
   );
 
   const sample = (text: string) => {
@@ -354,6 +359,31 @@ export function VoiceHub() {
       {config && config.tts === 'browser' && !browserVoiceAvailable(prefs.lang) && (
         <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
       )}
+
+      <section className="vh-section memory-card">
+        <div className="memory-head">
+          <b>🧠 Vivi sizni eslaydi</b>
+          {state.memory && (
+            <button type="button" className="btn btn-text danger" onClick={() => update((s) => ({ ...s, memory: '' }))}>
+              Unutish
+            </button>
+          )}
+        </div>
+        {state.memory ? (
+          <ul className="memory-list">
+            {state.memory
+              .split('\n')
+              .map((l) => l.replace(/^-\s*/, '').trim())
+              .filter(Boolean)
+              .slice(0, 8)
+              .map((l, i) => (
+                <li key={i}>{l}</li>
+              ))}
+          </ul>
+        ) : (
+          <p className="muted small">Hozircha xotira bo'sh. Suhbatlashganingiz sari Vivi sizning qiziqishlaringiz, maqsadingiz va o'tgan mavzularni eslab qoladi.</p>
+        )}
+      </section>
 
       {config && config.messagesLeft != null && (
         <p className="vh-quota">

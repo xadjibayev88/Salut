@@ -8,7 +8,7 @@ import { Readable } from 'node:stream';
 import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback } from './tutor.ts';
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken } from './accounts.ts';
 import { activePlan, click, createOrder, orderStatus, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
-import { cleanFeedback, elevenLabsTts, feedbackBody, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { cleanFeedback, elevenLabsTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -228,6 +228,21 @@ function freeLeft(req: IncomingMessage): number | null {
   const r = dailyUse.get(quotaKey(req));
   return Math.max(0, FREE_MSGS - (r && r.day === tashkentDay() ? r.n : 0));
 }
+// Bepul ovozli suhbat: kuniga bitta, FREE_VOICE_MIN daqiqa (birinchi ovozli so'rovdan boshlab hisoblanadi).
+const voiceUse = new Map<string, { day: string; start: number }>();
+function voiceLimited(req: IncomingMessage): boolean {
+  if (isPremium(req)) return false;
+  const k = quotaKey(req);
+  const day = tashkentDay();
+  const r = voiceUse.get(k);
+  if (!r || r.day !== day) {
+    voiceUse.set(k, { day, start: Date.now() });
+    return false;
+  }
+  // 1 daqiqa zaxira: tarmoq kechikishi va oxirgi javob uchun.
+  return Date.now() - r.start > (FREE_VOICE_MIN + 1) * 60_000;
+}
+
 function useFree(req: IncomingMessage) {
   if (isPremium(req)) return;
   const k = quotaKey(req);
@@ -417,6 +432,11 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
         message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Ertaga yana gaplashamiz — yoki Super bilan cheklovsiz davom eting 💜`,
       });
     return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseTutorRequest }, async (data, signal) => {
+      if (data.mode === 'voice' && voiceLimited(req))
+        return json(res, 429, {
+          code: 'voice_limit',
+          message: `Bugungi ${FREE_VOICE_MIN} daqiqalik bepul ovozli suhbat tugadi, asalim. Ertaga yana gaplashamiz — yoki Super bilan cheklovsiz 💜`,
+        });
       useFree(req);
       let started = false;
       const send = (o: unknown) => res.write(`data: ${JSON.stringify(o)}\n\n`);
@@ -436,6 +456,12 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     guarded(req, res, { bucket: 'feedback', maxBody: 160 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseFeedbackRequest }, async (data, signal) => {
       const raw = await generateJson(feedbackBody(data, MODEL), gem(signal));
       json(res, 200, cleanFeedback(raw));
+    }),
+
+  'POST /api/tutor/memory': (req, res) =>
+    guarded(req, res, { bucket: 'feedback', maxBody: 120 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseMemoryRequest }, async (data, signal) => {
+      const raw = await generateJson(memoryBody(data, MODEL), gem(signal));
+      json(res, 200, { memory: cleanMemory(raw) });
     }),
 
   'POST /api/stt': (req, res) =>

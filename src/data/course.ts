@@ -1,6 +1,6 @@
 // Kurs mazmuni: Fransuz tili (A1 → C2) — o'zbek tilida so'zlashuvchilar uchun.
 // Birinchi 6 bo'lim qo'lda yozilgan (A1), qolganlari course-ext.ts da.
-import { COURSE_EXT } from './course-ext';
+import { COURSE_EXT } from './course-ext.ts';
 // Har bir dars: yangi so'zlar + shu so'zlardan tuzilgan gaplar.
 // `alt` — qabul qilinadigan muqobil tarjimalar.
 
