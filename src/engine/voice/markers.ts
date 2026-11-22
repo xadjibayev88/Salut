@@ -14,12 +14,19 @@ const AUDIO_TAGS = /\[(laughs|laughing|chuckles|giggles|sighs|whispers|excited|c
 export interface Cue {
   shape?: Shape;
   actions: Action[];
+  /** [[img:Sevara Nazarxon]] — ekranda rasm chiqadi. */
+  image?: string;
 }
 
 /** Matndan belgilarni ajratadi: ko'rsatish uchun toza matn va maskot buyruqlari. */
 export function extractCues(text: string): { clean: string; cue: Cue } {
   const cue: Cue = { actions: [] };
   const clean = text
+    .replace(/\[\[(\/?fr)\]/gi, '[$1]') // model ba'zan «[[fr]» deb yozadi
+    .replace(/\[\[\s*img\s*:\s*([^\]]{2,80})\]\]/gi, (_m, q: string) => {
+      cue.image ??= q.trim();
+      return '';
+    })
     // To'g'ri shakl: [[shape:star]] / [[do:hop]]. Model ba'zan [[star]] yoki [[hop]] deb yozadi —
     // nomidan qaysi turligini aniqlaymiz. Noma'lum [[...]] belgilar shunchaki olib tashlanadi.
     .replace(/\[\[\s*(?:(shape|do)\s*:\s*)?([a-z]+)\s*\]\]/gi, (_m, kind: string | undefined, name: string) => {

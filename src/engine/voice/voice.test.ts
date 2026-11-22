@@ -73,3 +73,15 @@ describe('answerLang — fransuzcha savol belgidan ustun', () => {
     expect(answerLang("[fr]Bonjour ![/fr] — salom. Bugun nimani o'rganamiz? [[ans:uz]]")).toBe('uz');
   });
 });
+
+describe('effektlar: rasm va noto\'g\'ri teglar', () => {
+  it('[[img:...]] ajratiladi va matndan olinadi', () => {
+    const { clean, cue } = extractCues("[[shape:heart]] Voy, [[img:Ulug'bek Rahmatullayev]] kabi romantik!");
+    expect(cue.image).toBe("Ulug'bek Rahmatullayev");
+    expect(cue.shape).toBe('heart');
+    expect(clean).not.toContain('[[');
+  });
+  it('«[[fr]» xatosi tuzatiladi', () => {
+    expect(parseRichAns('ey [[fr]mon amour[/fr] — muhabbatim').find((s) => s.kind === 'fr')?.text).toBe('mon amour');
+  });
+});

@@ -3,6 +3,7 @@ import { CHARACTERS } from '../../data/characters';
 import { VoiceCall as Controller, type CallOptions, type Snapshot } from '../../engine/voice/call';
 import { displayText } from '../../engine/voice/markers';
 import { KruaLive, type LiveState } from '../../components/KruaLive';
+import { ImagePop } from '../../components/ImagePop';
 import { RichText } from '../Tutor';
 import { setImmersive } from '../../engine/ads';
 
@@ -175,6 +176,7 @@ export function VoiceCallScreen({
       {s.tired && <div className="call-tired">😮‍💨 Vivi charchayapti… {fmt(s.limitMs - s.elapsedMs)} qoldi</div>}
 
       <main className="call-stage">
+        {s.image && <ImagePop key={s.image.key} query={s.image.q} />}
         <button
           type="button"
           className="call-avatar"

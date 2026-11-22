@@ -135,7 +135,7 @@ export type Segment = { kind: 'text' | 'fr' | 'bold'; text: string };
 /** "[fr]...[/fr]" va "**...**" belgilarini bo'laklarga ajratadi (oqim davomida chala teglarga chidamli). */
 export function parseRich(input: string, streaming = false): Segment[] {
   // Maxfiy belgilar ([[ans:fr]], [[shape:x]] ...) ko'rinmaydi; oqimdagi chala belgi ham.
-  let text = input.replace(/\[\[[^\]]*\]\]/g, '').replace(/\[\[[^\]]*$/, '').replace(/[ \t]+$/gm, '');
+  let text = input.replace(/\[\[(\/?fr)\]/gi, '[$1]').replace(/\[\[[^\]]*\]\]/g, '').replace(/\[\[[^\]]*$/, '').replace(/[ \t]+$/gm, '');
   if (streaming) text = text.replace(/\[\/?f?r?\]?$/i, '').replace(/\*$/, '');
   const out: Segment[] = [];
   const re = /\[fr\]([\s\S]*?)(\[\/fr\]|$)|\*\*([^*]+)\*\*/gi;

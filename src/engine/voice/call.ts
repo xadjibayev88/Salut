@@ -59,6 +59,8 @@ export interface Turn {
 export interface Snapshot {
   phase: Phase;
   shape: Shape;
+  /** Rasm effekti: so'nggi [[img:...]] (key — har safar yangidan chiqishi uchun). */
+  image: { q: string; key: number } | null;
   action: Action | null;
   actionKey: number;
   level: number;
@@ -109,6 +111,7 @@ export class VoiceCall {
     this.snap = {
       phase: 'connecting',
       shape: 'pill',
+      image: null,
       action: null,
       actionKey: 0,
       level: 0,
@@ -129,6 +132,7 @@ export class VoiceCall {
       const { cue } = extractCues(raw);
       const patch: Partial<Snapshot> = { phase: 'speaking' };
       if (cue.shape) patch.shape = cue.shape;
+      if (cue.image) patch.image = { q: cue.image, key: (this.snap.image?.key ?? 0) + 1 };
       if (cue.actions.length) {
         patch.action = cue.actions[0];
         patch.actionKey = this.snap.actionKey + 1;

@@ -187,6 +187,7 @@ export function parseVoices(env: string | undefined): VoiceOption[] {
 
 export function ttsText(raw: unknown): string | null {
   const t = str(raw, 600)
+    .replace(/\[\[(\/?fr)\]/gi, '[$1]')
     .replace(/\[\[[^\]]*\]\]/g, '') // barcha maskot belgilari ([[shape:x]], [[tall]] ...)
     .replace(/(\[\/fr\])\s*\([^)]{1,80}\)/gi, '$1')
     .replace(/\[\/?fr\]/gi, '')

@@ -6,7 +6,9 @@ import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
-import { answerLang } from '../engine/voice/markers';
+import { answerLang, extractCues } from '../engine/voice/markers';
+import { KruaLive } from '../components/KruaLive';
+import { InlineImage } from '../components/ImagePop';
 import { CloudStt, cloudSttSupported } from '../engine/voice/stt';
 
 const CHAT_KEY = 'salut.chat.v1';
@@ -234,13 +236,27 @@ function TextChat() {
     setTimeout(() => send(lastUser.text), 0);
   };
 
+  // Matnli chatda ham Vivi jonli: oxirgi javobdagi shakl va imo-ishora sarlavhadagi maskotda ko'rinadi.
+  const lastTutor = [...messages].reverse().find((m) => m.role === 'tutor' && !m.error);
+  const live = useMemo(() => {
+    const raw = lastTutor?.text ?? '';
+    const cues = raw.split(/(?<=[.!?…])\s+/).map((x) => extractCues(x).cue);
+    const shape = [...cues].reverse().find((c) => c.shape)?.shape ?? 'pill';
+    const action = cues.find((c) => c.actions.length)?.actions[0] ?? null;
+    return { shape, action, key: lastTutor?.id ?? 'none' };
+  }, [lastTutor?.id, lastTutor?.text]);
+  const [actKey, setActKey] = useState(0);
+  useEffect(() => setActKey((k) => k + 1), [live.key]);
+
   const showSuggestions = !busy && messages.length < 2;
   const lastIsError = messages[messages.length - 1]?.error;
 
   return (
     <div className="tutor-chat">
       <div className="tutor-head">
-        <Mascot mood={busy ? 'think' : 'happy'} size={52} />
+        <div className="tutor-live">
+          <KruaLive shape={busy ? 'pill' : live.shape} action={busy ? null : live.action} actionKey={actKey} state={busy ? 'thinking' : 'idle'} size={58} />
+        </div>
         <div className="tutor-title">
           <b>Vivi ustoz</b>
           <small className={busy ? 'typing-label' : ''}>{busy ? 'yozmoqda…' : 'AI · fransuz tili ustozi'}</small>
@@ -272,6 +288,7 @@ function TextChat() {
             {m.role === 'tutor' && <div className="msg-avatar"><Mascot size={30} mood="happy" /></div>}
             <div className="msg-bubble">
               {m.role === 'tutor' ? <RichText text={m.text} /> : m.text}
+              {m.role === 'tutor' && !m.error && extractCues(m.text).cue.image && <InlineImage query={extractCues(m.text).cue.image!} />}
               {m.role === 'tutor' && !m.error && frenchParts(m.text).length > 0 && ttsSupported() && (
                 <button type="button" className="msg-play" onClick={() => speakQueue(frenchParts(m.text), state.settings.ttsRate)} title="Fransuzcha qismlarni tinglash">
                   ▶︎ fransuzcha
