@@ -1,5 +1,6 @@
 // Avatar: emoji yoki rasm (galereyadan yuklangan yoki Google profil rasmi).
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export const isImageAvatar = (v?: string | null) => !!v && /^(data:image\/|https:\/\/)/.test(v);
 
@@ -42,7 +43,8 @@ export function AvatarPicker({ value, googlePhoto, onPick, onClose }: { value?: 
     onPick(v);
     onClose();
   };
-  return (
+  // Portal: oyna sahifadagi shisha kartochkalar ostida qolib ketmasligi uchun body ga chiqariladi.
+  return createPortal(
     <div className="modal-back" onClick={onClose}>
       <div className="sheet avatar-sheet" onClick={(e) => e.stopPropagation()}>
         <h3>Avatarni tanlang</h3>
@@ -85,6 +87,7 @@ export function AvatarPicker({ value, googlePhoto, onPick, onClose }: { value?: 
           Bekor qilish
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

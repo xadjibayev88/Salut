@@ -982,3 +982,4 @@ html.lite .vivi * { animation: none !important; }
 .avatar-opt { aspect-ratio: 1; font-size: 28px; border-radius: 14px; border: 1.5px solid var(--line); background: rgba(255, 255, 255, .05); cursor: pointer; }
 .avatar-opt.on { border-color: #a5b4fc; background: rgba(165, 180, 252, .18); }
 .bavatar .avatar-img { width: 30px; height: 30px; }
+.avatar-sheet .avatar-grid, .avatar-sheet .avatar-actions { width: 100%; align-self: stretch; } .avatar-sheet { background: linear-gradient(160deg, rgba(30, 34, 80, 0.98), rgba(18, 20, 52, 0.99)) !important; }
