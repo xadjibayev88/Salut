@@ -45,6 +45,8 @@ export interface Cue {
  */
 export function normalizeMarkers(text: string): string {
   return text
+    // Ovoz teglarining «yopuvchi» shakli ([/sarcastic], [/whispers]) — kerak emas.
+    .replace(/\[\/(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|sarcastic|angry|shouts|screams)\]/gi, '')
     .replace(/\[\[(\/?fr)\]\]?/gi, '[$1]')
     .replace(/\[(\/fr)\]\]/gi, '[$1]')
     .replace(/(^|[^[])\[\s*(shape|do|img|ans)\s*:\s*([^\]\[]{1,80})\](?!\])/gi, '$1[[$2:$3]]');

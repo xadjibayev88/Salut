@@ -110,3 +110,9 @@ describe('noto\'g\'ri yozilgan belgilar', () => {
     expect(segs.map((x) => x.text).join('')).not.toContain('[');
   });
 });
+
+describe('yopuvchi ovoz teglari', () => {
+  it('[/sarcastic] ko\'rinmaydi', () => {
+    expect(displayText('[sarcastic] Machine à thé[/sarcastic]?! Blin.')).toBe('Machine à thé?! Blin.');
+  });
+});

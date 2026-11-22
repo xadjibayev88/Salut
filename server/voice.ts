@@ -187,6 +187,7 @@ export function parseVoices(env: string | undefined): VoiceOption[] {
 
 export function ttsText(raw: unknown): string | null {
   const t = str(raw, 600)
+    .replace(/\[\/(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|sarcastic|angry|shouts|screams)\]/gi, '')
     .replace(/\[\[(\/?fr)\]\]?/gi, '[$1]')
     .replace(/\[(\/fr)\]\]/gi, '[$1]')
     .replace(/\[\[[^\]]*\]\]/g, '')
