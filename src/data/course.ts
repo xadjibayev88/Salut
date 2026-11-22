@@ -1,4 +1,6 @@
-// Kurs mazmuni: Fransuz tili (A1) — o'zbek tilida so'zlashuvchilar uchun.
+// Kurs mazmuni: Fransuz tili (A1 → C2) — o'zbek tilida so'zlashuvchilar uchun.
+// Birinchi 6 bo'lim qo'lda yozilgan (A1), qolganlari course-ext.ts da.
+import { COURSE_EXT } from './course-ext';
 // Har bir dars: yangi so'zlar + shu so'zlardan tuzilgan gaplar.
 // `alt` — qabul qilinadigan muqobil tarjimalar.
 
@@ -23,8 +25,13 @@ export interface Lesson {
   sentences: Sentence[];
 }
 
+export type Cefr = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+export const CEFR: Cefr[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
 export interface Unit {
   id: string;
+  /** CEFR darajasi (standart: A1). */
+  level?: Cefr;
   title: string;
   description: string;
   color: string;
@@ -32,7 +39,7 @@ export interface Unit {
   lessons: Lesson[];
 }
 
-export const COURSE: Unit[] = [
+const BASE_COURSE: Unit[] = [
   {
     id: 'u1',
     title: 'Salomlashish',
@@ -576,6 +583,8 @@ export const COURSE: Unit[] = [
     ],
   },
 ];
+
+export const COURSE: Unit[] = [...BASE_COURSE.map((u) => ({ ...u, level: u.level ?? ('A1' as const) })), ...COURSE_EXT];
 
 export const ALL_LESSONS: Lesson[] = COURSE.flatMap((u) => u.lessons);
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { COURSE, type Unit } from '../data/course';
+import { COURSE, type Cefr, type Unit } from '../data/course';
 import { buildPath, chestReward, isLessonUnlocked, nodeState, openChest, type PathNode } from '../engine/game';
 import { playSfx, speak } from '../engine/audio';
 import { useStore } from '../state/store';
@@ -28,7 +28,24 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
       {COURSE.map((u, ui) => {
         const locked = !isLessonUnlocked(state, u.lessons[0].id);
         const done = u.lessons.filter((l) => state.lessonsDone[l.id]).length;
+        const lvl = u.level ?? 'A1';
+        const levelStart = ui === 0 || (COURSE[ui - 1].level ?? 'A1') !== lvl;
         return (
+          <div key={u.id} className="unit-wrap">
+          {levelStart && (
+            <div className={`level-head lv-${lvl}`}>
+              <span className="level-badge">{lvl}</span>
+              <div>
+                <b>{LEVEL_NAMES[lvl]}</b>
+                <small>{COURSE.filter((x) => (x.level ?? 'A1') === lvl).length} ta liniya</small>
+              </div>
+              {locked && ui > 0 && (
+                <button type="button" className="btn btn-jump" onClick={() => onStart({ kind: 'jump', level: lvl })}>
+                  ⚡ {lvl} ga sakrash
+                </button>
+              )}
+            </div>
+          )}
           <section key={u.id} className={`line ${locked ? 'locked' : ''}`} style={{ ['--unit' as string]: u.color }}>
             <header className="line-head">
               <span className="line-badge">{ui + 1}</span>
@@ -56,17 +73,27 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
               ))}
             </ol>
           </section>
+          </div>
         );
       })}
       <AdSlot />
       <div className="course-end">
         <Mascot mood="sleep" size={110} />
-        <p className="muted">Yangi liniyalar qurilmoqda. À bientôt !</p>
+        <p className="muted">Voilà ! Siz C2 — eng yuqori darajaga yetdingiz. Félicitations !</p>
       </div>
       {guide && <GuideModal unit={guide} onClose={() => setGuide(null)} />}
     </div>
   );
 }
+
+const LEVEL_NAMES: Record<Cefr, string> = {
+  A1: "Boshlang'ich",
+  A2: "Elementar",
+  B1: "O'rta",
+  B2: "O'rtadan yuqori",
+  C1: 'Ilg\'or',
+  C2: 'Mukammal',
+};
 
 function Station({
   node,

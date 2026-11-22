@@ -256,11 +256,12 @@ export function TypeView({ ex, locked, onAnswer }: ViewProps<'type'>) {
   useEffect(() => {
     setText('');
     ref.current?.focus();
-    if (ex.dir === 'fr2uz') {
+    if (ex.dir === 'fr2uz' || ex.mode === 'dictation') {
       const t = setTimeout(() => speak(ex.sentence.fr), 300);
       return () => clearTimeout(t);
     }
   }, [ex.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mode = ex.mode ?? 'translate';
   const change = (v: string) => {
     setText(v);
     onAnswer(v.trim() ? { kind: 'type', text: v } : null);
@@ -279,20 +280,39 @@ export function TypeView({ ex, locked, onAnswer }: ViewProps<'type'>) {
   };
   return (
     <div className="ex">
-      <h2 className="ex-title">{ex.dir === 'fr2uz' ? "O'zbek tiliga tarjima qiling" : 'Fransuz tiliga tarjima qiling'}</h2>
-      <div className="prompt-row">
-        <div className="prompt-mascot"><Mascot size={78} /></div>
-        <div className="bubble">
-          {ex.dir === 'fr2uz' && <SpeakerButton text={ex.sentence.fr} />}
-          {ex.dir === 'fr2uz' ? <HintSentence text={ex.prompt} /> : <span>{ex.prompt}</span>}
+      <h2 className="ex-title">
+        {mode === 'cloze' ? "Bo'sh joyni to'ldiring" : mode === 'dictation' ? 'Eshitganingizni to\'liq yozing (diktant)' : ex.dir === 'fr2uz' ? "O'zbek tiliga tarjima qiling" : 'Fransuz tiliga tarjima qiling'}
+      </h2>
+      {mode === 'dictation' ? (
+        <div className="listen-row">
+          <SpeakerButton text={ex.sentence.fr} big />
+          <SpeakerButton text={ex.sentence.fr} slow />
         </div>
-      </div>
+      ) : (
+        <div className="prompt-row">
+          <div className="prompt-mascot"><Mascot size={78} /></div>
+          <div className="bubble">
+            {ex.dir === 'fr2uz' && <SpeakerButton text={ex.sentence.fr} />}
+            {mode === 'cloze' ? (
+              <span className="cloze">
+                <b className="cloze-fr">{ex.display}</b>
+                <small className="cloze-uz">{ex.prompt}</small>
+              </span>
+            ) : ex.dir === 'fr2uz' ? (
+              <HintSentence text={ex.prompt} />
+            ) : (
+              <span>{ex.prompt}</span>
+            )}
+          </div>
+        </div>
+      )}
       <textarea
         ref={ref}
         className="type-input"
         value={text}
         disabled={locked}
-        placeholder={ex.dir === 'fr2uz' ? "O'zbekcha yozing" : 'Fransuzcha yozing'}
+        placeholder={mode === 'cloze' ? "Tushib qolgan so'zni yozing" : mode === 'dictation' ? 'Eshitgan gapingizni fransuzcha yozing' : ex.dir === 'fr2uz' ? "O'zbekcha yozing" : 'Fransuzcha yozing'}
+        rows={mode === 'cloze' ? 1 : undefined}
         lang={ex.dir === 'fr2uz' ? 'uz' : 'fr'}
         autoCapitalize="off"
         autoCorrect="off"

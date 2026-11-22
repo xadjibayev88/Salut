@@ -5,7 +5,11 @@ Nomi, maskoti (Vivi — yoqimtoy parijlik mushukcha), dizayni va kurs mazmuni or
 
 ## Imkoniyatlar
 
-- **Kurs (A1):** 6 bo'lim, 20 dars, ~120 so'z, ~95 gap. Har bir bo'lim uchun grammatika qo'llanmasi va lug'at.
+- **Kurs (A1 → C2):** 50 ta bo'lim, CEFR darajalari bo'yicha (A1, A2, B1, B2, C1, C2), har birida grammatika
+  qo'llanmasi. Dastlabki 6 bo'lim qo'lda yozilgan, qolganlari `src/data/course-ext.ts` (o'quv reja + AI yaratish +
+  AI muharrir tekshiruvi + avtomatik tozalash). Darajadan sakrash testi (15 savol, ≤3 xato).
+- **Qiyinlashib boruvchi mashqlar:** yuqori darajalarda bo'sh joyni to'ldirish (fe'l shakllari), diktant
+  (eshitib to'liq yozish) va ko'proq erkin tarjima.
 - **Mashq turlari:** so'z tanlash (rasmli), juftliklar, so'z banki (fr→uz va uz→fr), tinglab yozish,
   to'g'ri tarjimani tanlash, erkin yozish (urg'u klaviaturasi bilan). So'z ustiga bossangiz, tarjimasi chiqadi.
 - **Javob tekshirish:** muqobil tarjimalar, o'zbekcha apostrof variantlari (o' / oʻ / o‘), urg'u belgisiz yozilgan javob

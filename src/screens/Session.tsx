@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ALL_LESSONS, COURSE, findLesson, type Sentence, type Word } from '../data/course';
+import { ALL_LESSONS, CEFR, COURSE, findLesson, type Cefr, type Sentence, type Word } from '../data/course';
 import { buildLesson, buildPractice, type Exercise } from '../engine/exercises';
 import { evaluate, type Answer, type Evaluation } from '../engine/evaluate';
 import {
@@ -22,6 +22,8 @@ import { Result } from './Result';
 export type SessionConfig =
   | { kind: 'lesson'; lessonId: string }
   | { kind: 'review'; unitIndex: number }
+  /** Darajadan sakrash testi: oldingi daraja materialidan, ko'pi bilan 3 xato. */
+  | { kind: 'jump'; level: Cefr }
   | { kind: 'practice'; mode: 'smart' | 'mistakes' | 'listening' };
 
 const PRAISE = ['Voilà !', 'Voilà !', 'Ajoyib!', "Zo'r!", 'Barakalla!', 'Juda yaxshi!', 'Très bien !', 'Parfait !', 'Qoyil!', 'Super!'];
@@ -31,6 +33,13 @@ function generate(cfg: SessionConfig, state: ReturnType<typeof useStore>['state'
   if (cfg.kind === 'lesson') {
     const f = findLesson(cfg.lessonId)!;
     return buildLesson(f.lesson, f.unit, { tts, level: state.lessonsDone[cfg.lessonId] ?? 0 });
+  }
+  if (cfg.kind === 'jump') {
+    const prev = CEFR[CEFR.indexOf(cfg.level) - 1] ?? 'A1';
+    const units = COURSE.filter((u) => (u.level ?? 'A1') === prev);
+    const words = units.flatMap((u) => u.lessons.flatMap((l) => l.words));
+    const sents = units.flatMap((u) => u.lessons.flatMap((l) => l.sentences));
+    return buildPractice(sample(words, 6), sample(sents, 10), words, sents, { tts }).slice(0, 15);
   }
   if (cfg.kind === 'review') {
     const u = COURSE[cfg.unitIndex];
@@ -95,13 +104,15 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
 
   const [total, setTotal] = useState(initial.length);
   const ex = queue[pos];
-  const usesHearts = config.kind !== 'practice' && !state.unlimitedHearts && !premium;
-  const accent = config.kind === 'lesson' ? findLesson(config.lessonId)!.unit.color : config.kind === 'review' ? COURSE[config.unitIndex].color : '#8B5CF6';
+  const usesHearts = config.kind !== 'practice' && config.kind !== 'jump' && !state.unlimitedHearts && !premium;
+  const [jumpFailed, setJumpFailed] = useState(false);
+  const JUMP_MAX_MISTAKES = 3;
+  const accent = config.kind === 'lesson' ? findLesson(config.lessonId)!.unit.color : config.kind === 'review' ? COURSE[config.unitIndex].color : config.kind === 'jump' ? '#F59E0B' : '#8B5CF6';
 
   const finish = useCallback(() => {
     const st = stats.current;
     const result: SessionResult = {
-      kind: config.kind,
+      kind: config.kind === 'jump' ? 'practice' : config.kind,
       lessonId: config.kind === 'lesson' ? config.lessonId : config.kind === 'review' ? `${COURSE[config.unitIndex].id}-review` : undefined,
       total,
       firstTryCorrect: st.firstTry,
@@ -112,7 +123,15 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
       mistakeRefs: [...st.mistakeRefs].filter((r) => !st.fixed.has(r) || config.kind === 'lesson'),
       fixedRefs: config.kind === 'practice' ? [...st.fixed] : [],
     };
-    const r = applySession(state, result);
+    let r = applySession(state, result);
+    if (config.kind === 'jump') {
+      // Test topshirildi: shu darajagacha bo'lgan barcha darslar ochiladi.
+      const first = COURSE.find((u) => (u.level ?? 'A1') === config.level)?.lessons[0].id;
+      const upto = ALL_LESSONS.findIndex((l) => l.id === first);
+      const lessonsDone = { ...r.state.lessonsDone };
+      ALL_LESSONS.slice(0, Math.max(0, upto)).forEach((l) => (lessonsDone[l.id] = Math.max(1, lessonsDone[l.id] ?? 0)));
+      r = { ...r, state: { ...r.state, lessonsDone } };
+    }
     update(() => r.state);
     playSfx('complete', state.settings.sound);
     setFinished(r.reward);
@@ -146,8 +165,12 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
         setCombo(0);
         playSfx('wrong', state.settings.sound);
         vibrate(120);
-        // Xato mashq oxirida qayta beriladi.
-        setQueue((q) => [...q, { ...ex, id: ex.id + 'r', retry: true }]);
+        if (config.kind === 'jump') {
+          if (st.mistakes > JUMP_MAX_MISTAKES) setJumpFailed(true);
+        } else {
+          // Xato mashq oxirida qayta beriladi.
+          setQueue((q) => [...q, { ...ex, id: ex.id + 'r', retry: true }]);
+        }
         if (usesHearts) update((s) => loseHeart(s));
       }
       setEvaluation(ev);
@@ -295,6 +318,18 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
         </div>
       )}
 
+      {jumpFailed && evaluation && (
+        <div className="modal-back">
+          <div className="sheet">
+            <Mascot mood="sad" size={96} />
+            <h3>Hozircha yetmadi</h3>
+            <p className="muted">Testda {JUMP_MAX_MISTAKES} tadan ko'p xato bo'ldi. Darslarni ketma-ket o'tib, keyinroq yana urinib ko'ring — Vivi sizga ishonadi!</p>
+            <button type="button" className="btn btn-primary btn-lg" onClick={() => onExit()}>
+              Tushunarli
+            </button>
+          </div>
+        </div>
+      )}
       {outOfHearts && (
         <div className="modal-back">
           <div className="sheet">

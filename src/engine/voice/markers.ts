@@ -39,11 +39,21 @@ export interface Cue {
   fx?: 'fart' | 'burp';
 }
 
+/**
+ * Model ba'zan belgilarni noto'g'ri yozadi: [img:x], [do:flip], [[fr]...[/fr]], [/fr]] —
+ * hammasini to'g'ri shaklga keltiramiz.
+ */
+export function normalizeMarkers(text: string): string {
+  return text
+    .replace(/\[\[(\/?fr)\]\]?/gi, '[$1]')
+    .replace(/\[(\/fr)\]\]/gi, '[$1]')
+    .replace(/(^|[^[])\[\s*(shape|do|img|ans)\s*:\s*([^\]\[]{1,80})\](?!\])/gi, '$1[[$2:$3]]');
+}
+
 /** Matndan belgilarni ajratadi: ko'rsatish uchun toza matn va maskot buyruqlari. */
 export function extractCues(text: string): { clean: string; cue: Cue } {
   const cue: Cue = { actions: [] };
-  const clean = text
-    .replace(/\[\[(\/?fr)\]/gi, '[$1]') // model ba'zan «[[fr]» deb yozadi
+  const clean = normalizeMarkers(text)
     .replace(/\[\[\s*img\s*:\s*([^\]]{2,80})\]\]/gi, (_m, q: string) => {
       cue.image ??= q.trim();
       return '';

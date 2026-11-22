@@ -98,3 +98,15 @@ describe('ovoz teglari tanani harakatlantiradi', () => {
     expect(speechText('[boundaries] Chegaralarni belgilaymiz.', true)).toBe('Chegaralarni belgilaymiz.');
   });
 });
+
+describe('noto\'g\'ri yozilgan belgilar', () => {
+  it('bitta qavsli belgilar ham ishlaydi va ko\'rinmaydi', () => {
+    const r = extractCues("Jonim, xuddi [img:Samarqand] Registondagi [do:flip] mushukdek.");
+    expect(r.cue.image).toBe('Samarqand');
+    expect(r.cue.actions).toContain('flip');
+    expect(r.clean).not.toMatch(/\[/);
+    const segs = parseRichAns('Salom, mening [[fr]mon chéri[/fr]] sho\'xginam!');
+    expect(segs.find((x) => x.kind === 'fr')?.text).toBe('mon chéri');
+    expect(segs.map((x) => x.text).join('')).not.toContain('[');
+  });
+});

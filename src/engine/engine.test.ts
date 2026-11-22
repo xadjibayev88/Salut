@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_LESSONS, COURSE } from '../data/course';
-import { buildLesson, buildPractice, makeSentenceExercise } from './exercises';
+import { buildLesson, buildPractice, clozeOf, makeSentenceExercise } from './exercises';
 import { evaluate } from './evaluate';
 import { checkAnswer, normalize, tokenize } from './text';
 import { rng } from './random';
@@ -263,5 +263,21 @@ describe('super monthly freeze', () => {
     const b = grantSuperFreeze(a, new Date(2026, 11, 1));
     expect(b.streakFreezes).toBe(2);
     expect(grantSuperFreeze(b, new Date(2027, 0, 1)).streakFreezes).toBe(MAX_FREEZES);
+  });
+});
+
+describe('qiyin mashqlar', () => {
+  it("bo'sh joy: fe'l yashiriladi, ism yashirilmaydi", () => {
+    const c = clozeOf('Quand Malika était petite, elle jouait dans le jardin.', () => 0.99)!;
+    expect(c.display).toContain('_____');
+    expect(c.display).toContain('Malika');
+    expect('Quand Malika était petite, elle jouait dans le jardin.').toBe(c.display.replace('_____', c.answer));
+  });
+  it('yuqori darajada cloze va diktant chiqadi', () => {
+    const u = { ...COURSE[0], level: 'B2' as const };
+    const exs = buildLesson(u.lessons[3], u, { level: 1, tts: true, rand: rng(5) });
+    const modes = exs.filter((e) => e.kind === 'type').map((e) => (e as { mode?: string }).mode ?? 'translate');
+    expect(modes.some((m) => m === 'cloze' || m === 'dictation')).toBe(true);
+    expect(exs.length).toBeGreaterThanOrEqual(13);
   });
 });

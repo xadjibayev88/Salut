@@ -40,7 +40,9 @@ export function evaluate(ex: Exercise, a: Answer): Evaluation {
       let note: string | undefined;
       if (ok && r.verdict === 'accent') note = "Urg'u belgilariga e'tibor bering:";
       if (ok && r.verdict === 'typo') note = 'Kichik xato bor:';
-      return { correct: ok, verdict: ok ? r.verdict : 'wrong', solution: r.best, note };
+      // Bo'sh joyli mashqda to'liq gap ko'rsatiladi.
+      const solution = ex.kind === 'type' && ex.mode === 'cloze' ? ex.sentence.fr : r.best;
+      return { correct: ok, verdict: ok ? r.verdict : 'wrong', solution, note };
     }
   }
 }
