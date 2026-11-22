@@ -995,3 +995,18 @@ html.lite .vivi * { animation: none !important; }
 .super-offer { max-height: 90vh; overflow-y: auto; }
 .super-offer .super-perks { width: 100%; text-align: left; }
 .rest-card .btn { margin-top: 8px; }
+/* Biz haqimizda */
+.about-hero { text-align: center; display: grid; justify-items: center; gap: 4px; margin: 10px 0 16px; }
+.about-hero h1 { margin: 6px 0 0; font-size: 34px; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; font-family: var(--font-display); }
+.about-card { padding: 16px; border-radius: 20px; margin-bottom: 14px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
+.about-card h2, .about-links h2 { font-size: 17px; margin: 0 0 8px; }
+.about-card p { margin: 0 0 8px; line-height: 1.55; }
+.about-card .small, .about-card.small-card p { font-size: 13px; }
+.share-btn, .share-tg { width: 100%; margin-bottom: 10px; display: block; text-align: center; text-decoration: none; }
+.about-links { margin: 8px 0 14px; display: grid; gap: 8px; }
+.social { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; text-decoration: none; color: var(--text); border: 1px solid var(--line); background: rgba(255, 255, 255, .05); }
+.social.tg { background: linear-gradient(135deg, rgba(56, 189, 248, .18), rgba(37, 99, 235, .14)); }
+.social.ig { background: linear-gradient(135deg, rgba(236, 72, 153, .2), rgba(249, 115, 22, .16)); }
+.social.yt { background: linear-gradient(135deg, rgba(239, 68, 68, .2), rgba(127, 29, 29, .14)); }
+.social-icon { font-size: 26px; } .social-text { flex: 1; display: grid; } .social-text small { color: var(--muted); font-size: 12px; } .social-go { font-size: 22px; opacity: .7; }
+.about-link { display: block; width: 100%; text-align: center; text-decoration: none; margin: 12px 0 6px; }

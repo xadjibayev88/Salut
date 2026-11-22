@@ -166,6 +166,9 @@ export function Profile() {
           </div>
         </div>
       </div>
+      <a className="btn btn-ghost btn-lg about-link" href="#/about">
+        ℹ️ Biz haqimizda · ijtimoiy tarmoqlar · ulashish
+      </a>
       <p className="legal-links">
         <a href="./privacy.html" target="_blank" rel="noreferrer">Maxfiylik siyosati</a> · <a href="./terms.html" target="_blank" rel="noreferrer">Foydalanish shartlari</a>
       </p>

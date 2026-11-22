@@ -9,6 +9,7 @@ import { Leagues } from './screens/Leagues';
 import { Profile } from './screens/Profile';
 import { Shop } from './screens/Shop';
 import { Tutor } from './screens/Tutor';
+import { About } from './screens/About';
 import { Onboarding } from './screens/Onboarding';
 import { Session, type SessionConfig } from './screens/Session';
 import { WeekStrip } from './screens/Result';
@@ -17,7 +18,7 @@ import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
 import { initAds, loadAdsense, maybeInterstitial, setImmersive } from './engine/ads';
 
-type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop';
+type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop' | 'about';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'learn', label: "Metro", icon: '🚇' },
@@ -30,7 +31,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 function readTab(): Tab {
   const h = location.hash.replace('#/', '').split('?')[0] as Tab;
-  return TABS.some((t) => t.id === h) ? h : 'learn';
+  return TABS.some((t) => t.id === h) || h === 'about' ? h : 'learn';
 }
 
 export function App() {
@@ -95,6 +96,10 @@ export function App() {
             <span>{t.label}</span>
           </button>
         ))}
+        <button type="button" className={`nav-item ${tab === 'about' ? 'active' : ''}`} onClick={() => go('about')}>
+          <span className="nav-icon">ℹ️</span>
+          <span>Biz haqimizda</span>
+        </button>
       </nav>
 
       <div className="main">
@@ -106,6 +111,7 @@ export function App() {
           {tab === 'leagues' && <Leagues />}
           {tab === 'profile' && <Profile />}
           {tab === 'shop' && <Shop />}
+          {tab === 'about' && <About />}
         </div>
       </div>
 

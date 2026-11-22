@@ -1,3 +1,5 @@
+import { AdSlot } from '../components/AdSlot';
+import { maybeInterstitial } from '../engine/ads';
 import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
 import { DEMOTE, LEAGUE_SIZE, LEAGUES, leagueStandings, PROMOTE } from '../engine/game';
@@ -23,6 +25,10 @@ export function Leagues() {
   useEffect(() => {
     const id = setInterval(() => force((n) => n + 1), 60_000);
     return () => clearInterval(id);
+  }, []);
+  // Turnir sahifasi reklamasi: Android'da interstitial (har 2-kirishda, ≥3 daqiqa oraliq), saytda AdSense.
+  useEffect(() => {
+    void maybeInterstitial();
   }, []);
   const lg = state.league;
   const rows = leagueStandings(lg, new Date(), state.name, state.avatar);
@@ -80,6 +86,7 @@ export function Leagues() {
           </div>
         </div>
       )}
+      <AdSlot />
     </div>
   );
 }
