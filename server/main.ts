@@ -617,7 +617,11 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
   'POST /api/live/token': (req, res) => {
     if (!env.GEMINI_API_KEY || env.LIVE_DISABLED === '1') return json(res, 503, { code: 'config', message: 'Jonli rejim hozircha yoqilmagan.' });
     if (freeLeft(req) === 0) return json(res, 429, { code: 'daily_limit', message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Super bilan cheklovsiz davom eting 💜` });
-    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => parseTutorRequest({ ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' }) }, async (data, signal) => {
+    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => {
+      const r = parseTutorRequest({ ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' });
+      // Mimika funksiyasi faqat uni qo'llaydigan (yangi) ilovaga beriladi — eski versiya javob bermasa, Vivi jim qolardi.
+      return typeof r === 'string' ? r : { ...r, react: (b as { react?: unknown })?.react === true };
+    } }, async (data, signal) => {
       const premium = isPremium(req);
       const left = premium ? 0 : liveMinutesLeft(req);
       if (!premium && (left < 1 || liveLimited(req)))
@@ -641,7 +645,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
           systemInstruction: { parts: [{ text: liveInstruction(data) }] },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          tools: [{ functionDeclarations: [LIVE_REACT_TOOL] }],
+          ...((data as { react?: boolean }).react ? { tools: [{ functionDeclarations: [LIVE_REACT_TOOL] }] } : {}),
         },
       });
     });

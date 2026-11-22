@@ -6,7 +6,7 @@ import { Mascot } from '../components/Mascot';
 import type { SessionConfig } from './Session';
 
 export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
-  const { state } = useStore();
+  const { state, update } = useStore();
   const learned = [
     ...ALL_LESSONS.filter((l) => state.lessonsDone[l.id]).flatMap((l) => l.words),
     ...state.customWords.map((w) => ({ fr: w.fr, uz: w.uz, emoji: '📝' as string | undefined })),
@@ -58,7 +58,7 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
           </h2>
           <div className="word-list">
             {rows.map(({ w, r }) => (
-              <button key={w.fr + w.uz} type="button" className="word-row" onClick={() => speak(w.fr, state.settings.ttsRate)}>
+              <div key={w.fr + w.uz} role="button" tabIndex={0} className="word-row" onClick={() => speak(w.fr, state.settings.ttsRate)}>
                 <span className="wr-emoji">{w.emoji}</span>
                 <span className="wr-text">
                   <b>{w.fr}</b>
@@ -69,7 +69,20 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
                     <i key={i} className={r > i * 0.25 + 0.05 ? 'on' : ''} />
                   ))}
                 </span>
-              </button>
+                {w.emoji === '📝' && (
+                  <button
+                    type="button"
+                    className="wr-remove"
+                    aria-label={`${w.fr} — lug'atdan chiqarish`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      update((s) => ({ ...s, customWords: s.customWords.filter((x) => x.fr.toLowerCase() !== w.fr.toLowerCase()) }));
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </>

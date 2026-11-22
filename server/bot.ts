@@ -5,7 +5,7 @@
 import { randomBytes } from 'node:crypto';
 import { db } from './db.ts';
 import { getUser, upsertSocialUser } from './accounts.ts';
-import { PLANS, activePlan, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
+import { PLANS, activePlan, toUsd, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
 
 type Tg = (method: string, body: Record<string, unknown>) => Promise<any>;
 type From = { id: number; first_name?: string; last_name?: string; username?: string };
@@ -158,7 +158,7 @@ function payText(plan: PlanId, kind: Kind = 'card'): string {
   const c = kind === 'visa' ? plansPayload().visa : plansPayload().card;
   return [
     `🧾 <b>${PLANS[plan].name}</b>`,
-    `To'lov summasi: <b>${som(priceUzs(plan))} so'm</b>${kind === 'visa' ? ' (yoki shu summaga teng dollar)' : ''}`,
+    kind === 'visa' ? `To'lov summasi: <b>${'$'}${toUsd(priceUzs(plan))}</b> (${som(priceUzs(plan))} so'm)` : `To'lov summasi: <b>${som(priceUzs(plan))} so'm</b>`,
     '',
     kind === 'visa' ? '🌍 Quyidagi Visa kartaga o\'tkazing:' : '💳 Quyidagi kartaga o\'tkazing:',
     `<code>${esc(c?.number ?? '—')}</code>`,

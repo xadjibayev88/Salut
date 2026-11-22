@@ -30,6 +30,11 @@ export function oldPriceUzs(plan: PlanId): number {
   return Number.isSafeInteger(explicit) && explicit > 0 ? explicit : PLANS[plan].defaultOld;
 }
 
+/** So'mni dollarga o'girish kursi (USD_RATE, standart 12 800). */
+export const usdRate = () => Number(env('USD_RATE')) || 12_800;
+/** Narxning dollardagi qiymati (yuqoriga, 0.5 $ qadam bilan). */
+export const toUsd = (uzs: number) => Math.ceil((uzs / usdRate()) * 2) / 2;
+
 export function providers(): Provider[] {
   const list: Provider[] = [];
   if (env('PAYME_MERCHANT_ID') && env('PAYME_KEY')) list.push('payme');
@@ -51,7 +56,7 @@ export function plansPayload() {
     // Karta orqali to'lov (chek yuklanadi, admin tasdiqlaydi).
     card: env('PAY_CARD_NUMBER') ? { number: env('PAY_CARD_NUMBER'), owner: env('PAY_CARD_OWNER'), bank: env('PAY_CARD_BANK') } : null,
     // Visa/Mastercard kartasiga o'tkazma (chet eldagilar uchun) — xuddi shu chek + admin tasdig'i.
-    visa: env('PAY_VISA_NUMBER') ? { number: env('PAY_VISA_NUMBER'), owner: env('PAY_VISA_OWNER') || env('PAY_CARD_OWNER'), bank: env('PAY_VISA_BANK') || 'VISA' } : null,
+    visa: env('PAY_VISA_NUMBER') ? { number: env('PAY_VISA_NUMBER'), owner: env('PAY_VISA_OWNER') || env('PAY_CARD_OWNER'), bank: env('PAY_VISA_BANK') || 'VISA', usdRate: usdRate() } : null,
   };
 }
 

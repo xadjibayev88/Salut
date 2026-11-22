@@ -114,6 +114,7 @@ export class LiveSession {
           lang: this.o.lang,
           customRole: this.o.customRole,
           explicit: this.o.explicit,
+          react: true,
           context: this.o.context(),
         }),
       });
@@ -174,6 +175,10 @@ export class LiveSession {
       this.set({ phase: 'listening' });
       // Vivi o'zi salomlashadi (xotiradan eslab).
       this.ws?.send(JSON.stringify({ realtimeInput: { text: '[SUHBAT BOSHLANDI]' } }));
+      // Qo'riqchi: 7 soniyada Vivi ovozi kelmasa — salomlashishni qayta so'raymiz.
+      window.setTimeout(() => {
+        if (!this.heard && this.snap.phase !== 'ended') this.ws?.send(JSON.stringify({ realtimeInput: { text: '[SUHBAT BOSHLANDI] Salomlash.' } }));
+      }, 7000);
       return;
     }
     if (m.goAway) return this.end('limit');
@@ -190,7 +195,11 @@ export class LiveSession {
       if (this.snap.liveTutor) this.pushTurn('tutor', `${this.snap.liveTutor}…`);
       this.set({ liveTutor: '', phase: 'listening' });
     }
-    for (const p of sc.modelTurn?.parts ?? []) if (p.inlineData?.data) this.play(fromBase64(p.inlineData.data));
+    for (const p of sc.modelTurn?.parts ?? [])
+      if (p.inlineData?.data) {
+        this.heard = true;
+        this.play(fromBase64(p.inlineData.data));
+      }
     if (sc.inputTranscription?.text) {
       // Vivi gapira boshlasa, o'quvchining gapi yakunlangan hisoblanadi.
       this.set({ liveUser: this.snap.liveUser + sc.inputTranscription.text });
@@ -230,6 +239,7 @@ export class LiveSession {
 
   private guessed = '';
   private lastEmit = 0;
+  private heard = false;
   private guessCueOnce() {
     // Bir gapda bir marta: o'quvchi ChatGPT'ni tilga olsa — rashk (model chaqirmasa ham).
     const u = this.snap.liveUser;

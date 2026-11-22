@@ -51,6 +51,7 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
   const added = new Set(state.customWords.map((w) => w.fr.toLowerCase()));
   const addWord = (w: { fr: string; uz: string }) =>
     update((s) => (s.customWords.some((x) => x.fr.toLowerCase() === w.fr.toLowerCase()) ? s : { ...s, customWords: [...s.customWords, { ...w, addedAt: Date.now() }].slice(-300) }));
+  const removeWord = (fr: string) => update((s) => ({ ...s, customWords: s.customWords.filter((x) => x.fr.toLowerCase() !== fr.toLowerCase()) }));
 
   const counters = [
     { key: 'words', v: String(record.stats.words), l: "so'z", c: cmp.words },
@@ -145,8 +146,8 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
                       🔊 {w.fr}
                     </button>
                     <span className="muted">{w.uz}</span>
-                    <button type="button" className={`btn btn-ghost small-btn ${added.has(w.fr.toLowerCase()) ? 'done' : ''}`} disabled={added.has(w.fr.toLowerCase())} onClick={() => addWord(w)}>
-                      {added.has(w.fr.toLowerCase()) ? "Qo'shildi ✓" : "Lug'atga qo'shish"}
+                    <button type="button" className={`btn btn-ghost small-btn ${added.has(w.fr.toLowerCase()) ? 'done' : ''}`} onClick={() => (added.has(w.fr.toLowerCase()) ? removeWord(w.fr) : addWord(w))}>
+                      {added.has(w.fr.toLowerCase()) ? "✕ Lug'atdan chiqarish" : "Lug'atga qo'shish"}
                     </button>
                   </div>
                 ))}

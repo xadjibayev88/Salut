@@ -84,7 +84,15 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
         <h3>💳 Karta orqali to'lash</h3>
         <ol className="card-steps">
           <li>
-            Quyidagi kartaga <b>{fmt(amount)} so'm</b> o'tkazing:
+            {kind === 'visa' ? (
+              <>
+                Quyidagi Visa kartaga <b>{'$'}{Math.ceil((amount / (me.billing.visa?.usdRate || 12800)) * 2) / 2}</b> ({fmt(amount)} so'm) o'tkazing:
+              </>
+            ) : (
+              <>
+                Quyidagi kartaga <b>{fmt(amount)} so'm</b> o'tkazing:
+              </>
+            )}
             <button type="button" className="card-number" onClick={copy}>
               <span>{card.number}</span>
               <small>{copied ? '✓ Nusxa olindi' : 'Nusxa olish'}</small>

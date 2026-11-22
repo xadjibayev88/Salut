@@ -17,7 +17,7 @@ export interface BillingInfo {
   providers: ('payme' | 'click' | 'card' | 'visa')[];
   anchor?: { label: string; uzs: number };
   card?: { number: string; owner: string; bank: string } | null;
-  visa?: { number: string; owner: string; bank: string } | null;
+  visa?: { number: string; owner: string; bank: string; usdRate?: number } | null;
   /** Telegram to'lov boti ulangan bo'lsa true. */
   telegram?: boolean;
 }

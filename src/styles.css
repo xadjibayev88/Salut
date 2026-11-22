@@ -1098,3 +1098,4 @@ html.lite .vivi * { animation: none !important; }
 /* Ekrandan tashqaridagi bo'limlar chizilmaydi (50+ bo'limli kurs xaritasi tez ochiladi). */
 .line, .ach-list, .word-list > *, .vh-section { content-visibility: auto; contain-intrinsic-size: auto 520px; }
 .line-peek { display: block; width: 100%; margin: 4px 0 2px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.05); color: var(--muted); font-weight: 700; text-align: center; }
+.wr-remove { margin-left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(251,113,133,.14); color: #fb7185; font-weight: 800; flex: none; }
