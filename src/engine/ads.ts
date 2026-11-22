@@ -8,6 +8,8 @@ export interface AdsConfig {
   admobInterstitial?: string;
   adsenseClient?: string;
   adsenseSlot?: string;
+  /** Saytda mukofotli video (AdSense Ad Placement API). AdSense'da «Ad placements» yoqilgan bo'lishi kerak. */
+  adsenseRewarded?: boolean;
 }
 
 type Bridge = {
@@ -29,6 +31,8 @@ declare global {
     __gtAdReject?: (id: string, message: string) => void;
     __gtAdReward?: () => void;
     adsbygoogle?: unknown[];
+    adBreak?: (o: Record<string, unknown>) => void;
+    adConfig?: (o: Record<string, unknown>) => void;
   }
 }
 
@@ -158,41 +162,83 @@ export function setImmersive(on: boolean) {
 // ---------- Mukofotli video: +1 chashka kofe, kuniga 5 tagacha ----------
 
 export const REWARD_DAILY_LIMIT = 5;
-const dayKey = () => `salut.rv.${new Date().toISOString().slice(0, 10)}`;
-const usedToday = () => {
+export type RewardKind = 'coffee' | 'xp' | 'vivi';
+const dayKey = (k: RewardKind = 'coffee') => `salut.rv${k === 'coffee' ? '' : `.${k}`}.${new Date().toISOString().slice(0, 10)}`;
+const usedToday = (k: RewardKind = 'coffee') => {
   try {
-    return Number(localStorage.getItem(dayKey())) || 0;
+    return Number(localStorage.getItem(dayKey(k))) || 0;
   } catch {
     return 0;
   }
 };
 
-export function rewardedState() {
-  return { available: isNativeApp() && !premium, ready: rewardedReady, left: Math.max(0, REWARD_DAILY_LIMIT - usedToday()) };
+/** Saytda mukofotli reklama mumkinmi (AdSense + Ad Placement API sozlangan). */
+export function webRewardedAvailable(): boolean {
+  return !isNativeApp() && !premium && !!adsenseClient() && cfg().adsenseRewarded === true;
 }
 
-/** Video oxirigacha ko'rilsa true. */
-export async function showRewarded(): Promise<{ ok: boolean; reason?: 'limit' | 'no_ad' | 'not_finished' }> {
-  if (!isNativeApp() || premium) return { ok: false, reason: 'no_ad' };
-  if (usedToday() >= REWARD_DAILY_LIMIT) return { ok: false, reason: 'limit' };
+export function rewardedState(k: RewardKind = 'coffee') {
+  return { available: (isNativeApp() || webRewardedAvailable()) && !premium, ready: isNativeApp() ? rewardedReady : true, left: Math.max(0, REWARD_DAILY_LIMIT - usedToday(k)) };
+}
+
+/** Saytda: AdSense mukofotli video (adBreak type: 'reward'). */
+function showWebRewarded(): Promise<{ ok: boolean; reason?: 'no_ad' | 'not_finished' }> {
+  loadAdsense();
+  return new Promise((resolve) => {
+    if (!window.adBreak) return resolve({ ok: false, reason: 'no_ad' });
+    let viewed = false;
+    let settled = false;
+    const done = (r: { ok: boolean; reason?: 'no_ad' | 'not_finished' }) => {
+      if (settled) return;
+      settled = true;
+      resolve(r);
+    };
+    setTimeout(() => done({ ok: false, reason: 'no_ad' }), 20_000);
+    try {
+      window.adBreak({
+        type: 'reward',
+        name: 'voila_reward',
+        beforeReward: (showAdFn: () => void) => showAdFn(),
+        adViewed: () => {
+          viewed = true;
+        },
+        adDismissed: () => done({ ok: false, reason: 'not_finished' }),
+        adBreakDone: () => done(viewed ? { ok: true } : { ok: false, reason: 'no_ad' }),
+      });
+    } catch {
+      done({ ok: false, reason: 'no_ad' });
+    }
+  });
+}
+
+/** Video oxirigacha ko'rilsa true. Android — AdMob, sayt — AdSense. */
+export async function showRewarded(kind: RewardKind = 'coffee'): Promise<{ ok: boolean; reason?: 'limit' | 'no_ad' | 'not_finished' }> {
+  if (premium || (!isNativeApp() && !webRewardedAvailable())) return { ok: false, reason: 'no_ad' };
+  if (kind !== 'vivi' && usedToday(kind) >= REWARD_DAILY_LIMIT) return { ok: false, reason: 'limit' };
   let granted = false;
-  rewardHit = () => {
-    granted = true;
-  };
-  try {
-    if (!rewardedReady) await prepareRewarded();
-    if (!rewardedReady) return { ok: false, reason: 'no_ad' };
-    rewardedReady = false;
-    await call('showRewardVideoAd');
-  } catch {
-    if (!granted) return { ok: false, reason: 'no_ad' };
-  } finally {
-    rewardHit = null;
-    setTimeout(() => void prepareRewarded(), 1000);
+  if (!isNativeApp()) {
+    const r = await showWebRewarded();
+    granted = r.ok;
+    if (!granted) return { ok: false, reason: r.reason ?? 'no_ad' };
+  } else {
+    rewardHit = () => {
+      granted = true;
+    };
+    try {
+      if (!rewardedReady) await prepareRewarded();
+      if (!rewardedReady) return { ok: false, reason: 'no_ad' };
+      rewardedReady = false;
+      await call('showRewardVideoAd');
+    } catch {
+      if (!granted) return { ok: false, reason: 'no_ad' };
+    } finally {
+      rewardHit = null;
+      setTimeout(() => void prepareRewarded(), 1000);
+    }
   }
   if (granted) {
     try {
-      localStorage.setItem(dayKey(), String(usedToday() + 1));
+      localStorage.setItem(dayKey(kind), String(usedToday(kind) + 1));
     } catch {
       /* e'tiborsiz */
     }
@@ -230,5 +276,12 @@ export function loadAdsense() {
   s.async = true;
   s.crossOrigin = 'anonymous';
   s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(c)}`;
+  if (cfg().adsenseRewarded) {
+    // Ad Placement API (mukofotli video uchun).
+    s.setAttribute('data-ad-frequency-hint', '30s');
+    window.adsbygoogle = window.adsbygoogle || [];
+    window.adBreak = window.adConfig = (o: Record<string, unknown>) => (window.adsbygoogle as unknown[]).push(o);
+    window.adConfig({ preloadAdBreaks: 'on', sound: 'on' });
+  }
   document.head.appendChild(s);
 }

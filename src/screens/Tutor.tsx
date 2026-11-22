@@ -384,7 +384,7 @@ function TextChat() {
           </button>
         )}
       </form>
-      {xpToast && <div className="xp-toast">+{xpToast} ball</div>}
+      {xpToast && <div className="xp-toast">+{xpToast} XP</div>}
       {micError && (
         <p className="mic-error" role="alert" onClick={() => setMicError(null)}>
           {micError}

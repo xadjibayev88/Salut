@@ -70,7 +70,7 @@ export function Result({ reward, config, onDone }: { reward: Reward; config: Ses
             <ul className="bonus-list">
               {reward.bonus.map((b) => (
                 <li key={b.label}>
-                  ✨ {b.label} <b>+{b.xp} ball</b>
+                  ✨ {b.label} <b>+{b.xp} XP</b>
                 </li>
               ))}
               {reward.heartBack && <li>☕ Mashq uchun +1 chashka kofe</li>}

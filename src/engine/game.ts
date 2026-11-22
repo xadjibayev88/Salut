@@ -166,18 +166,21 @@ export function streakActiveToday(s: GameState, now = new Date()): boolean {
 // ---------- Liga ----------
 
 // Turnir bosqichlari — Fransiya shaharlari bo'ylab sayohat (Ruandan Parijgacha).
+// Ligalar: aniq daraja nomi (Bronza → Chempion) + fransuz shahri (mavzu uchun).
 export const LEAGUES = [
-  { name: 'Ruan', color: '#A16207', icon: '⛪' },
-  { name: 'Lill', color: '#6B7280', icon: '🧇' },
-  { name: 'Nant', color: '#0E7490', icon: '🐘' },
-  { name: 'Strasburg', color: '#B45309', icon: '🥨' },
-  { name: 'Bordo', color: '#9F1239', icon: '🍇' },
-  { name: 'Tuluza', color: '#DB2777', icon: '🌸' },
-  { name: 'Marsel', color: '#0369A1', icon: '⚓' },
-  { name: 'Lion', color: '#B91C1C', icon: '🦁' },
-  { name: 'Nitsa', color: '#0891B2', icon: '🏖️' },
-  { name: 'Parij', color: '#1E2A78', icon: '🗼' },
+  { name: "Boshlang'ich", city: 'Ruan', color: '#A16207', icon: '🌱' },
+  { name: 'Bronza', city: 'Lill', color: '#B45309', icon: '🥉' },
+  { name: 'Kumush', city: 'Nant', color: '#6B7280', icon: '🥈' },
+  { name: 'Oltin', city: 'Strasburg', color: '#CA8A04', icon: '🥇' },
+  { name: 'Platina', city: 'Bordo', color: '#0E7490', icon: '💠' },
+  { name: 'Zumrad', city: 'Tuluza', color: '#059669', icon: '💚' },
+  { name: 'Sapfir', city: 'Marsel', color: '#1D4ED8', icon: '💙' },
+  { name: 'Yoqut', city: 'Lion', color: '#BE123C', icon: '❤️‍🔥' },
+  { name: 'Olmos', city: 'Nitsa', color: '#0891B2', icon: '💎' },
+  { name: 'Chempion', city: 'Parij', color: '#1E2A78', icon: '🏆' },
 ];
+/** Hafta yakunidagi mukofot (XP): 1-, 2-, 3-o'rin. */
+export const LEAGUE_PRIZE_XP = [0, 100, 60, 40];
 
 export const LEAGUE_SIZE = 30;
 export const PROMOTE = 7;
@@ -236,7 +239,7 @@ export function rolloverLeague(s: GameState, now = new Date()): GameState {
   const participated = prev.weeklyXp > 0;
   return {
     ...s,
-    gems: s.gems + (participated && rank <= 3 ? [0, 100, 60, 40][rank] : 0),
+    xp: s.xp + (participated && rank <= 3 ? LEAGUE_PRIZE_XP[rank] : 0),
     league: {
       tier: toTier,
       weekId: current,
@@ -636,4 +639,18 @@ export function grantSuperFreeze(s: GameState, now = new Date()): GameState {
   const month = dayKey(now).slice(0, 7);
   if (s.superFreezeMonth === month) return s;
   return { ...s, superFreezeMonth: month, streakFreezes: Math.min(MAX_FREEZES, s.streakFreezes + 1) };
+}
+
+/** Reklama (video) ko'rgani uchun XP — kunlik maqsad, seriya va turnirga ham hisoblanadi. */
+export const AD_XP = 20;
+export function grantAdXp(s: GameState, xp = AD_XP, now = new Date()): GameState {
+  const today = dayKey(now);
+  let next = touchStreak(rolloverLeague(s, now), now);
+  next = {
+    ...next,
+    xp: next.xp + xp,
+    xpByDay: { ...next.xpByDay, [today]: (next.xpByDay[today] ?? 0) + xp },
+    league: { ...next.league, weeklyXp: next.league.weeklyXp + xp },
+  };
+  return bumpDaily(next, now, { xp });
 }

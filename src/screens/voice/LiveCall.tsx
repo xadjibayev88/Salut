@@ -37,7 +37,7 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
   const clean = (t: string) => t.replace(/\[\[[^\]]*\]\]/g, '').replace(/\[\/?fr\]/gi, '').replace(/\s{2,}/g, ' ').trim();
   const tutorLine = clean(s.liveTutor || lastTutor);
   const userLine = s.liveUser || (s.liveTutor ? '' : lastUser);
-  const label = s.phase === 'connecting' ? 'Ulanmoqda…' : s.phase === 'speaking' ? 'Vivi gapirmoqda…' : s.phase === 'ended' ? 'Suhbat tugadi' : s.muted ? 'Mikrofon o\'chiq' : 'Tinglayapman — gapiring';
+  const label = s.phase === 'connecting' ? 'Ulanmoqda…' : s.userTalking ? 'Eshityapman…' : s.phase === 'speaking' ? 'Vivi gapirmoqda…' : s.phase === 'ended' ? 'Suhbat tugadi' : s.muted ? 'Mikrofon o\'chiq' : 'Tinglayapman — gapiring';
 
   return (
     <div className={`call live-call phase-${s.phase === 'speaking' ? 'speaking' : 'ready'}`} style={{ ['--ch' as string]: ch.color }}>
@@ -72,7 +72,7 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
         </div>
         <div className="call-label" aria-live="polite">
           <b>{label}</b>
-          <small>{s.error ?? "Shunchaki gapiring. Vivi gapirayotganda gapirsangiz — u to'xtab tinglaydi."}</small>
+          <small>{s.error ?? "Shunchaki gapiring. Eshitmasa — pastdagi tugmani bosib turib gapiring."}</small>
         </div>
         {subtitles && (tutorLine || userLine) && (
           <div className="call-subs">
@@ -83,12 +83,27 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
       </main>
 
       <footer className="call-bottom">
-        <div className="call-actions">
-          <button type="button" className={`mic-lang-pill ${s.muted ? 'off' : ''}`} onClick={() => session.toggleMute()} disabled={s.phase === 'ended' || s.phase === 'connecting'}>
-            {s.muted ? '🔇 Mikrofon o\'chiq' : '🎤 Mikrofon yoqiq'}
+        <div className="call-actions live-actions">
+          <button type="button" className={`round-btn ${s.muted ? 'off' : ''}`} onClick={() => session.toggleMute()} disabled={s.phase === 'ended' || s.phase === 'connecting'} aria-label={s.muted ? 'Mikrofonni yoqish' : "Mikrofonni o'chirish"}>
+            {s.muted ? '🔇' : '🎤'}
           </button>
-          <button type="button" className="btn btn-danger end-call" onClick={() => session.end('user')}>
-            Tugatish
+          <button
+            type="button"
+            className={`ptt-btn ${s.userTalking ? 'on' : ''}`}
+            disabled={s.phase === 'ended' || s.phase === 'connecting'}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              session.pushToTalk(true);
+            }}
+            onPointerUp={() => session.pushToTalk(false)}
+            onPointerCancel={() => session.pushToTalk(false)}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <span className="ptt-ring" style={{ ['--lvl' as string]: String(s.micLevel) }} />
+            <b>{s.userTalking ? 'Gapiring…' : 'Bosib gapirish'}</b>
+          </button>
+          <button type="button" className="round-btn end" onClick={() => session.end('user')} aria-label="Tugatish">
+            ✕
           </button>
         </div>
       </footer>

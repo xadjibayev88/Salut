@@ -1,8 +1,9 @@
 import { AdSlot } from '../components/AdSlot';
+import { RewardedButton } from '../components/RewardedButton';
 import { maybeInterstitial } from '../engine/ads';
 import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
-import { DEMOTE, LEAGUE_SIZE, LEAGUES, leagueStandings, PROMOTE } from '../engine/game';
+import { DEMOTE, LEAGUE_PRIZE_XP, LEAGUE_SIZE, LEAGUES, leagueStandings, PROMOTE } from '../engine/game';
 import { weekStart } from '../engine/time';
 import { useStore } from '../state/store';
 
@@ -38,16 +39,52 @@ export function Leagues() {
     <div className="page">
       <div className="league-badges" ref={badges}>
         {LEAGUES.map((l, i) => (
-          <div key={l.name} className={`lbadge ${i === lg.tier ? 'cur' : i > lg.tier ? 'locked' : ''}`} style={{ ['--c' as string]: l.color }} title={l.name}>
-            {i > lg.tier ? '🔒' : l.icon}
+          <div key={l.name} className={`lbadge ${i === lg.tier ? 'cur' : i > lg.tier ? 'locked' : ''}`} style={{ ['--c' as string]: l.color }} title={`${i + 1}. ${l.name} liga`}>
+            <span>{i > lg.tier ? '🔒' : l.icon}</span>
+            <small>{l.name}</small>
           </div>
         ))}
       </div>
-      <h1 className="page-title center">{LEAGUES[lg.tier].name} bosqichi</h1>
-      <p className="muted center">
-        Eng yaxshi {PROMOTE} kishi keyingi shaharga yo'l oladi · {timeLeft(lg.weekId)} qoldi
+      <h1 className="page-title center">
+        {LEAGUES[lg.tier].icon} {LEAGUES[lg.tier].name} liga
+      </h1>
+      <p className="muted center league-sub">
+        {lg.tier + 1}-daraja / {LEAGUES.length} · 🇫🇷 {LEAGUES[lg.tier].city} shahri · ⏳ {timeLeft(lg.weekId)} qoldi
       </p>
-      {lg.weeklyXp === 0 && <div className="league-hint">Bir dars tugatib, turnirga qo'shiling!</div>}
+      <div className="league-stats">
+        <div>
+          <b>{lg.weeklyXp}</b>
+          <small>Bu hafta XP</small>
+        </div>
+        <div>
+          <b>{rows.findIndex((r) => r.isMe) + 1}</b>
+          <small>O'rningiz</small>
+        </div>
+        <div>
+          <b>Top {PROMOTE}</b>
+          <small>{lg.tier + 1 < LEAGUES.length ? `${LEAGUES[lg.tier + 1].name} ligaga` : 'Chempionlikda qoling'}</small>
+        </div>
+      </div>
+      <details className="league-how">
+        <summary>❓ Turnir qanday ishlaydi?</summary>
+        <ul>
+          <li>Har hafta siz {LEAGUE_SIZE} kishilik guruhda bellashasiz. Hafta dushanbadan yakshanbagacha.</li>
+          <li>
+            <b>XP</b> — darslar, mashqlar va Vivi bilan suhbatda to'playdigan ochkolaringiz. Qancha ko'p o'qisangiz, shuncha ko'p XP.
+          </li>
+          <li>
+            Hafta oxirida <b>eng yaxshi {PROMOTE} kishi</b> keyingi ligaga ko'tariladi, <b>oxirgi {DEMOTE} kishi</b> pastga tushadi.
+          </li>
+          <li>
+            Ligalar: {LEAGUES.map((l) => l.name).join(' → ')}. Har bir liga — Fransiyaning bir shahri, oxirgisi Parij 🗼.
+          </li>
+          <li>
+            Mukofot: 🥇 +{LEAGUE_PRIZE_XP[1]} XP, 🥈 +{LEAGUE_PRIZE_XP[2]} XP, 🥉 +{LEAGUE_PRIZE_XP[3]} XP.
+          </li>
+        </ul>
+      </details>
+      <RewardedButton kind="xp" compact />
+      {lg.weeklyXp === 0 && <div className="league-hint">Bitta dars tugatib turnirga qo'shiling — XP to'plang!</div>}
       <ol className="board">
         {rows.map((r, i) => {
           const rank = i + 1;
@@ -59,7 +96,7 @@ export function Leagues() {
               <span className={`brank r${rank}`}>{rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}</span>
               <span className="bavatar"><Avatar value={r.avatar} size={30} /></span>
               <span className="bname">{r.isMe ? `${r.name} (siz)` : r.name}</span>
-              <span className="bxp">{r.xp} ball</span>
+              <span className="bxp">{r.xp} XP</span>
             </li>
           );
         })}
@@ -71,10 +108,10 @@ export function Leagues() {
             <h3>O'tgan hafta: {res.rank}-o'rin</h3>
             <p className="muted">
               {res.toTier > res.fromTier
-                ? `Tabriklaymiz! Siz ${LEAGUES[res.toTier].name} bosqichiga ko'tarildingiz. Chemodanni yig'ing!`
+                ? `Tabriklaymiz! Siz ${LEAGUES[res.toTier].name} ligaga ko'tarildingiz. Chemodanni yig'ing!${res.rank <= 3 ? ` Mukofot: +${LEAGUE_PRIZE_XP[res.rank]} XP.` : ''}`
                 : res.toTier < res.fromTier
-                  ? `Siz ${LEAGUES[res.toTier].name} bosqichiga qaytdingiz. Bu hafta qaytib chiqing!`
-                  : `${LEAGUES[res.toTier].name} bosqichida qoldingiz.`}
+                  ? `Siz ${LEAGUES[res.toTier].name} ligaga tushdingiz. Bu hafta qaytib chiqing!`
+                  : `${LEAGUES[res.toTier].name} ligada qoldingiz.`}
             </p>
             <button
               type="button"

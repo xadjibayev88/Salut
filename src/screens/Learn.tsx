@@ -140,7 +140,7 @@ function Station({
           ? "Barcha bekatlardan o'ting"
           : st === 'done'
             ? 'Bajarilgan'
-            : 'Ochiq · +15 ball';
+            : 'Ochiq · +15 XP';
   const icon = node.type === 'chest' ? (st === 'done' ? '📭' : '🎁') : node.type === 'review' ? '🏁' : st === 'done' ? '✓' : st === 'locked' ? '' : '▶';
 
   const click = () => {
@@ -190,7 +190,7 @@ function Station({
                 ))}
               </div>
               <button type="button" className="btn btn-primary btn-lg" onClick={() => onStart({ kind: 'lesson', lessonId: node.id })}>
-                {st === 'done' ? 'Takrorlash · +10 ball' : 'Darsni boshlash · +10 ball'}
+                {st === 'done' ? 'Takrorlash · +10 XP' : 'Darsni boshlash · +10 XP'}
               </button>
             </>
           )}
@@ -201,7 +201,7 @@ function Station({
           <p className="muted">{st === 'locked' ? 'Avval liniyadagi barcha darslarni tugating.' : "Bo'limdagi hamma so'z va gaplarni mustahkamlang."}</p>
           {st !== 'locked' && (
             <button type="button" className="btn btn-primary btn-lg" onClick={() => onStart({ kind: 'review', unitIndex: node.unitIndex })}>
-              Takrorlashni boshlash · +15 ball
+              Takrorlashni boshlash · +15 XP
             </button>
           )}
         </div>

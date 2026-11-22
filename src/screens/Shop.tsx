@@ -49,19 +49,20 @@ export function Shop() {
         </button>
       </div>
       {!premium && <RewardedButton />}
+      {!premium && <RewardedButton kind="xp" />}
 
       <h2 className="section-title">Kuchaytirgichlar</h2>
       <div className="shop-item">
         <div className="shop-icon">⚡</div>
         <div className="shop-body">
-          <b>Ikki barobar ball</b>
+          <b>Ikki barobar XP</b>
           <small>
             {state.xpBoostUntil > Date.now()
               ? `Faol — ${Math.ceil((state.xpBoostUntil - Date.now()) / 60000)} daqiqa qoldi`
-              : `${XP_BOOST_MINUTES} daqiqa davomida har bir dars va suhbat uchun 2x ball`}
+              : `${XP_BOOST_MINUTES} daqiqa davomida har bir dars va suhbat uchun 2x XP`}
           </small>
         </div>
-        <button type="button" className="btn btn-gem" disabled={state.gems < XP_BOOST_COST} onClick={() => buy((s) => buyXpBoost(s), '2x ball yoqildi! ⚡')}>
+        <button type="button" className="btn btn-gem" disabled={state.gems < XP_BOOST_COST} onClick={() => buy((s) => buyXpBoost(s), '2x XP yoqildi! ⚡')}>
           🪙 {XP_BOOST_COST}
         </button>
       </div>

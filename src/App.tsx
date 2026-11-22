@@ -93,7 +93,11 @@ export function App() {
 
   const wide = useMedia('(min-width: 1180px)');
   const [tapped, setTapped] = useState<{ id: Tab; n: number } | null>(null);
+  const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
   const go = (t: Tab) => {
+    const from = TABS.findIndex((x) => x.id === tab);
+    const to = TABS.findIndex((x) => x.id === t);
+    setDir(to >= from ? 'fwd' : 'back');
     location.hash = `#/${t}`;
     setTab(t);
     window.scrollTo(0, 0);
@@ -142,6 +146,7 @@ export function App() {
       <div className="main">
         <TopBar onShop={() => go('shop')} onProfile={() => go('profile')} />
         <div className="content">
+          <div key={tab} className={`page-anim page-${dir}`}>
           <Suspense fallback={<Loading />}>
           {tab === 'learn' && <Learn onStart={start} />}
           {tab === 'tutor' && <Tutor />}
@@ -152,6 +157,7 @@ export function App() {
           {tab === 'about' && <About />}
           {tab === 'admin' && <Admin />}
           </Suspense>
+          </div>
         </div>
       </div>
 
@@ -215,7 +221,7 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
         🇫🇷
       </button>
       {state.xpBoostUntil > Date.now() && (
-        <span className="stat boost" title="Ikki barobar ball faol">
+        <span className="stat boost" title="Ikki barobar XP faol">
           ⚡ <b>2x</b>
         </span>
       )}
@@ -242,19 +248,19 @@ function SidePanels({ onGo }: { onGo: (t: Tab) => void }) {
       <TopBar onShop={() => onGo('shop')} onProfile={() => onGo('profile')} />
       <div className="panel" onClick={() => onGo('leagues')}>
         <div className="panel-h">
-          <b>{lg.name} bosqichi</b>
+          <b>{lg.icon} {lg.name} liga</b>
           <span className="link">Ko'rish</span>
         </div>
         <div className="panel-row">
           <span className="panel-big">{lg.icon}</span>
-          <span className="muted">Bu hafta {state.league.weeklyXp} ball to'pladingiz</span>
+          <span className="muted">Bu hafta {state.league.weeklyXp} XP to'pladingiz</span>
         </div>
       </div>
       <div className="panel">
         <div className="panel-h">
           <b>Kunlik maqsad</b>
           <span className="muted">
-            {todayXp}/{state.dailyGoal} ball
+            {todayXp}/{state.dailyGoal} XP
           </span>
         </div>
         <div className="goal-row">

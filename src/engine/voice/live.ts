@@ -35,6 +35,8 @@ export interface LiveSnap {
   error: string | null;
   endReason: 'user' | 'limit' | 'error' | null;
   cue: LiveCue;
+  /** O'quvchi hozir gapiryapti (ilova aniqlagan). */
+  userTalking: boolean;
 }
 
 export interface LiveOptions {
@@ -98,7 +100,7 @@ export class LiveSession {
   private readonly id = `live-${Date.now()}`;
 
   constructor(private o: LiveOptions) {
-    this.snap = { phase: 'connecting', level: 0, micLevel: 0, turns: [], liveUser: '', liveTutor: '', elapsedMs: 0, limitMs: 5 * 60_000, muted: false, error: null, endReason: null, cue: { shape: 'pill', action: null, angry: false, fx: null, key: 0 } };
+    this.snap = { phase: 'connecting', level: 0, micLevel: 0, turns: [], liveUser: '', liveTutor: '', elapsedMs: 0, limitMs: 5 * 60_000, muted: false, error: null, endReason: null, cue: { shape: 'pill', action: null, angry: false, fx: null, key: 0 }, userTalking: false };
   }
 
   private set(p: Partial<LiveSnap>) {
@@ -120,6 +122,7 @@ export class LiveSession {
           customRole: this.o.customRole,
           explicit: this.o.explicit,
           react: true,
+          vad: 'manual',
           context: this.o.context(),
         }),
       });
@@ -238,6 +241,73 @@ export class LiveSession {
     }
   }
 
+  // ---------- Gapni aniqlash (ilova tomonida) ----------
+  // Ba'zi telefonlarda Gemini'ning avtomatik aniqlagichi nutqni sezmaydi, shuning uchun gap boshlanishi/tugashini
+  // ilovaning o'zi aniqlaydi va activityStart/activityEnd yuboradi. «Bosib gapirish» tugmasi ham shu orqali ishlaydi.
+  private vad = { on: false, ptt: false, floor: 0.01, loud: 0, quiet: 0, len: 0, pre: [] as Uint8Array[] };
+
+  private sendAudio(pcm: Uint8Array) {
+    this.ws?.send(JSON.stringify({ realtimeInput: { audio: { data: toBase64(pcm), mimeType: 'audio/pcm;rate=16000' } } }));
+  }
+
+  /** Gap boshlandi / tugadi — Gemini'ga signal. */
+  private activity(start: boolean) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (start === this.vad.on) return;
+    this.vad.on = start;
+    this.vad.len = 0;
+    this.vad.quiet = 0;
+    if (start) {
+      // Vivi gapirayotgan bo'lsa — darhol jim bo'ladi (gapni bo'lish).
+      if (this.sources.size) {
+        this.stopPlayback();
+        if (this.snap.liveTutor) this.pushTurn('tutor', `${this.snap.liveTutor}…`);
+        this.set({ liveTutor: '' });
+      }
+      this.ws.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+      // Gap boshi kesilib qolmasin: oxirgi ~0.4 s ni ham yuboramiz.
+      for (const c of this.vad.pre) this.sendAudio(c);
+      this.vad.pre = [];
+    } else {
+      this.ws.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
+    }
+    this.set({ userTalking: start });
+  }
+
+  private vadStep(rms: number, chunkMs: number, pcm: Uint8Array) {
+    const v = this.vad;
+    const playing = this.sources.size > 0;
+    // Shovqin darajasi: tez pasayadi, sekin ko'tariladi.
+    v.floor = rms < v.floor ? v.floor * 0.7 + rms * 0.3 : v.floor + (rms - v.floor) * 0.003;
+    // Vivi gapirayotganda karnay ovozi mikrofonga tushmasligi uchun chegara balandroq.
+    const thr = playing ? Math.max(0.07, v.floor * 7) : Math.max(0.014, v.floor * 3.2);
+    if (v.on) {
+      this.sendAudio(pcm);
+      v.len += chunkMs;
+      if (v.ptt) return;
+      v.quiet = rms < thr * 0.75 ? v.quiet + chunkMs : 0;
+      if (v.quiet > 850 || v.len > 25_000) this.activity(false);
+      return;
+    }
+    v.pre.push(pcm);
+    if (v.pre.length > Math.ceil(400 / chunkMs)) v.pre.shift();
+    v.loud = rms > thr ? v.loud + chunkMs : 0;
+    if (v.loud >= (playing ? 260 : 120)) this.activity(true);
+  }
+
+  /** «Bosib gapirish»: bosib turganda gap, qo'yib yuborganda — tugadi. */
+  pushToTalk(down: boolean) {
+    if (this.snap.phase === 'ended' || this.snap.phase === 'connecting') return;
+    if (down) {
+      if (this.snap.muted) this.set({ muted: false });
+      this.vad.ptt = true;
+      if (!this.vad.on) this.activity(true);
+    } else {
+      this.vad.ptt = false;
+      if (this.vad.on) this.activity(false);
+    }
+  }
+
   /** Model chaqirgan mimika: yuz shakli, imo-ishora, ovoz effekti. */
   private react(a: Record<string, string>) {
     const face = a.face ?? 'happy';
@@ -285,17 +355,28 @@ export class LiveSession {
     const src = this.ctxIn.createMediaStreamSource(this.stream);
     const proc = this.ctxIn.createScriptProcessor(2048, 1, 1);
     const rate = this.ctxIn.sampleRate;
+    const chunkMs = (2048 / rate) * 1000;
     proc.onaudioprocess = (e) => {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.snap.muted) return;
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
       const ch = e.inputBuffer.getChannelData(0);
       let peak = 0;
-      for (let i = 0; i < ch.length; i += 16) peak = Math.max(peak, Math.abs(ch[i]));
-      this.snap.micLevel = Math.min(1, peak * 2.5);
+      let sq = 0;
+      for (let i = 0; i < ch.length; i += 4) {
+        const a = Math.abs(ch[i]);
+        if (a > peak) peak = a;
+        sq += ch[i] * ch[i];
+      }
+      const rms = Math.sqrt(sq / (ch.length / 4));
+      this.snap.micLevel = this.snap.muted ? 0 : Math.min(1, peak * 2.5);
       this.stats.micPeak = Math.max(this.stats.micPeak, peak);
       this.stats.micChunks++;
-      // O'quvchining gapirish vaqti (tahlil uchun).
-      if (peak > 0.04) this.speakingMs += (ch.length / rate) * 1000;
-      this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: toBase64(toPcm16(ch, rate)), mimeType: 'audio/pcm;rate=16000' } } }));
+      if (this.snap.muted) {
+        if (this.vad.on && !this.vad.ptt) this.activity(false);
+        return;
+      }
+      if (peak > 0.04) this.speakingMs += chunkMs;
+      const pcm = toPcm16(ch, rate);
+      this.vadStep(rms, chunkMs, pcm);
     };
     src.connect(proc);
     proc.connect(this.ctxIn.destination);

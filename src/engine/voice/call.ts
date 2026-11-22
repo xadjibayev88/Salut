@@ -40,6 +40,9 @@ export interface VoiceConfig {
   live?: boolean;
   /** Jonli rejimda bugun qolgan daqiqalar. */
   liveMinutes?: number;
+  /** Reklama ko'rib olinadigan qo'shimcha daqiqalar (bugun qolgan soni). */
+  rewardsLeft?: number;
+  rewardMinutes?: number;
   /** Ovoz manbai: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. */
   ttsTier?: 'elevenlabs' | 'gemini' | 'browser';
 }

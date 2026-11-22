@@ -56,12 +56,12 @@ export function Profile() {
         <div className="scard">
           <span>⭐</span>
           <b>{state.xp}</b>
-          <small>Jami ball</small>
+          <small>Jami XP</small>
         </div>
         <div className="scard">
           <span>{LEAGUES[state.league.tier].icon}</span>
           <b>{LEAGUES[state.league.tier].name}</b>
-          <small>Turnir bosqichi</small>
+          <small>Turnir ligasi</small>
         </div>
         <div className="scard">
           <span>📚</span>
@@ -82,12 +82,12 @@ export function Profile() {
 
       <h2 className="section-title">Shu hafta</h2>
       <WeekStrip />
-      <div className="xp-chart" aria-label="So'nggi 14 kunlik ball">
+      <div className="xp-chart" aria-label="So'nggi 14 kunlik XP">
         <div className="xp-bars">
           {days.map((d) => {
             const v = state.xpByDay[d] ?? 0;
             return (
-              <div key={d} className="xp-col" title={`${d}: ${v} ball`}>
+              <div key={d} className="xp-col" title={`${d}: ${v} XP`}>
                 <div className={`xp-bar ${v >= state.dailyGoal ? 'goal' : ''}`} style={{ height: `${(v / max) * 100}%` }} />
               </div>
             );

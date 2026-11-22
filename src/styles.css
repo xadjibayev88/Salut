@@ -1290,3 +1290,46 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
   background: rgba(255, 255, 255, 0.08) !important; border-color: rgba(255, 255, 255, 0.14) !important; color: #eef0ff;
 }
 .theme-setting { flex-wrap: wrap; gap: 10px; } .theme-setting .seg { display: inline-flex; padding: 3px; border-radius: 14px; } .theme-setting .seg button { border: none; background: none; padding: 7px 10px; border-radius: 11px; font-weight: 700; font-size: 13px; color: var(--text); }
+/* Jonli rejim: bosib gapirish */
+.live-actions { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.round-btn { width: 58px; height: 58px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .1); color: #fff; font-size: 22px; display: grid; place-items: center; flex: none; }
+.round-btn.off { background: rgba(251, 113, 133, .2); }
+.round-btn.end { background: linear-gradient(120deg, #fb7185, #f0abfc); color: #2a0a14; font-weight: 900; border: none; }
+.ptt-btn { position: relative; width: 132px; height: 132px; border-radius: 50%; border: none; color: #0b0d24; background: var(--grad); box-shadow: 0 10px 34px rgba(129, 140, 248, .45), inset 0 1px 0 rgba(255, 255, 255, .5);
+  display: grid; place-items: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .15s; }
+.ptt-btn b { font-size: 14px; line-height: 1.15; max-width: 90px; text-align: center; }
+.ptt-btn.on { transform: scale(1.08); }
+.ptt-btn:disabled { opacity: .5; }
+.ptt-ring { position: absolute; inset: -8px; border-radius: 50%; border: 3px solid rgba(94, 234, 212, .7); opacity: 0; transform: scale(calc(1 + var(--lvl, 0) * .25)); transition: opacity .2s, transform .08s linear; pointer-events: none; }
+.ptt-btn.on .ptt-ring { opacity: 1; }
+/* Vivi sahifasi: «Gaplashish» tugmasi pastki menyu ustida yopishib turadi, orqasidagi matn ko'rinmaydi */
+.vh-start { bottom: calc(100px + env(safe-area-inset-bottom)); margin-top: 14px; }
+.vh-start .start-call { box-shadow: 0 10px 30px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .45); }
+.vh-note-ai { margin: 8px 4px 16px; text-align: center; }
+/* Dars: bo'sh pastki panel (juftliklar mashqida) ko'rinmasin; tugma doim ekranda */
+.foot-inner:empty { display: none; }
+.session-foot { bottom: 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+/* Sahifalar orasidagi o'tish (iOS uslubi): yo'nalish bo'yicha suzib kirish */
+.page-anim { animation: page-in .38s cubic-bezier(.22, 1, .36, 1) both; }
+.page-fwd { --from-x: 28px; }
+.page-back { --from-x: -28px; }
+@keyframes page-in { from { opacity: 0; transform: translate3d(var(--from-x, 0), 0, 0) scale(.985); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .page-anim { animation: none; } }
+.tutor-mode .page-anim { height: 100%; }
+/* Turnir: ligalar nomi bilan, statistik kartalar, «qanday ishlaydi» */
+.lbadge { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.lbadge small { font-size: 9.5px; font-weight: 800; line-height: 1; opacity: .85; white-space: nowrap; }
+.lbadge.locked small { opacity: .45; }
+.league-sub { margin-top: 2px; font-size: 14px; }
+.league-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 10px; }
+.league-stats > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--glass-edge); text-align: center; }
+.league-stats b { font-size: 20px; font-family: var(--font-display); }
+.league-stats small { font-size: 11.5px; color: var(--muted); line-height: 1.2; }
+.league-how { margin: 4px 0 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--glass-edge); }
+.league-how summary { font-weight: 800; cursor: pointer; list-style: none; }
+.league-how summary::-webkit-details-marker { display: none; }
+.league-how ul { margin: 10px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; color: var(--muted); }
+.league-how b { color: var(--text); }
+.lbadge { width: 62px; height: 58px; border-radius: 18px; font-size: 20px; }
+.lbadge.cur { width: 74px; height: 68px; font-size: 26px; border-radius: 20px; }
+.lbadge.locked { font-size: 15px; }

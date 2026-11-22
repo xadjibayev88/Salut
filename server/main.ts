@@ -232,6 +232,19 @@ function freeLeft(req: IncomingMessage): number | null {
   const r = dailyUse.get(quotaKey(req));
   return Math.max(0, FREE_MSGS - (r && r.day === tashkentDay() ? r.n : 0));
 }
+// Reklama ko'rib olingan qo'shimcha daqiqalar (kuniga REWARD_VIVI_PER_DAY marta, har biri REWARD_VIVI_MIN daqiqa).
+const REWARD_VIVI_MIN = num('REWARD_VIVI_MINUTES', 2);
+const REWARD_VIVI_PER_DAY = num('REWARD_VIVI_PER_DAY', 3);
+const adBonus = new Map<string, { day: string; claims: number }>();
+function bonusMin(req: IncomingMessage): number {
+  const r = adBonus.get(quotaKey(req));
+  return r && r.day === tashkentDay() ? r.claims * REWARD_VIVI_MIN : 0;
+}
+function bonusClaimsLeft(req: IncomingMessage): number {
+  const r = adBonus.get(quotaKey(req));
+  return Math.max(0, REWARD_VIVI_PER_DAY - (r && r.day === tashkentDay() ? r.claims : 0));
+}
+
 // Bepul ovozli suhbat: kuniga bitta, FREE_VOICE_MIN daqiqa (birinchi ovozli so'rovdan boshlab hisoblanadi).
 const voiceUse = new Map<string, { day: string; start: number }>();
 function voiceLimited(req: IncomingMessage): boolean {
@@ -244,7 +257,7 @@ function voiceLimited(req: IncomingMessage): boolean {
     return false;
   }
   // 1 daqiqa zaxira: tarmoq kechikishi va oxirgi javob uchun.
-  return Date.now() - r.start > (FREE_VOICE_MIN + 1) * 60_000;
+  return Date.now() - r.start > (FREE_VOICE_MIN + bonusMin(req) + 1) * 60_000;
 }
 
 // Jonli rejim (Gemini Live) uchun alohida kunlik bepul vaqt.
@@ -259,13 +272,13 @@ function liveLimited(req: IncomingMessage): boolean {
     liveUse.set(k, { day, start: Date.now() });
     return false;
   }
-  return Date.now() - r.start > (FREE_LIVE_MIN + 1) * 60_000;
+  return Date.now() - r.start > (FREE_LIVE_MIN + bonusMin(req) + 1) * 60_000;
 }
 /** Bugun jonli rejimda qolgan bepul daqiqalar. */
 function liveMinutesLeft(req: IncomingMessage): number {
   const r = liveUse.get(quotaKey(req));
-  if (!r || r.day !== tashkentDay()) return FREE_LIVE_MIN;
-  return Math.max(0, Math.floor(FREE_LIVE_MIN - (Date.now() - r.start) / 60_000));
+  if (!r || r.day !== tashkentDay()) return FREE_LIVE_MIN + bonusMin(req);
+  return Math.max(0, Math.floor(FREE_LIVE_MIN + bonusMin(req) - (Date.now() - r.start) / 60_000));
 }
 
 function useFree(req: IncomingMessage) {
@@ -368,6 +381,24 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     json(res, 200, { ok: true });
   },
 
+  // Reklama (rewarded video) oxirigacha ko'rilgach: Vivi bilan qo'shimcha daqiqalar.
+  'POST /api/reward/vivi': (req, res) => {
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const limited = take('billing', clientIp(req));
+    if (limited) return json(res, 429, { message: limited });
+    if (bonusClaimsLeft(req) <= 0) return json(res, 429, { code: 'limit', message: "Bugungi reklama mukofotlari tugadi — ertaga yana ko'ring" });
+    const k = quotaKey(req);
+    const day = tashkentDay();
+    const r = adBonus.get(k);
+    adBonus.set(k, { day, claims: (r && r.day === day ? r.claims : 0) + 1 });
+    // Bepul vaqti tugab dam olayotgan bo'lsa ham — qo'shimcha daqiqa hozirdan hisoblanadi.
+    const v = voiceUse.get(k);
+    if (v && v.day === day && Date.now() - v.start > (FREE_VOICE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000) voiceUse.set(k, { day, start: Date.now() - (FREE_VOICE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000 });
+    const l = liveUse.get(k);
+    if (l && l.day === day && Date.now() - l.start > (FREE_LIVE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000) liveUse.set(k, { day, start: Date.now() - (FREE_LIVE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000 });
+    json(res, 200, { ok: true, minutes: REWARD_VIVI_MIN, left: bonusClaimsLeft(req) });
+  },
+
   'GET /api/health': (_q, res) => json(res, 200, { ok: true, ai: !!env.GEMINI_API_KEY, model: MODEL, exhausted: rotationStatus().map((r) => r.model) }),
 
   'GET /api/voice/config': (req, res) => {
@@ -382,7 +413,9 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       voices: premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
       // Super obunachilari: uzunroq sessiya, dam olish talab qilinmaydi.
       // Bepul: kuniga bitta qisqa sessiya (keyingisi — ertaga), Super: uzun sessiyalar, tanaffussiz.
-      sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN),
+      sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN) + bonusMin(req),
+      rewardMinutes: REWARD_VIVI_MIN,
+      rewardsLeft: premium ? 0 : bonusClaimsLeft(req),
       cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
       messagesLeft: freeLeft(req),
       live: !!env.GEMINI_API_KEY && env.LIVE_DISABLED !== '1',
@@ -633,7 +666,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => {
       const r = parseTutorRequest({ ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' });
       // Mimika funksiyasi faqat uni qo'llaydigan (yangi) ilovaga beriladi — eski versiya javob bermasa, Vivi jim qolardi.
-      return typeof r === 'string' ? r : { ...r, react: (b as { react?: unknown })?.react === true };
+      return typeof r === 'string' ? r : { ...r, react: (b as { react?: unknown })?.react === true, manualVad: (b as { vad?: unknown })?.vad === 'manual' };
     } }, async (data, signal) => {
       const premium = isPremium(req);
       const left = premium ? 0 : liveMinutesLeft(req);
@@ -659,6 +692,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           ...((data as { react?: boolean }).react ? { tools: [{ functionDeclarations: [LIVE_REACT_TOOL] }] } : {}),
+          // Gapni ilovaning o'zi aniqlaydi (activityStart/End) — ba'zi telefonlarda Gemini'ning avtomatik aniqlagichi nutqni sezmaydi.
+          ...((data as { manualVad?: boolean }).manualVad ? { realtimeInputConfig: { automaticActivityDetection: { disabled: true } } } : {}),
         },
       });
     });

@@ -10,6 +10,7 @@ import { browserSttSupported, cloudSttSupported } from '../../engine/voice/stt';
 import { TtsQueue, browserVoiceAvailable } from '../../engine/voice/tts';
 import { useStore } from '../../state/store';
 import { KruaLive } from '../../components/KruaLive';
+import { RewardedButton } from '../../components/RewardedButton';
 import { LiveCallScreen } from './LiveCall';
 import { VoiceCallScreen } from './VoiceCall';
 import { FeedbackView } from './FeedbackView';
@@ -458,6 +459,16 @@ export function VoiceHub() {
               <button type="button" className="btn btn-primary" onClick={() => setOffer('limit')}>
                 ⭐ Hoziroq davom etish — Super
               </button>
+              <RewardedButton
+                kind="vivi"
+                compact
+                viviLeft={config?.rewardsLeft ?? 0}
+                onGranted={() => {
+                  setRestUntil(0);
+                  setCfgRefresh((n) => n + 1);
+                  setNow(Date.now());
+                }}
+              />
             </div>
           </div>
         ) : resting ? (
@@ -471,6 +482,16 @@ export function VoiceHub() {
                   ⭐ Hoziroq davom etish — Super
                 </button>
               )}
+              <RewardedButton
+                kind="vivi"
+                compact
+                viviLeft={config?.rewardsLeft ?? 0}
+                onGranted={() => {
+                  setRestUntil(0);
+                  setCfgRefresh((n) => n + 1);
+                  setNow(Date.now());
+                }}
+              />
             </div>
           </div>
         ) : !config ? (
@@ -490,8 +511,8 @@ export function VoiceHub() {
             {prefs.live && config.live ? '⚡' : '🎙️'} {ch.name} bilan gaplashish · {prefs.live && config.live ? config.liveMinutes ?? config.sessionMinutes : config.sessionMinutes} daqiqagacha
           </button>
         )}
-        <p className="tutor-note">Vivi — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>
       </div>
+      <p className="tutor-note vh-note-ai">Vivi — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>
 
       <section className="vh-section">
         <h3>So'nggi suhbatlar</h3>
