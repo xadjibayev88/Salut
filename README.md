@@ -43,7 +43,7 @@ Nomi, maskoti (Krua — beretli kruasan), dizayni va kurs mazmuni original.
 ## Ishga tushirish
 
 ```bash
-cd salut
+# repo ildizida:
 npm install
 npm test                                  # dvigatel, kurs mazmuni va AI server testlari
 npm run build                             # dist/
