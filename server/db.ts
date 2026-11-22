@@ -44,6 +44,10 @@ export function db(): DatabaseSync {
       plan TEXT NOT NULL,
       expires_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS receipts (
+      order_id INTEGER PRIMARY KEY,
+      data TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

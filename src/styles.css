@@ -1029,3 +1029,38 @@ html.lite .vivi * { animation: none !important; }
 .live-toggle .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; }
 .live-toggle.on .sw { background: #f59e0b; } .live-toggle.on .sw::after { transform: translateX(18px); }
 .vh-start:has(.rest-card) { position: static; }
+/* Super narxlari */
+.price-anchor { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 14px; background: rgba(165, 180, 252, .1); border: 1px solid rgba(165, 180, 252, .3); font-size: 13px; margin: 4px 0 12px; }
+.price-anchor s { color: var(--muted); }
+.price-anchor b { color: #a5b4fc; font-weight: 900; }
+.plan-grid { display: grid; gap: 8px; margin-bottom: 14px; }
+.plan-grid.n2 { grid-template-columns: 1fr 1fr; } .plan-grid.n3 { grid-template-columns: repeat(3, 1fr); }
+.plan-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 16px 6px 10px; border-radius: 16px; border: 1.5px solid var(--line); background: rgba(255, 255, 255, .05); color: var(--text); cursor: pointer; }
+.plan-card.on { border-color: #a5b4fc; background: rgba(165, 180, 252, .14); box-shadow: 0 0 0 3px rgba(165, 180, 252, .15); }
+.plan-card .plan-name { font-size: 14px; }
+.plan-card .plan-old { font-size: 11.5px; color: var(--muted); }
+.plan-card .plan-price { font-size: 17px; font-weight: 900; } .plan-card .plan-price small { font-size: 11px; font-weight: 700; }
+.plan-card > small { font-size: 10.5px; text-align: center; }
+.plan-card .plan-tag { position: absolute; top: -9px; right: 6px; font-size: 10.5px; font-weight: 900; padding: 2px 6px; border-radius: 8px; color: #fff; background: #ef4444; }
+.plan-card .plan-pop { position: absolute; top: -9px; left: 6px; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 8px; color: #0b0d24; background: var(--grad); }
+.btn-pay.card { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; }
+.review-note { padding: 10px 12px; border-radius: 12px; background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .35); font-size: 13.5px; margin-bottom: 10px; }
+.card-pay { text-align: left; align-items: stretch; }
+.card-steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; font-size: 14px; }
+.card-number { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 6px 0 2px; padding: 12px 14px; border-radius: 12px; border: 1.5px dashed #a5b4fc; background: rgba(165, 180, 252, .08); color: var(--text); font: 800 17px/1.2 ui-monospace, monospace; letter-spacing: 1px; cursor: pointer; }
+.card-number small { font: 700 11px var(--font, sans-serif); color: #a5b4fc; letter-spacing: 0; }
+.receipt-drop { display: block; width: 100%; margin-top: 6px; padding: 14px; border-radius: 12px; border: 1.5px dashed var(--line); background: rgba(255, 255, 255, .04); color: var(--text); font-weight: 700; cursor: pointer; }
+.receipt-drop.has { border-color: #34d399; color: #6ee7b7; }
+/* Admin */
+.admin-link { display: block; text-align: center; margin: 8px 0 14px; }
+.admin-list { display: grid; gap: 10px; margin-top: 12px; }
+.admin-order { display: flex; gap: 12px; padding: 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); }
+.admin-receipt { flex: none; width: 92px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #a5b4fc; }
+.admin-receipt img { width: 92px; height: 120px; object-fit: cover; border-radius: 8px; background: #000; }
+.admin-info { display: grid; gap: 3px; font-size: 13px; }
+.admin-actions { display: flex; gap: 8px; margin-top: 6px; }
+.admin-actions .btn { padding: 8px 12px; font-size: 13px; }
+.card-pay { background: linear-gradient(160deg, rgba(30, 34, 80, 0.99), rgba(18, 20, 52, 1)) !important; }
+.plan-card .plan-pop { top: auto; bottom: -9px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.plan-card.popular { padding-bottom: 14px; }
+.plan-grid { margin-top: 10px; }

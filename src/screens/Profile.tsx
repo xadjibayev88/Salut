@@ -39,6 +39,12 @@ export function Profile() {
 
       {picking && <AvatarPicker value={state.avatar} googlePhoto={me.user?.avatar} onPick={(v) => update((s) => ({ ...s, avatar: v }))} onClose={() => setPicking(false)} />}
 
+      {me.admin && (
+        <a className="btn btn-ghost admin-link" href="#/admin">
+          🧾 Admin: to'lov cheklari
+        </a>
+      )}
+
       <h2 className="section-title">Statistika</h2>
       <div className="stats-grid">
         <div className="scard">

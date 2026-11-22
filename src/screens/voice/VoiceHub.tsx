@@ -16,7 +16,7 @@ import { FeedbackView } from './FeedbackView';
 
 const FALLBACK_CONFIG: VoiceConfig = { ai: false, stt: false, tts: 'browser', audioTags: false, voices: [], sessionMinutes: 10, cooldownMinutes: 20 };
 
-function useVoiceConfig(): VoiceConfig | null {
+function useVoiceConfig(refresh = 0): VoiceConfig | null {
   const [cfg, setCfg] = useState<VoiceConfig | null>(null);
   useEffect(() => {
     let alive = true;
@@ -27,7 +27,7 @@ function useVoiceConfig(): VoiceConfig | null {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refresh]);
   return cfg;
 }
 
@@ -40,7 +40,8 @@ type View = { kind: 'hub' } | { kind: 'call'; key: number } | { kind: 'live'; ke
 
 export function VoiceHub() {
   const { state, update } = useStore();
-  const config = useVoiceConfig();
+  const [cfgRefresh, setCfgRefresh] = useState(0);
+  const config = useVoiceConfig(cfgRefresh);
   const [prefs, setPrefsState] = useState<VoicePrefs>(loadPrefs);
   const [view, setView] = useState<View>({ kind: 'hub' });
   const [history, setHistory] = useState<SessionRecord[]>(loadHistory);
@@ -83,7 +84,10 @@ export function VoiceHub() {
   const micLang = prefs.micLang !== 'auto' ? prefs.micLang : prefs.lang === 'uz' ? role.micLang : role.micLang === 'fr-FR' ? 'fr-FR' : EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.mic;
   const customOk = prefs.role !== 'custom' || prefs.customRole.trim().length >= CUSTOM_ROLE_MIN;
   // Super (yoki admin) — dam olish kutilmaydi, hatto oldin bepul rejimda belgilangan bo'lsa ham.
-  const resting = rest > now && !config?.premium;
+  const liveMode = !!(prefs.live && config?.live);
+  // Jonli rejimda dam olish taymeri emas, jonli daqiqalar qoldig'i hal qiladi.
+  const resting = rest > now && !config?.premium && !liveMode;
+  const liveOut = liveMode && !config?.premium && (config?.liveMinutes ?? 0) < 1;
   const canTalk = !!config?.ai && (browserSttSupported() || (config.stt && cloudSttSupported()));
 
   const options: CallOptions | null = useMemo(
@@ -115,8 +119,11 @@ export function VoiceHub() {
     (c: { snap: { endReason: VoiceCall['snap']['endReason']; error: unknown }; record: () => SessionRecord }) => {
       const rec = c.record();
       const talked = rec.turns.filter((t) => t.role === 'user').length > 0;
+      const wasLive = rec.id.startsWith('live-');
       // Bepul: kunlik sessiya ishlatildi — qanday tugaganidan qat'i nazar (keyingisi ertaga). Super: faqat limitda.
-      if (config && config.cooldownMinutes > 0 && (c.snap.endReason === 'limit' || (talked && !config.premium))) setRestUntil(Date.now() + config.cooldownMinutes * 60_000);
+      // Jonli rejimning o'z daqiqalari bor (server hisoblaydi) — u oddiy rejimni bloklamaydi.
+      if (!wasLive && config && config.cooldownMinutes > 0 && (c.snap.endReason === 'limit' || (talked && !config.premium))) setRestUntil(Date.now() + config.cooldownMinutes * 60_000);
+      if (wasLive) setCfgRefresh((n) => n + 1);
       if (config && !config.premium && (c.snap.endReason === 'limit' || talked)) setTimeout(() => setOffer('limit'), 900);
       // Xotirani yangilash (fon rejimida).
       if (talked)
@@ -401,7 +408,10 @@ export function VoiceHub() {
           <span style={{ fontSize: 26 }}>⚡</span>
           <span>
             <b>Jonli rejim — Gemini Live</b>
-            <small>Real vaqtda, emotsiyali ovoz; Vivi gapini istalgan payt bo'lish mumkin (beta)</small>
+            <small>
+              Real vaqtda, emotsiyali ovoz; Vivi gapini istalgan payt bo'lish mumkin
+              {config.premium ? '' : ` · bugun ${config.liveMinutes ?? 10} daqiqa bepul`}
+            </small>
           </span>
           <span className="sw" />
         </button>
@@ -439,7 +449,18 @@ export function VoiceHub() {
         </p>
       )}
       <div className="vh-start">
-        {resting ? (
+        {liveOut ? (
+          <div className="rest-card">
+            <KruaLive state="sleeping" shape="pill" size={110} />
+            <div>
+              <b>Bugungi jonli suhbat tugadi</b>
+              <p className="muted">Kuniga {10} daqiqa jonli suhbat bepul. Ertaga yana — yoki Super bilan cheklovsiz gaplashing.</p>
+              <button type="button" className="btn btn-primary" onClick={() => setOffer('limit')}>
+                ⭐ Hoziroq davom etish — Super
+              </button>
+            </div>
+          </div>
+        ) : resting ? (
           <div className="rest-card">
             <KruaLive state="sleeping" shape="pill" size={110} />
             <div>
@@ -466,7 +487,7 @@ export function VoiceHub() {
             disabled={!customOk}
             onClick={() => setView({ kind: prefs.live && config.live ? 'live' : 'call', key: Date.now() })}
           >
-            {prefs.live && config.live ? '⚡' : '🎙️'} {ch.name} bilan gaplashish · {config.sessionMinutes} daqiqagacha
+            {prefs.live && config.live ? '⚡' : '🎙️'} {ch.name} bilan gaplashish · {prefs.live && config.live ? config.liveMinutes ?? config.sessionMinutes : config.sessionMinutes} daqiqagacha
           </button>
         )}
         <p className="tutor-note">Vivi — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>

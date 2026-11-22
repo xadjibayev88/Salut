@@ -11,14 +11,19 @@ export interface AccountUser {
   provider: 'email' | 'google';
 }
 
+export type PlanId = 'week' | 'month' | 'quarter' | 'year';
 export interface BillingInfo {
-  plans: { id: 'month' | 'year'; name: string; uzs: number; days: number; period: string }[];
-  providers: ('payme' | 'click')[];
+  plans: { id: PlanId; name: string; label?: string; uzs: number; oldUzs?: number; days: number; period: string }[];
+  providers: ('payme' | 'click' | 'card')[];
+  anchor?: { label: string; uzs: number };
+  card?: { number: string; owner: string; bank: string } | null;
 }
 
 interface Me {
   user: AccountUser | null;
-  plan: 'free' | 'month' | 'year';
+  plan: 'free' | PlanId;
+  /** Ilova egasi / sinovchi (ADMIN_EMAILS). */
+  admin?: boolean;
   expiresAt: number | null;
   googleClientId: string | null;
   auth?: { appleClientId: string | null; facebookAppId: string | null; telegramBot: string | null };

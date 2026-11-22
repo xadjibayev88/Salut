@@ -177,3 +177,31 @@ describe('admin rejimi', () => {
     delete process.env.ADMIN_EMAILS;
   });
 });
+
+describe("karta orqali to'lov", () => {
+  it('chek → admin tasdig\'i → Super yoqiladi; rad etilsa yoqilmaydi', async () => {
+    const { createCardOrder, decideOrder, reviewOrders, receiptOf, activePlan, plansPayload } = await import('./billing.ts');
+    process.env.PAY_CARD_NUMBER = '8600 1234 5678 9012';
+    const r = register('payer@voila.test', 'parol12345', 'Payer');
+    if (!r.ok) throw new Error('reg');
+    expect(plansPayload().providers).toContain('card');
+    expect(plansPayload().plans.map((p) => p.id)).toEqual(['week', 'month', 'quarter']);
+    expect(typeof createCardOrder(r.user.id, 'month', 'not-an-image')).toBe('object');
+    expect('error' in createCardOrder(r.user.id, 'month', 'not-an-image')).toBe(true);
+    const img = 'data:image/jpeg;base64,' + Buffer.alloc(300).toString('base64');
+    const o = createCardOrder(r.user.id, 'month', img);
+    if ('error' in o) throw new Error(o.error);
+    expect(o.status).toBe('review');
+    expect(reviewOrders().some((x) => x.id === o.id && x.email === 'payer@voila.test')).toBe(true);
+    expect(receiptOf(o.id)).toBe(img);
+    expect(activePlan(r.user.id).plan).toBe('free');
+    expect(decideOrder(o.id, true)).toBe(true);
+    expect(activePlan(r.user.id).plan).toBe('month');
+    expect(decideOrder(o.id, true)).toBe(false);
+    const o2 = createCardOrder(r.user.id, 'week', img);
+    if ('error' in o2) throw new Error(o2.error);
+    expect(decideOrder(o2.id, false)).toBe(true);
+    expect(reviewOrders('rejected').some((x) => x.id === o2.id)).toBe(true);
+    delete process.env.PAY_CARD_NUMBER;
+  });
+});

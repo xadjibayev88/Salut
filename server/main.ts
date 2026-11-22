@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback, liveInstruction } from './tutor.ts';
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
-import { activePlan, click, createOrder, orderStatus, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
+import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
@@ -244,6 +244,27 @@ function voiceLimited(req: IncomingMessage): boolean {
   return Date.now() - r.start > (FREE_VOICE_MIN + 1) * 60_000;
 }
 
+// Jonli rejim (Gemini Live) uchun alohida kunlik bepul vaqt.
+const FREE_LIVE_MIN = num('FREE_LIVE_MINUTES', 10);
+const liveUse = new Map<string, { day: string; start: number }>();
+function liveLimited(req: IncomingMessage): boolean {
+  if (isPremium(req)) return false;
+  const k = quotaKey(req);
+  const day = tashkentDay();
+  const r = liveUse.get(k);
+  if (!r || r.day !== day) {
+    liveUse.set(k, { day, start: Date.now() });
+    return false;
+  }
+  return Date.now() - r.start > (FREE_LIVE_MIN + 1) * 60_000;
+}
+/** Bugun jonli rejimda qolgan bepul daqiqalar. */
+function liveMinutesLeft(req: IncomingMessage): number {
+  const r = liveUse.get(quotaKey(req));
+  if (!r || r.day !== tashkentDay()) return FREE_LIVE_MIN;
+  return Math.max(0, Math.floor(FREE_LIVE_MIN - (Date.now() - r.start) / 60_000));
+}
+
 function useFree(req: IncomingMessage) {
   if (isPremium(req)) return;
   const k = quotaKey(req);
@@ -258,6 +279,21 @@ const GEMINI_TTS_VOICE = env.GEMINI_TTS_VOICE || 'Leda';
 const LIVE_MODEL = env.GEMINI_LIVE_MODEL || 'gemini-3.8-live';
 // Zaxira AI (ixtiyoriy): masalan Groq — FALLBACK_LLM_URL=https://api.groq.com/openai/v1
 const FALLBACK_LLM = env.FALLBACK_LLM_URL && env.FALLBACK_LLM_KEY && env.FALLBACK_LLM_MODEL ? { url: env.FALLBACK_LLM_URL, key: env.FALLBACK_LLM_KEY, model: env.FALLBACK_LLM_MODEL } : undefined;
+/** Yangi chek haqida admin Telegram'iga xabar (TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID bo'lsa). */
+async function notifyAdmin(text: string) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_TELEGRAM_CHAT_ID) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: env.ADMIN_TELEGRAM_CHAT_ID, text, disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    /* xabar yetmasa ham to'lov qabul qilinadi */
+  }
+}
+
 const HEDGE_MS = env.GEMINI_HEDGE_MS !== undefined ? Number(env.GEMINI_HEDGE_MS) : 1500;
 const gem = (signal: AbortSignal) => ({ apiKey: env.GEMINI_API_KEY!, model: MODEL, fallbackModel: FALLBACK_MODEL || undefined, hedgeMs: HEDGE_MS, base: env.GEMINI_API_BASE, signal });
 
@@ -321,6 +357,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
       messagesLeft: freeLeft(req),
       live: !!env.GEMINI_API_KEY && env.LIVE_DISABLED !== '1',
+      liveMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : liveMinutesLeft(req),
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
@@ -338,6 +375,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
         facebookAppId: env.FACEBOOK_APP_SECRET ? env.FACEBOOK_APP_ID || null : null,
         telegramBot: env.TELEGRAM_BOT_TOKEN ? env.TELEGRAM_BOT_USERNAME || null : null,
       },
+      admin: user ? isAdmin(user.id) : false,
       billing: plansPayload() });
   },
 
@@ -441,6 +479,47 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     json(res, 200, r);
   },
 
+  // Karta orqali to'lov: chek yuklanadi, admin tasdiqlaydi.
+  'POST /api/billing/card': async (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid) return json(res, 401, { message: 'Obuna uchun avval hisobga kiring' });
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const limited = take('billing', clientIp(req));
+    if (limited) return json(res, 429, { message: limited });
+    const b = (await readBody(req, 4_500_000).catch(() => ({}))) as { plan?: unknown; receipt?: unknown };
+    const r = createCardOrder(uid, b.plan, b.receipt);
+    if ('error' in r) return json(res, (r as { status: number }).status, { message: r.error });
+    void notifyAdmin(`🧾 Yangi chek: #${r.id} · ${r.plan} · ${r.amountUzs.toLocaleString('ru-RU')} so'm · ${getUser(uid)?.email ?? uid}\n${publicOrigin(req)}/#/admin`);
+    json(res, 200, r);
+  },
+
+  'GET /api/admin/orders': (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid || !isAdmin(uid)) return json(res, 403, { message: "Ruxsat yo'q" });
+    const status = new URL(req.url ?? '/', 'http://x').searchParams.get('status') || 'review';
+    json(res, 200, { orders: reviewOrders(['review', 'paid', 'rejected'].includes(status) ? status : 'review') });
+  },
+
+  'GET /api/admin/receipt': (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid || !isAdmin(uid)) return json(res, 403, { message: "Ruxsat yo'q" });
+    const data = receiptOf(Number(new URL(req.url ?? '/', 'http://x').searchParams.get('id')));
+    const m = data && /^data:([^;]+);base64,(.*)$/.exec(data);
+    if (!m) return json(res, 404, { message: 'Chek topilmadi' });
+    res.writeHead(200, { 'content-type': m[1], 'cache-control': 'private, no-store' });
+    res.end(Buffer.from(m[2], 'base64'));
+  },
+
+  'POST /api/admin/order': async (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid || !isAdmin(uid)) return json(res, 403, { message: "Ruxsat yo'q" });
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const b = (await readBody(req).catch(() => ({}))) as { id?: unknown; action?: unknown };
+    const ok = decideOrder(Number(b.id), b.action === 'approve');
+    if (!ok) return json(res, 409, { message: "Buyurtma allaqachon ko'rib chiqilgan yoki topilmadi" });
+    json(res, 200, { ok: true });
+  },
+
   'GET /api/billing/order': (req, res) => {
     const uid = currentUserId(req);
     if (!uid) return json(res, 401, { message: 'Kirilmagan' });
@@ -509,11 +588,12 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     if (!env.GEMINI_API_KEY || env.LIVE_DISABLED === '1') return json(res, 503, { code: 'config', message: 'Jonli rejim hozircha yoqilmagan.' });
     if (freeLeft(req) === 0) return json(res, 429, { code: 'daily_limit', message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Super bilan cheklovsiz davom eting 💜` });
     return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => parseTutorRequest({ ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' }) }, async (data, signal) => {
-      if (voiceLimited(req))
-        return json(res, 429, { code: 'voice_limit', message: `Bugungi ${FREE_VOICE_MIN} daqiqalik bepul ovozli suhbat tugadi, asalim. Super bilan cheklovsiz 💜` });
-      useFree(req);
       const premium = isPremium(req);
-      const minutes = premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN);
+      const left = premium ? 0 : liveMinutesLeft(req);
+      if (!premium && (left < 1 || liveLimited(req)))
+        return json(res, 429, { code: 'voice_limit', message: `Bugungi ${FREE_LIVE_MIN} daqiqalik bepul jonli suhbat tugadi, asalim. Super bilan cheklovsiz gaplashing 💜` });
+      useFree(req);
+      const minutes = premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.max(1, left);
       const r = await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY! },

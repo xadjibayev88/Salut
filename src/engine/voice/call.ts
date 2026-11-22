@@ -37,6 +37,8 @@ export interface VoiceConfig {
   premium?: boolean;
   /** Gemini Live mavjudmi. */
   live?: boolean;
+  /** Jonli rejimda bugun qolgan daqiqalar. */
+  liveMinutes?: number;
   /** Ovoz manbai: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. */
   ttsTier?: 'elevenlabs' | 'gemini' | 'browser';
 }

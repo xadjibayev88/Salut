@@ -10,6 +10,7 @@ import { Profile } from './screens/Profile';
 import { Shop } from './screens/Shop';
 import { Tutor } from './screens/Tutor';
 import { About } from './screens/About';
+import { Admin } from './screens/Admin';
 import { Onboarding } from './screens/Onboarding';
 import { Session, type SessionConfig } from './screens/Session';
 import { WeekStrip } from './screens/Result';
@@ -18,7 +19,7 @@ import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
 import { initAds, loadAdsense, maybeInterstitial, setImmersive } from './engine/ads';
 
-type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop' | 'about';
+type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop' | 'about' | 'admin';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'learn', label: "Metro", icon: '🚇' },
@@ -31,7 +32,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 function readTab(): Tab {
   const h = location.hash.replace('#/', '').split('?')[0] as Tab;
-  return TABS.some((t) => t.id === h) || h === 'about' ? h : 'learn';
+  return TABS.some((t) => t.id === h) || h === 'about' || h === 'admin' ? h : 'learn';
 }
 
 export function App() {
@@ -112,6 +113,7 @@ export function App() {
           {tab === 'profile' && <Profile />}
           {tab === 'shop' && <Shop />}
           {tab === 'about' && <About />}
+          {tab === 'admin' && <Admin />}
         </div>
       </div>
 
