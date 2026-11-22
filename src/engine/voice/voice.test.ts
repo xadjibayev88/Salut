@@ -85,3 +85,16 @@ describe('effektlar: rasm va noto\'g\'ri teglar', () => {
     expect(parseRichAns('ey [[fr]mon amour[/fr] — muhabbatim').find((s) => s.kind === 'fr')?.text).toBe('mon amour');
   });
 });
+
+describe('ovoz teglari tanani harakatlantiradi', () => {
+  it('[laughs] → giggle, [crying] → puddle, [fart]/[burps] → fx, [fuck] → flip (aytilmaydi)', () => {
+    expect(extractCues('[laughs] Voy!').cue.actions).toContain('giggle');
+    expect(extractCues('[crying] Nega?').cue.shape).toBe('puddle');
+    expect(extractCues('[fart] Uzr.').cue.fx).toBe('fart');
+    expect(extractCues('[burps] Pardon.').cue.fx).toBe('burp');
+    const f = extractCues('[fuck] Bu fignya.');
+    expect(f.cue.actions[0]).toBe('flip');
+    expect(f.clean).not.toContain('[fuck]');
+    expect(speechText('[boundaries] Chegaralarni belgilaymiz.', true)).toBe('Chegaralarni belgilaymiz.');
+  });
+});

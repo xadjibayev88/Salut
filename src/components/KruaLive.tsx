@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Action, Shape } from '../engine/voice/markers';
 import { CatBase, CatEars, CatMuzzle, FUR, INK } from './Mascot';
+import { playSfx } from '../engine/audio';
 
 export type LiveState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'sleeping';
 
@@ -112,7 +113,14 @@ export function KruaLive({
   level = 0,
   size = 240,
   pressed = false,
+  fx = null,
+  fxKey = 0,
+  sound = true,
 }: {
+  /** Tana effekti: yashil bulut yoki pufak. */
+  fx?: 'fart' | 'burp' | null;
+  fxKey?: number;
+  sound?: boolean;
   shape?: Shape;
   action?: Action | null;
   /** Har yangi imo-ishorada o'zgaradi — animatsiya qayta boshlanadi. */
@@ -124,11 +132,22 @@ export function KruaLive({
 }) {
   const [flare, setFlare] = useState(false);
   useEffect(() => {
-    if (action !== 'flare') return;
+    if (action !== 'flare' && action !== 'flip') return;
     setFlare(true);
-    const t = setTimeout(() => setFlare(false), 1800);
+    // «flip» — o'rta barmoq: g'azabdan alangalanadi va zarba tovushi eshitiladi.
+    if (action === 'flip' && sound) playSfx('hit');
+    const t = setTimeout(() => setFlare(false), action === 'flip' ? 2200 : 1800);
     return () => clearTimeout(t);
-  }, [action, actionKey]);
+  }, [action, actionKey, sound]);
+  const [fxOn, setFxOn] = useState<typeof fx>(null);
+  useEffect(() => {
+    if (!fx) return;
+    setFxOn(fx);
+    if (sound && fx === 'fart') playSfx('fart');
+    if (sound && fx === 'burp') playSfx('pop');
+    const t = setTimeout(() => setFxOn(null), 2600);
+    return () => clearTimeout(t);
+  }, [fx, fxKey, sound]);
 
   const color = COLORS[shape];
   const body = shape === 'pill' ? null : BODIES[shape];
@@ -167,6 +186,29 @@ export function KruaLive({
           </svg>
         </div>
       </div>
+      {action === 'flip' && (
+        <svg key={`flip-${actionKey}`} className="vivi-flip" viewBox="0 0 120 140" aria-hidden="true">
+          {/* Mushuk panjasi, o'rta barmoq ko'tarilgan (multfilm uslubida) */}
+          <g stroke="#4C3F8F" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" fill="#F7F3FF">
+            <path d="M28 134 C20 104 24 84 34 76 L86 76 C96 84 100 104 92 134 Z" />
+            <rect x="48" y="8" width="24" height="74" rx="12" />
+            <path d="M32 80 C26 68 30 58 40 58 C48 58 50 66 50 76" />
+            <path d="M70 76 C70 64 74 58 82 58 C92 58 94 68 88 80" />
+            <path d="M86 78 C94 70 104 74 102 84 C100 92 92 96 86 96" />
+          </g>
+          <ellipse cx="60" cy="22" rx="6" ry="4" fill="#F9A8D4" />
+        </svg>
+      )}
+      {fxOn === 'fart' && (
+        <div key={`fart-${fxKey}`} className="vivi-fart" aria-hidden="true">
+          <i /><i /><i /><i />
+        </div>
+      )}
+      {fxOn === 'burp' && (
+        <div key={`burp-${fxKey}`} className="vivi-burp" aria-hidden="true">
+          <i />
+        </div>
+      )}
       {state === 'thinking' && (
         <div className="krua-thinking">
           <i />

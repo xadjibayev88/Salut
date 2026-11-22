@@ -4,6 +4,7 @@ import { VoiceCall as Controller, type CallOptions, type Snapshot } from '../../
 import { displayText } from '../../engine/voice/markers';
 import { KruaLive, type LiveState } from '../../components/KruaLive';
 import { ImagePop } from '../../components/ImagePop';
+import { RevengeHud, RevengeOverlay, useRevenge } from '../../components/RevengeGame';
 import { RichText } from '../Tutor';
 import { setImmersive } from '../../engine/ads';
 
@@ -43,7 +44,10 @@ export function VoiceCallScreen({
   onSwitchMode,
   onEnded,
   onUserTurn,
+  game = false,
 }: {
+  /** «Qasos rejimi» mini-o'yini. */
+  game?: boolean;
   options: CallOptions;
   subtitles: boolean;
   fullscreen: boolean;
@@ -63,6 +67,13 @@ export function VoiceCallScreen({
   const endedRef = useRef(false);
   const ptt = options.inputMode === 'ptt';
   const ch = CHARACTERS.find((c) => c.id === options.character)!;
+  const g = useRevenge(game, true);
+  // Imo-ishora: Vivining o'zi yoki o'yindagi zarbaga reaksiya — qaysi biri oxirgi bo'lsa.
+  const [act, setAct] = useState<{ action: Snapshot['action']; key: number }>({ action: null, key: 0 });
+  useEffect(() => setAct((a) => ({ action: s.action, key: a.key + 1 })), [s.actionKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (g.hitAct) setAct((a) => ({ action: g.hitAct!.action, key: a.key + 1 }));
+  }, [g.hitAct]);
 
   useEffect(() => {
     setImmersive(true);
@@ -120,8 +131,9 @@ export function VoiceCallScreen({
           : s.phase === 'speaking'
             ? 'Vivi gapirmoqda…'
             : 'Sizning navbatingiz';
-  const hint =
-    s.phase === 'speaking'
+  const hint = game
+    ? "Urish uchun Vivini bosing yoki F · Q — qurollar · gapirish uchun 🎤 yoki Space"
+    : s.phase === 'speaking'
       ? ptt
         ? "Gapini bo'lish uchun Vivini bosib turing"
         : "Gapira boshlang — Vivi jim bo'lib tinglaydi"
@@ -152,7 +164,7 @@ export function VoiceCallScreen({
   }
 
   return (
-    <div className={`call phase-${s.phase}`} ref={rootRef} style={{ ['--ch' as string]: ch.color }}>
+    <div className={`call phase-${s.phase} ${game ? 'game-mode' : ''}`} ref={rootRef} style={{ ['--ch' as string]: ch.color }}>
       <header className="call-top">
         <button type="button" className="icon-btn" aria-label="Tugatish" onClick={() => ctrl.end('user')}>
           ✕
@@ -175,32 +187,44 @@ export function VoiceCallScreen({
 
       {s.tired && <div className="call-tired">😮‍💨 Vivi charchayapti… {fmt(s.limitMs - s.elapsedMs)} qoldi</div>}
 
-      <main className="call-stage">
+      {game && <RevengeHud g={g} />}
+
+      <main className={`call-stage ${g.shake % 2 ? 'shake-a' : g.shake ? 'shake-b' : ''}`}>
         {s.image && <ImagePop key={s.image.key} query={s.image.q} />}
         <button
           type="button"
-          className="call-avatar"
-          aria-label={ptt ? 'Gapirish uchun bosib turing' : 'Vivi'}
+          className={`call-avatar ${game && g.ko ? 'rv-down' : ''}`}
+          aria-label={game ? 'Urish uchun Vivini bosing' : ptt ? 'Gapirish uchun bosib turing' : 'Vivi'}
+          onClick={(e) => {
+            if (!game) return;
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            g.fire((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+          }}
           onPointerDown={(e) => {
-            if (!ptt) return;
-            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            if (!ptt || game) return;
+            try {
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              } catch {
+                /* sintetik hodisa */
+              }
             setPressed(true);
             ctrl.pressStart();
           }}
           onPointerUp={() => {
-            if (!ptt) return;
+            if (!ptt || game) return;
             setPressed(false);
             ctrl.pressEnd();
           }}
           onPointerCancel={() => {
-            if (!ptt) return;
+            if (!ptt || game) return;
             setPressed(false);
             ctrl.pressEnd();
           }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <KruaLive shape={s.shape} action={s.action} actionKey={s.actionKey} state={liveState} level={s.level} pressed={pressed} size={Math.min(300, Math.round(window.innerWidth * 0.62))} />
+          <KruaLive shape={game && g.ko ? 'puddle' : s.shape} action={act.action} actionKey={act.key} fx={s.fx?.kind ?? null} fxKey={s.fx?.key ?? 0} state={liveState} level={s.level} pressed={pressed} size={Math.min(300, Math.round(window.innerWidth * 0.62))} />
         </button>
+        {game && <RevengeOverlay g={g} />}
         <div className="call-label" aria-live="polite">
           <b>{label}</b>
           {hint && <small>{hint}</small>}
@@ -221,6 +245,32 @@ export function VoiceCallScreen({
       {s.notice && <div className="call-notice">{s.noticeText || NOTICES[s.notice]}</div>}
 
       <footer className="call-bottom">
+        {game && ptt && (
+          <button
+            type="button"
+            className={`rv-talk ${pressed ? 'on' : ''}`}
+            onPointerDown={(e) => {
+              try {
+                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              } catch {
+                /* sintetik hodisa */
+              }
+              setPressed(true);
+              ctrl.pressStart();
+            }}
+            onPointerUp={() => {
+              setPressed(false);
+              ctrl.pressEnd();
+            }}
+            onPointerCancel={() => {
+              setPressed(false);
+              ctrl.pressEnd();
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            🎤 {pressed ? 'Gapiring…' : 'Bosib turib gapiring'}
+          </button>
+        )}
         <div className="seg small">
           <button type="button" className={ptt ? 'on' : ''} onClick={() => !ptt && setConfirmSwitch(true)}>
             Bosib gapirish

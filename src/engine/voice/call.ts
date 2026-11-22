@@ -37,6 +37,8 @@ export interface CallOptions {
   character: CharacterId;
   role: RoleId;
   customRole: string;
+  /** Senzurasiz rejim (18+). */
+  explicit?: boolean;
   lang: ExplainLang;
   voiceId: string;
   inputMode: InputMode;
@@ -61,6 +63,8 @@ export interface Snapshot {
   shape: Shape;
   /** Rasm effekti: so'nggi [[img:...]] (key — har safar yangidan chiqishi uchun). */
   image: { q: string; key: number } | null;
+  /** Tana effekti ([fart], [burps]). */
+  fx: { kind: 'fart' | 'burp'; key: number } | null;
   action: Action | null;
   actionKey: number;
   level: number;
@@ -112,6 +116,7 @@ export class VoiceCall {
       phase: 'connecting',
       shape: 'pill',
       image: null,
+      fx: null,
       action: null,
       actionKey: 0,
       level: 0,
@@ -132,6 +137,7 @@ export class VoiceCall {
       const { cue } = extractCues(raw);
       const patch: Partial<Snapshot> = { phase: 'speaking' };
       if (cue.shape) patch.shape = cue.shape;
+      if (cue.fx) patch.fx = { kind: cue.fx, key: (this.snap.fx?.key ?? 0) + 1 };
       if (cue.image) patch.image = { q: cue.image, key: (this.snap.image?.key ?? 0) + 1 };
       if (cue.actions.length) {
         patch.action = cue.actions[0];
@@ -366,6 +372,7 @@ export class VoiceCall {
           character: this.o.character,
           lang: this.o.lang,
           customRole: this.o.customRole,
+          explicit: !!this.o.explicit,
           audioTags: this.o.config.audioTags,
         }),
         signal: ac.signal,

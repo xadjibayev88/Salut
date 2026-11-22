@@ -85,7 +85,26 @@ function tone(freq: number, start: number, dur: number, type: OscillatorType = '
   o.stop(t0 + dur + 0.05);
 }
 
-export type Sfx = 'correct' | 'wrong' | 'complete' | 'tap' | 'chest' | 'match';
+/** Qisqa shovqin (zarba, portlash) — filtrlangan oq shovqin. */
+function noise(start: number, dur: number, freq = 900, gain = 0.3) {
+  const c = ac();
+  if (!c) return;
+  const len = Math.max(1, Math.floor(c.sampleRate * dur));
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const f = c.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = freq;
+  const g = c.createGain();
+  g.gain.value = gain;
+  src.connect(f).connect(g).connect(c.destination);
+  src.start(c.currentTime + start);
+}
+
+export type Sfx = 'correct' | 'wrong' | 'complete' | 'tap' | 'chest' | 'match' | 'hit' | 'whack' | 'shot' | 'boom' | 'pop' | 'squeak' | 'fart';
 
 export function playSfx(kind: Sfx, enabled = true): void {
   if (!enabled) return;
@@ -103,6 +122,34 @@ export function playSfx(kind: Sfx, enabled = true): void {
       break;
     case 'tap':
       tone(600, 0, 0.05, 'sine', 0.06);
+      break;
+    case 'hit':
+      tone(110, 0, 0.18, 'sine', 0.35);
+      noise(0, 0.12, 1400, 0.35);
+      break;
+    case 'whack':
+      tone(160, 0, 0.12, 'square', 0.12);
+      noise(0, 0.09, 3000, 0.3);
+      break;
+    case 'shot':
+      noise(0, 0.16, 5000, 0.45);
+      tone(70, 0, 0.15, 'sine', 0.3);
+      break;
+    case 'boom':
+      noise(0, 0.9, 500, 0.6);
+      tone(50, 0, 0.7, 'sine', 0.45);
+      break;
+    case 'pop':
+      tone(500, 0, 0.06, 'sine', 0.2);
+      tone(900, 0.03, 0.06, 'sine', 0.12);
+      break;
+    case 'squeak':
+      tone(1200, 0, 0.08, 'triangle', 0.12);
+      tone(1600, 0.06, 0.1, 'triangle', 0.1);
+      break;
+    case 'fart':
+      tone(90, 0, 0.45, 'sawtooth', 0.12);
+      noise(0, 0.4, 300, 0.25);
       break;
     case 'chest':
     case 'complete':

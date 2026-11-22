@@ -74,6 +74,7 @@ export function VoiceHub() {
             character: prefs.character,
             role: prefs.role,
             customRole: prefs.customRole.trim(),
+            explicit: prefs.explicit && prefs.adultConfirmed,
             lang: prefs.lang,
             voiceId: prefs.voiceId,
             inputMode: prefs.inputMode,
@@ -122,6 +123,7 @@ export function VoiceHub() {
         options={options}
         subtitles={prefs.subtitles}
         fullscreen={prefs.fullscreen}
+        game={prefs.game}
         onToggleSubtitles={() => setPrefs({ subtitles: !prefs.subtitles })}
         onSwitchMode={() => {
           setPrefs({ inputMode: prefs.inputMode === 'ptt' ? 'handsfree' : 'ptt' });
@@ -333,6 +335,19 @@ export function VoiceHub() {
           <label className="vh-check">
             <input type="checkbox" checked={prefs.fullscreen} onChange={(e) => setPrefs({ fullscreen: e.target.checked })} /> Suhbat paytida to'liq ekran
           </label>
+          <label className="vh-check explicit-check">
+            <input type="checkbox" checked={prefs.game} onChange={(e) => setPrefs({ game: e.target.checked })} /> 💥 Qasos rejimi <span className="badge-new">Yangi</span>
+            <small>Kechki ko'chada Vivi, qurollar g'ildiragi va sog'liq chizig'i. Aytgan hamma gaplari uchun o'ch oling (multfilm uslubida).</small>
+          </label>
+          <label className="vh-check explicit-check">
+            <input
+              type="checkbox"
+              checked={prefs.explicit && prefs.adultConfirmed}
+              onChange={(e) => (e.target.checked && !prefs.adultConfirmed ? setConsentFor('explicit') : setPrefs({ explicit: e.target.checked }))}
+            />{' '}
+            🔞 Senzurasiz rejim (18+)
+            <small>Har qanday xarakter keskinroq, filtrlanmagan iboralar bilan gapiradi. 18 yoshga to'lgan bo'lishingiz kerak.</small>
+          </label>
         </section>
       )}
 
@@ -397,11 +412,11 @@ export function VoiceHub() {
         )}
       </section>
 
-      {consentFor === 'adult' && (
+      {(consentFor === 'adult' || consentFor === 'explicit') && (
         <div className="modal-back" onClick={() => setConsentFor(null)}>
           <div className="sheet adult-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="big-emoji">🔞</div>
-            <h3>Bezori Vivi — faqat 18 yoshdan kattalar uchun</h3>
+            <h3>{consentFor === 'explicit' ? 'Senzurasiz rejim — faqat 18 yoshdan kattalar uchun' : 'Bezori Vivi — faqat 18 yoshdan kattalar uchun'}</h3>
             <p className="muted">
               Bu xarakter so'kinadi, qo'pol hazil qiladi, sizni «qovuradi» va kattalar mavzularida (tanishuv, bar, ziyofat, ko'cha jargoni) gaplashadi.
               Haqoratli kamsitish va shahvoniy tasvirlar yo'q — lekin ohang qattiq. Istalgan vaqtda boshqa xarakterga o'tishingiz mumkin.
@@ -410,7 +425,7 @@ export function VoiceHub() {
               type="button"
               className="btn btn-danger btn-lg"
               onClick={() => {
-                setPrefs({ character: 'adult', adultConfirmed: true });
+                setPrefs(consentFor === 'explicit' ? { explicit: true, adultConfirmed: true } : { character: 'adult', adultConfirmed: true });
                 setConsentFor(null);
               }}
             >
@@ -423,12 +438,16 @@ export function VoiceHub() {
         </div>
       )}
 
-      {consentFor && consentFor !== 'adult' && (
+      {consentFor && consentFor !== 'adult' && consentFor !== 'explicit' && (
         <div className="modal-back" onClick={() => setConsentFor(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="big-emoji">🎩</div>
             <h3>Boshlashdan oldin bilib qo'ying</h3>
             <p className="muted">Professor Vivi qattiqqo'l: bo'sh maqtov yo'q, javobni qayta-qayta talab qiladi. Bu haqorat emas — talabchan mashq. Agar sizga to'g'ri kelmasa, boshqa xarakterni tanlang.</p>
+            <label className="vh-check explicit-check">
+              <input type="checkbox" checked={prefs.explicit && prefs.adultConfirmed} onChange={(e) => setPrefs({ explicit: e.target.checked, adultConfirmed: e.target.checked || prefs.adultConfirmed })} /> 🔞 Senzurasiz rejim (18+)
+              <small>Keskinroq, filtrlanmagan iboralarga ruxsat beradi. 18 yoshga to'lgan bo'lishingiz kerak.</small>
+            </label>
             <button
               type="button"
               className="btn btn-primary btn-lg"
@@ -459,7 +478,20 @@ export function VoiceHub() {
               <li>Vivi oxirgi 10 ta replika almashinuvini eslab qoladi. «Eshitmadim» desa — balandroq va mikrofonga yaqinroq gapiring.</li>
               <li>Suhbat {config?.sessionMinutes ?? 10} daqiqagacha davom etadi; oxirida tahlil va yangi so'zlar chiqadi.</li>
               <li>Fransuzcha iboralar ustiga bossangiz, qayta talaffuz qilinadi.</li>
+              <li>Suhbatni ekranni yozib olish funksiyasi bilan videoga oling — «To'liq ekran» sozlamasi bunga qulay.</li>
             </ol>
+            <h4>Vivining tanasi va yuzi</h4>
+            <p className="muted small">
+              Javob davomida Vivi o'zi shaklini o'zgartiradi: maqtaganda yulduz, yoqqanda yurak, xafa bo'lsa erib ketadi, yangi so'zda kitob yoki karta, jahli chiqqanda boshi alangalanadi. Gapida taniqli odam yoki joy tilga olinsa — uning rasmi chiqadi.
+            </p>
+            <h4>Ovoz teglari</h4>
+            <p className="muted small">
+              «O'z rolingiz» matniga kvadrat qavsdagi teglarni yozish mumkin, masalan: «har bir gapdan keyin <code>[burps]</code> qiladi, jahli chiqqanda <code>[whispers]</code>ga o'tadi».
+              Teglar Vivining tanasini ham harakatlantiradi: <code>[laughs]</code> — sakraydi va qiqirlaydi, <code>[crying]</code> — cho'kadi, <code>[burps]</code> — pufak puflaydi,
+              <code>[fart]</code> — yashil bulut chiqaradi, <code>[boundaries]</code> — qo'li bilan ko'rsatib qattiq qaraydi. Senzurasiz rejimda <code>[fuck]</code> — o'rta barmog'ini ko'rsatib alangalanadi (ovozda aytilmaydi).
+            </p>
+            <h4>Qasos rejimi</h4>
+            <p className="muted small">Sozlamalarda yoqing: Vivini bosing yoki <kbd>F</kbd> — urish, <kbd>Q</kbd> — qurollar g'ildiragi, <kbd>1</kbd>–<kbd>6</kbd> — qurol tanlash, gapirish uchun 🎤 tugma yoki <kbd>Space</kbd>.</p>
             <button type="button" className="btn btn-primary btn-lg" onClick={() => setShowHelp(false)}>
               Tushunarli
             </button>

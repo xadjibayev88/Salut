@@ -122,7 +122,7 @@ function TextChat() {
     let acc = '';
     try {
       const vp = loadPrefs();
-      await askTutor({ scenario, message: text, history, context: learnerContext(state), character: vp.character, lang: vp.lang }, (d) => {
+      await askTutor({ scenario, message: text, history, context: learnerContext(state), character: vp.character, lang: vp.lang, explicit: vp.explicit && vp.adultConfirmed }, (d) => {
         acc += d;
         setStreamText(acc);
       }, ac.signal);

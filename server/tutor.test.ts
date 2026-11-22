@@ -168,3 +168,15 @@ describe('Bezori Vivi 18+', () => {
     expect(sys).toContain('[[ans:fr]]');
   });
 });
+
+describe('Senzurasiz rejim', () => {
+  it("explicit bayrog'i istalgan xarakterga qo'shiladi", () => {
+    const r = parseTutorRequest({ scenario: 'free', message: 'salom', character: 'strict', explicit: true, mode: 'voice', audioTags: true }) as TutorRequest;
+    const sys = systemInstruction(r);
+    expect(sys).toContain('SENZURASIZ REJIM');
+    expect(sys).toContain('[fuck]');
+    const plain = systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom', character: 'strict', mode: 'voice', audioTags: true }) as TutorRequest);
+    expect(plain).not.toContain('SENZURASIZ REJIM');
+    expect(plain).not.toContain('[fuck]');
+  });
+});

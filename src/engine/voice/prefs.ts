@@ -21,6 +21,10 @@ export interface VoicePrefs {
   strictConsent: boolean;
   /** «Menga 18 yosh to'lgan» tasdig'i (Bezori Vivi 18+ uchun). */
   adultConfirmed: boolean;
+  /** «Senzurasiz rejim (18+)» — har qanday xarakter keskinroq, filtrlanmagan bo'ladi. */
+  explicit: boolean;
+  /** «Qasos rejimi» mini-o'yini suhbat paytida. */
+  game: boolean;
 }
 
 export interface Feedback {
@@ -61,6 +65,8 @@ export const DEFAULT_PREFS: VoicePrefs = {
   introSeen: false,
   strictConsent: false,
   adultConfirmed: false,
+  explicit: false,
+  game: false,
 };
 
 function read<T>(key: string, fallback: T): T {

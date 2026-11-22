@@ -5,17 +5,38 @@
 //   [fr]...[/fr]   — fransuzcha qism
 
 export const SHAPES = ['pill', 'circle', 'tall', 'puddle', 'star', 'heart', 'drop', 'bubble', 'cloud', 'book', 'pencil', 'headphones', 'bulb', 'card', 'slab'] as const;
-export const ACTIONS = ['hop', 'wave', 'point', 'squish', 'stretch', 'roam', 'giggle', 'flare'] as const;
+export const ACTIONS = ['hop', 'wave', 'point', 'squish', 'stretch', 'roam', 'giggle', 'flare', 'flip'] as const;
 export type Shape = (typeof SHAPES)[number];
 export type Action = (typeof ACTIONS)[number];
 
-const AUDIO_TAGS = /\[(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised)\]/gi;
+const AUDIO_TAGS = /\[(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|cries|sobs|sobbing|burps|burp|fart|farts|coughs|yawns|gasps|screams|shouts|angry|sarcastic)\]/gi;
+/** Ovozda aytilmaydigan, faqat tanani boshqaradigan teglar. */
+const SILENT_TAGS = /\[(fuck|boundaries)\]/gi;
+
+/** Ovoz teglari Vivining tanasini ham harakatlantiradi (Preppy'dagi kabi). */
+function tagCues(text: string, cue: Cue) {
+  const t = text.toLowerCase();
+  if (/\[(laughs|laughing|giggles|chuckles)\]/.test(t)) cue.actions.push('giggle', 'hop');
+  if (/\[(crying|cries|sobs|sobbing)\]/.test(t)) {
+    cue.shape ??= 'puddle';
+    cue.actions.push('squish');
+  }
+  if (/\[(fart|farts)\]/.test(t)) cue.fx = 'fart';
+  if (/\[(burps?|burp)\]/.test(t)) cue.fx = 'burp';
+  if (/\[fuck\]/.test(t)) cue.actions.unshift('flip');
+  if (/\[boundaries\]/.test(t)) {
+    cue.shape ??= 'tall';
+    cue.actions.unshift('point');
+  }
+}
 
 export interface Cue {
   shape?: Shape;
   actions: Action[];
   /** [[img:Sevara Nazarxon]] — ekranda rasm chiqadi. */
   image?: string;
+  /** Tana effekti: [fart] — yashil bulut, [burps] — pufak. */
+  fx?: 'fart' | 'burp';
 }
 
 /** Matndan belgilarni ajratadi: ko'rsatish uchun toza matn va maskot buyruqlari. */
@@ -38,7 +59,9 @@ export function extractCues(text: string): { clean: string; cue: Cue } {
     })
     .replace(/\[\[[^\]]*\]\]/g, '')
     .replace(/\[\[[^\]]*$/, '') // oqim paytidagi chala belgi
+    .replace(SILENT_TAGS, '')
     .replace(/[ \t]{2,}/g, ' ');
+  tagCues(text, cue);
   return { clean, cue };
 }
 
