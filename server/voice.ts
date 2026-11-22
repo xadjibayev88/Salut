@@ -355,3 +355,49 @@ export function cleanMemory(raw: unknown): string {
     .slice(0, 14)
     .join('\n');
 }
+
+
+// ---------- Microsoft Azure ovozi (ixtiyoriy zaxira) ----------
+// Azure Speech bepul tarifi (F0): oyiga 500 000 belgi neyron ovoz. O'zbekcha: uz-UZ-MadinaNeural / uz-UZ-SardorNeural.
+// Fransuzcha qismlar fransuz ovozida o'qiladi (bitta SSML ichida ovoz almashadi).
+const xml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+export function azureSsml(raw: string, voice: string, frVoice: string): string {
+  const clean = String(raw ?? '')
+    .slice(0, 900)
+    .replace(/\[\[(\/?fr)\]\]?/gi, '[$1]')
+    .replace(/\[\[[^\]]*\]\]/g, '')
+    .replace(/\[\s*(shape|do|img|ans)\s*:[^\]]*\]/gi, '')
+    .replace(/\[\/?(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|cries|sobs|sarcastic|angry|shouts|screams|burps?|farts?|coughs|yawns|gasps|fuck|boundaries)\]/gi, '')
+    .replace(/(\[\/fr\])\s*\([^)]{1,80}\)/gi, '$1');
+  const parts: string[] = [];
+  const re = /\[fr\]([\s\S]*?)(\[\/fr\]|$)/gi;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(clean))) {
+    if (m.index > last) parts.push(`<voice name="${voice}">${xml(clean.slice(last, m.index))}</voice>`);
+    if (m[1].trim()) parts.push(`<voice name="${frVoice}">${xml(m[1])}</voice>`);
+    last = re.lastIndex;
+  }
+  if (last < clean.length) parts.push(`<voice name="${voice}">${xml(clean.slice(last))}</voice>`);
+  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="uz-UZ">${parts.join('')}</speak>`;
+}
+
+export async function azureTts(
+  raw: string,
+  opts: { key: string; region: string; voice: string; frVoice: string; signal?: AbortSignal; fetchImpl?: typeof fetch },
+): Promise<{ audio: Buffer; mime: string }> {
+  const res = await (opts.fetchImpl ?? fetch)(`https://${opts.region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    method: 'POST',
+    headers: {
+      'Ocp-Apim-Subscription-Key': opts.key,
+      'Content-Type': 'application/ssml+xml',
+      'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+      'User-Agent': 'voila-app',
+    },
+    body: azureSsml(raw, opts.voice, opts.frVoice),
+    signal: opts.signal,
+  });
+  if (!res.ok) throw Object.assign(new Error(`Azure TTS ${res.status}`), { status: res.status });
+  return { audio: Buffer.from(await res.arrayBuffer()), mime: 'audio/mpeg' };
+}

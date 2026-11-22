@@ -8,7 +8,7 @@ import { Readable } from 'node:stream';
 import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback } from './tutor.ts';
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken } from './accounts.ts';
 import { activePlan, click, createOrder, orderStatus, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
-import { cleanFeedback, elevenLabsTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -44,6 +44,7 @@ interface Bucket {
 const BUCKETS: Record<string, Bucket> = {
   tutor: { perMinute: num('TUTOR_PER_MINUTE', 12), perDay: num('TUTOR_PER_DAY', 300) },
   stt: { perMinute: num('STT_PER_MINUTE', 20), perDay: num('STT_PER_DAY', 400) },
+  'tts-free-el': { perMinute: 1_000_000, perDay: 1_000_000 },
   tts: { perMinute: num('TTS_PER_MINUTE', 60), perDay: num('TTS_PER_DAY', 1200) },
   feedback: { perMinute: 4, perDay: num('FEEDBACK_PER_DAY', 40) },
   auth: { perMinute: 10, perDay: 200 },
@@ -486,7 +487,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
           const text = ttsText(o.text);
           if (!text) return "Matn bo'sh";
           const voice = VOICES.find((v) => v.id === o.voice) ?? VOICES[0];
-          return { text, voice: voice?.id ?? '' };
+          return { text, raw: typeof o.raw === 'string' ? o.raw.slice(0, 900) : text, voice: voice?.id ?? '' };
         },
       },
       async (data, signal) => {
@@ -507,11 +508,24 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
             return void res.end(audio);
           } catch (e) {
             if ((e as Error).name === 'AbortError') throw e;
-            // Gemini ovozi ishlamasa — mijoz qurilmaning o'z ovoziga o'tadi.
-            return json(res, 503, { code: 'tts_quota', message: 'Ovoz vaqtincha mavjud emas — Vivi qurilma ovozida davom etadi.' });
           }
+          // Gemini limiti tugadi — tiniq zaxira ovozlar: Azure (bepul 500k belgi/oy), so'ng ElevenLabs.
+          if (env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION) {
+            try {
+              const { audio, mime } = await azureTts(data.raw, { key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION, voice: env.AZURE_VOICE || 'uz-UZ-MadinaNeural', frVoice: env.AZURE_VOICE_FR || 'fr-FR-DeniseNeural', signal });
+              res.writeHead(200, { 'content-type': mime, 'cache-control': 'no-store', 'content-length': audio.length });
+              return void res.end(audio);
+            } catch (e) {
+              if ((e as Error).name === 'AbortError') throw e;
+            }
+          }
+          // ElevenLabs zaxirasi bepul foydalanuvchilar uchun kunlik umumiy chegarada (kreditlar tugab qolmasin).
+          const elCapHit = take('tts-free-el', 'all', data.text.length, num('FREE_ELEVENLABS_CHARS_PER_DAY', 20000)) !== null;
+          if (!(env.ELEVENLABS_API_KEY && VOICES.length) || env.FREE_TTS_ELEVENLABS === '0' || elCapHit)
+            // Hech bir server ovozi ishlamasa — mijoz qurilmaning o'z ovoziga o'tadi.
+            return json(res, 503, { code: 'tts_quota', message: 'Ovoz vaqtincha mavjud emas — Vivi qurilma ovozida davom etadi.' });
         }
-        const upstream = await elevenLabsTts(data.text, data.voice, { apiKey: env.ELEVENLABS_API_KEY!, model: TTS_MODEL, languageCode: TTS_LANG, signal, base: env.ELEVENLABS_API_BASE });
+        const upstream = await elevenLabsTts(data.text, data.voice || VOICES[0].id, { apiKey: env.ELEVENLABS_API_KEY!, model: TTS_MODEL, languageCode: TTS_LANG, signal, base: env.ELEVENLABS_API_BASE });
         res.writeHead(200, { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' });
         await new Promise<void>((ok, fail) => {
           const s = Readable.fromWeb(upstream.body as never);

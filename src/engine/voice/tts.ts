@@ -44,6 +44,13 @@ export class TtsQueue {
   onLevel?: (level: number) => void;
   onDrain?: () => void;
   onFail?: (code: 'tts_quota' | 'tts_failed') => void;
+  /**
+   * Birinchi gapdan keyingilarni bitta so'rovga birlashtirish (bepul Gemini ovozi daqiqasiga
+   * bir necha so'rovga ruxsat beradi — gap-gap so'rash limitni darhol tugatadi).
+   */
+  merge = false;
+  private pending = '';
+  private pushed = 0;
 
   constructor(engine: TtsEngine) {
     this.engine = engine;
@@ -58,10 +65,19 @@ export class TtsQueue {
     this.stop();
     this.stopped = false;
     this.ended = false;
+    this.pending = '';
+    this.pushed = 0;
   }
 
   push(raw: string) {
     if (this.stopped) return;
+    if (this.merge && this.engine === 'elevenlabs' && this.pushed++ > 0) {
+      // Birinchi gap darhol; qolganlari ~260 belgigacha yig'iladi.
+      this.pending = this.pending ? `${this.pending} ${raw}` : raw;
+      if (this.pending.length < 260) return;
+      raw = this.pending;
+      this.pending = '';
+    }
     this.items.push({ raw });
     this.prefetch();
     if (!this.playing) void this.next();
@@ -69,6 +85,13 @@ export class TtsQueue {
 
   /** Javob matni tugadi — navbat bo'shaganda onDrain chaqiriladi. */
   end() {
+    if (this.pending && !this.stopped) {
+      const raw = this.pending;
+      this.pending = '';
+      this.items.push({ raw });
+      this.prefetch();
+      if (!this.playing) void this.next();
+    }
     this.ended = true;
     if (!this.playing && !this.items.length) this.onDrain?.();
   }
@@ -120,7 +143,7 @@ export class TtsQueue {
         const res = await fetch('./api/tts', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text, voice: this.voiceId }),
+          body: JSON.stringify({ text, raw: raw.slice(0, 900), voice: this.voiceId }),
           signal,
         });
         if (res.status === 429 || res.status === 503) {

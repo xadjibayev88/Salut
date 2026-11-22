@@ -118,6 +118,8 @@ export class VoiceCall {
     this.tts.rate = o.rate;
     this.tts.explainLang = o.lang;
     this.tts.audioTags = o.config.audioTags;
+    // Bepul Gemini ovozida so'rovlar kam bo'lsin (daqiqalik limit) — gaplar birlashtiriladi.
+    this.tts.merge = o.config.ttsTier === 'gemini';
     this.snap = {
       phase: 'connecting',
       shape: 'pill',

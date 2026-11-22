@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseTutorRequest, systemInstruction, type TutorRequest } from './tutor.ts';
-import { cleanFeedback, cleanMemory, feedbackBody, memoryBody, parseMemoryRequest, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { azureSsml, cleanFeedback, cleanMemory, feedbackBody, memoryBody, parseMemoryRequest, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
 const base = { scenario: 'free', message: 'Salom', history: [], context: {} };
 
@@ -106,5 +106,17 @@ describe('xotira formati', () => {
   it('massiv va bitta qatorli matnni ham qatorlarga ajratadi', () => {
     expect(cleanMemory({ memory: ['Ismi Ali', '- Dasturchi'] })).toBe('- Ismi Ali\n- Dasturchi');
     expect(cleanMemory({ memory: '- Ismi: Ali. - Shahri: Toshkent. - Ishi: Dasturchi.' })).toBe('- Ismi: Ali.\n- Shahri: Toshkent.\n- Ishi: Dasturchi.');
+  });
+});
+
+describe('Azure ovozi', () => {
+  it("SSML: o'zbekcha va fransuzcha qismlar o'z ovozida, belgilar tozalanadi", () => {
+    const x = azureSsml("[[shape:star]] Salom, jonim! [fr]Bonjour ![/fr] (bonjur) [laughs] Qani, ayt & takrorla.", 'uz-UZ-MadinaNeural', 'fr-FR-DeniseNeural');
+    expect(x).toContain('<voice name="uz-UZ-MadinaNeural">');
+    expect(x).toContain('<voice name="fr-FR-DeniseNeural">Bonjour !</voice>');
+    expect(x).not.toContain('[[');
+    expect(x).not.toContain('(bonjur)');
+    expect(x).not.toContain('[laughs]');
+    expect(x).toContain('&amp;');
   });
 });
