@@ -1,3 +1,4 @@
+import { ReviewForm } from '../components/SocialProof';
 import { themePref, setThemePref, type ThemePref } from '../engine/theme';
 import { useState } from 'react';
 import { ACHIEVEMENTS, LEAGUES } from '../engine/game';
@@ -124,6 +125,11 @@ export function Profile() {
             </div>
           );
         })}
+      </div>
+
+      <h2 className="section-title">Fikringiz</h2>
+      <div className="panel rv-profile">
+        <ReviewForm />
       </div>
 
       <h2 className="section-title">Sozlamalar</h2>

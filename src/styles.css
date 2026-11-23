@@ -1343,3 +1343,45 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
 .tutor-mode .tab-pane { height: 100%; }
 @media (prefers-reduced-motion: reduce) { .tab-pane { animation: none; } }
 .tab { touch-action: manipulation; }
+
+/* ---------- Ijtimoiy isbot: izohlar, xarid bildirishnomasi, qo'llab-quvvatlash ---------- */
+.stats-line { text-align: center; color: var(--muted); font-size: 14px; margin: 4px 0 10px; }
+.stats-line b { color: var(--text); }
+.support-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; font-size: 14px; color: var(--muted); margin: 6px 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.support-row a { color: var(--primary); font-weight: 800; }
+.rv-section { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.rv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rv-head h3 { font-size: 16px; letter-spacing: .02em; text-transform: uppercase; }
+.rv-badge { font-size: 12px; font-weight: 800; color: var(--success-text); background: var(--success-bg); border: 1px solid color-mix(in srgb, var(--success) 45%, transparent); padding: 5px 10px; border-radius: 10px; }
+.rv-list { display: flex; flex-direction: column; gap: 10px; }
+.rv-card { padding: 14px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-1); }
+.rv-card.verified { border: 1.5px solid color-mix(in srgb, var(--success) 55%, transparent); background: color-mix(in srgb, var(--success) 7%, var(--surface)); }
+.rv-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.rv-ava { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: var(--grad); flex: none; }
+.rv-card.verified .rv-ava { background: linear-gradient(135deg, #10b981, #047857); }
+.rv-who { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.rv-who small { color: var(--success-text); font-weight: 700; font-size: 12px; }
+.rv-stars { color: #f5b400; letter-spacing: 1px; font-size: 15px; white-space: nowrap; }
+.rv-stars i { color: color-mix(in srgb, var(--muted) 45%, transparent); font-style: normal; }
+.rv-card p { font-style: italic; line-height: 1.5; }
+.rv-empty, .rv-login { font-size: 14px; }
+.rv-form { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 18px; border: 1.5px dashed var(--line); }
+.rv-pick { display: flex; gap: 4px; }
+.rv-pick button { border: none; background: none; font-size: 30px; line-height: 1; color: color-mix(in srgb, var(--muted) 40%, transparent); padding: 0 2px; transition: transform .12s; }
+.rv-pick button.on { color: #f5b400; }
+.rv-pick button:active { transform: scale(1.25); }
+.rv-thanks { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--surface); font-size: 14px; }
+.rv-profile { padding: 12px; }
+.buy-toast { position: fixed; left: 12px; right: 12px; bottom: calc(100px + env(safe-area-inset-bottom)); z-index: 40; max-width: 520px; margin: 0 auto;
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 22px; background: #141633; color: #fff; border: 1px solid rgba(129, 140, 248, .45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .4); transform: translateY(140%); opacity: 0; transition: transform .45s cubic-bezier(.2, 1.3, .4, 1), opacity .3s; pointer-events: none; }
+.buy-toast.show { transform: none; opacity: 1; pointer-events: auto; }
+.buy-ico { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; background: linear-gradient(135deg, #10b981, #0d9488); flex: none; }
+.buy-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.buy-top { display: flex; justify-content: space-between; gap: 8px; }
+.buy-top b { color: #6ee7b7; font-size: 13px; }
+.buy-top small { color: #a3a9cf; font-size: 12px; white-space: nowrap; }
+.buy-name { font-weight: 800; }
+.buy-plan { color: #a5b4fc; font-weight: 700; font-size: 12.5px; }
+.buy-x { border: none; background: none; color: #a3a9cf; font-size: 16px; padding: 6px; }
+@media (min-width: 900px) { .buy-toast { bottom: 24px; } }

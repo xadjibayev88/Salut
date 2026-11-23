@@ -74,6 +74,48 @@ export function Admin() {
           </div>
         ))}
       </div>
+      <AdminReviews />
     </div>
+  );
+}
+
+type PendingReview = { id: number; rating: number; text: string; createdAt: number; name: string; email: string | null };
+/** Izohlar moderatsiyasi: tasdiqlanmaguncha saytda ko'rinmaydi. */
+function AdminReviews() {
+  const [list, setList] = useState<PendingReview[] | null>(null);
+  const load = useCallback(async () => {
+    const r = await accountApi<{ reviews?: PendingReview[] }>('admin/reviews');
+    if (r.ok) setList(r.body.reviews ?? []);
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const decide = async (id: number, action: 'approve' | 'reject') => {
+    await accountApi('admin/review', { method: 'POST', body: JSON.stringify({ id, action }) });
+    void load();
+  };
+  return (
+    <section className="admin-reviews">
+      <h2 className="section-title">💬 Yangi izohlar</h2>
+      {list && list.length === 0 && <p className="muted">Tekshiriladigan izoh yo'q.</p>}
+      {list?.map((r) => (
+        <div key={r.id} className="admin-order">
+          <div className="admin-info">
+            <b>
+              {'⭐'.repeat(r.rating)} · {r.name || '—'} · {r.email ?? '—'}
+            </b>
+            <p>«{r.text}»</p>
+            <div className="admin-actions">
+              <button type="button" className="btn btn-primary" onClick={() => decide(r.id, 'approve')}>
+                ✓ Saytga chiqarish
+              </button>
+              <button type="button" className="btn btn-text danger" onClick={() => decide(r.id, 'reject')}>
+                Rad etish
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }

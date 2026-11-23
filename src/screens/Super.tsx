@@ -1,3 +1,4 @@
+import { PurchaseToast, Reviews, StatsLine, SupportRow, useSocial } from '../components/SocialProof';
 // Voilà Super: obuna sahifasi — taqqoslash narxi, tariflar (chegirma bilan), to'lov usullari:
 // Payme / Click (avtomatik) va karta orqali o'tkazma (chek yuklanadi, admin tasdiqlaydi).
 import { useEffect, useRef, useState } from 'react';
@@ -137,6 +138,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
   const [celebrate, setCelebrate] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardKind, setCardKind] = useState<'card' | 'visa'>('card');
+  const social = useSocial();
   const [review, setReview] = useState<{ id: number; status: string } | null>(null);
   const sel = plans.find((p) => p.id === plan) ?? plans[0];
   const anchor = me.billing.anchor;
@@ -235,6 +237,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
     <div className="super">
       <div className="super-badge">SUPER</div>
       <h2>Fransuzchani tezroq — cheklovsiz</h2>
+      <StatsLine data={social} />
 
       {anchor && sel && (
         <div className="price-anchor">
@@ -317,6 +320,9 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
       )}
       {error && <p className="auth-error">{error}</p>}
       <p className="super-fine muted">Obuna avtomatik yangilanmaydi — muddati tugagach qayta to'laysiz.</p>
+      <SupportRow data={social} />
+      <Reviews data={social} />
+      <PurchaseToast data={social} />
       {cardOpen && sel && (
         <CardPay
           kind={cardKind}

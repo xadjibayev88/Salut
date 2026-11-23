@@ -10,6 +10,7 @@ import { configureRotation, friendlyError, generateJson, isExhausted, markExhaus
 import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
+import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases, stats, submitReview } from './social.ts';
 import { parseTranslateRequest, translateBody } from './voice.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 
@@ -450,6 +451,48 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     const l = liveUse.get(k);
     if (l && l.day === day && Date.now() - l.start > (FREE_LIVE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000) liveUse.set(k, { day, start: Date.now() - (FREE_LIVE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000 });
     json(res, 200, { ok: true, minutes: REWARD_VIVI_MIN, left: bonusClaimsLeft(req) });
+  },
+
+  // ---------- Ijtimoiy isbot (faqat haqiqiy ma'lumot) ----------
+  'GET /api/social': (_req, res) => {
+    const st = stats();
+    const support = (env.SUPPORT_TELEGRAM ?? '').replace(/^@/, '').trim() || botUsername() || '';
+    res.setHeader('cache-control', 'public, max-age=60');
+    json(res, 200, { ...publicReviews(), recent: recentPurchases(), users: st.users, supers: st.supers, support: /^[A-Za-z0-9_]{4,32}$/.test(support) ? support : null });
+  },
+
+  'GET /api/reviews/mine': (req, res) => {
+    const uid = currentUserId(req);
+    json(res, 200, { review: uid ? myReview(uid) : null });
+  },
+
+  'POST /api/reviews': async (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid) return json(res, 401, { message: 'Izoh qoldirish uchun hisobga kiring' });
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const limited = take('billing', clientIp(req));
+    if (limited) return json(res, 429, { message: limited });
+    const b = (await readBody(req, 4096).catch(() => ({}))) as { rating?: unknown; text?: unknown };
+    const r = submitReview(uid, b.rating, b.text);
+    if (!r.ok) return json(res, r.status, { message: r.message });
+    void bot()?.notifyReview(r.id, Number(b.rating), String(b.text ?? '').slice(0, 400), getUser(uid)?.name ?? '');
+    json(res, 200, { ok: true, status: 'pending' });
+  },
+
+  'GET /api/admin/reviews': (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid || !isAdmin(uid)) return json(res, 403, { message: "Ruxsat yo'q" });
+    json(res, 200, { reviews: pendingReviews() });
+  },
+
+  'POST /api/admin/review': async (req, res) => {
+    const uid = currentUserId(req);
+    if (!uid || !isAdmin(uid)) return json(res, 403, { message: "Ruxsat yo'q" });
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const b = (await readBody(req).catch(() => ({}))) as { id?: unknown; action?: unknown };
+    const ok = decideReview(Number(b.id), b.action === 'approve');
+    console.log('audit', JSON.stringify({ at: new Date().toISOString(), admin: uid, review: Number(b.id), action: b.action === 'approve' ? 'approve' : 'reject', ok }));
+    json(res, ok ? 200 : 409, { ok });
   },
 
   'GET /api/health': (_q, res) => json(res, 200, { ok: true, ai: !!env.GEMINI_API_KEY, model: MODEL, exhausted: rotationStatus().map((r) => r.model) }),

@@ -4,6 +4,7 @@
 // Kodsiz kirgan foydalanuvchi uchun Telegram hisobi ochiladi (ilovaga «Telegram bilan kirish» orqali shu hisob bilan kiradi).
 import { randomBytes } from 'node:crypto';
 import { db } from './db.ts';
+import { decideReview } from './social.ts';
 import { getUser, upsertSocialUser } from './accounts.ts';
 import { PLANS, activePlan, toUsd, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
 
@@ -205,6 +206,12 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
     }
   }
 
+  /** Yangi izoh — adminlarga ✅/❌ tugmalari bilan (tasdiqlanmaguncha saytda ko'rinmaydi). */
+  async function notifyReview(id: number, rating: number, text: string, name: string) {
+    const kb = { inline_keyboard: [[{ text: '✅ Chiqarish', callback_data: `rvok:${id}` }, { text: '❌ Rad etish', callback_data: `rvno:${id}` }]] };
+    for (const chat of adminChats()) await send(chat, `💬 <b>Yangi izoh #${id}</b> · ${'⭐'.repeat(Math.max(1, Math.min(5, rating)))}\n👤 ${esc(name || 'Foydalanuvchi')}\n\n«${esc(text)}»`, { reply_markup: kb }).catch(() => {});
+  }
+
   /** Buyurtma hal qilinganda foydalanuvchiga xabar (ilovadagi admin sahifasidan ham chaqiriladi). */
   async function notifyDecision(userId: string, approve: boolean) {
     const chat = chatOfUser(userId);
@@ -284,6 +291,14 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
       await ack();
       return send(chat, payText(plan, kind), { reply_markup: { inline_keyboard: [[{ text: '⬅️ Boshqa usul', callback_data: `plan:${plan}` }]] } });
     }
+    const rv = /^rv(ok|no):(\d+)$/.exec(data);
+    if (rv) {
+      if (!adminChats().includes(String(q.from.id))) return ack("Ruxsat yo'q", true);
+      const done = decideReview(Number(rv[2]), rv[1] === 'ok');
+      await ack(done ? (rv[1] === 'ok' ? '✅ Saytga chiqdi' : '❌ Rad etildi') : 'Allaqachon hal qilingan', !done);
+      if (done && q.message) await tg('editMessageText', { chat_id: q.message.chat.id, message_id: q.message.message_id, text: `${q.message.text ?? ''}\n\n${rv[1] === 'ok' ? '✅ Saytga chiqdi' : '❌ Rad etildi'}`, reply_markup: { inline_keyboard: [] } }).catch(() => {});
+      return;
+    }
     const m = /^(ok|no):(\d+)$/.exec(data);
     if (m) {
       if (!adminChats().includes(String(q.from.id))) return ack("Ruxsat yo'q", true);
@@ -318,7 +333,7 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
   // Har qanday usulda (Payme, Click, karta, Visa) obuna yoqilsa — foydalanuvchiga xabar.
   onGrant((userId) => void notifyDecision(userId, true));
 
-  return { handle, notifyReceipt, notifyDecision };
+  return { handle, notifyReceipt, notifyDecision, notifyReview };
 }
 
 // ---------- Telegram API + polling ----------
