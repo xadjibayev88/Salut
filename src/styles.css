@@ -1310,7 +1310,7 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
 .foot-inner:empty { display: none; }
 .session-foot { bottom: 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 /* Sahifalar orasidagi o'tish (iOS uslubi): yo'nalish bo'yicha suzib kirish */
-.page-anim { animation: page-in .38s cubic-bezier(.22, 1, .36, 1) both; }
+.page-anim { animation: page-in .38s cubic-bezier(.22, 1, .36, 1) backwards; }
 .page-fwd { --from-x: 28px; }
 .page-back { --from-x: -28px; }
 @keyframes page-in { from { opacity: 0; transform: translate3d(var(--from-x, 0), 0, 0) scale(.985); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
@@ -1336,7 +1336,8 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
 
 /* Tez o'tish: yashirin sahifalar chizilmaydi; ko'rinishda — 160 ms yengil siljish (blur yo'q, faqat transform/opacity) */
 .tab-pane[hidden] { display: none !important; }
-.tab-pane { animation: pane-in .16s cubic-bezier(.2, .9, .3, 1) both; }
+/* «backwards»: animatsiya tugagach sahifa alohida qatlam bo'lib qolmaydi — ichidagi oynalar menyu ustida chiqadi */
+.tab-pane { animation: pane-in .16s cubic-bezier(.2, .9, .3, 1) backwards; }
 .tab-pane.page-fwd { --from-x: 14px; }
 .tab-pane.page-back { --from-x: -14px; }
 @keyframes pane-in { from { opacity: .4; transform: translate3d(var(--from-x, 0), 0, 0); } to { opacity: 1; transform: none; } }

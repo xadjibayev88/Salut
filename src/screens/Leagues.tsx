@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { AdSlot } from '../components/AdSlot';
 import { RewardedButton } from '../components/RewardedButton';
 import { maybeInterstitial } from '../engine/ads';
@@ -101,7 +102,7 @@ export function Leagues() {
           );
         })}
       </ol>
-      {res && (
+      {res && createPortal(
         <div className="modal-back">
           <div className="sheet">
             <div className="big-emoji">{res.toTier > res.fromTier ? '🎉' : res.toTier < res.fromTier ? '😔' : '💪'}</div>
@@ -121,7 +122,8 @@ export function Leagues() {
               Davom etish
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
       <AdSlot />
     </div>
