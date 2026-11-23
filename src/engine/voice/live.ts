@@ -2,7 +2,7 @@
 // (server bergan bir martalik token bilan — API kalit brauzerga chiqmaydi). Mikrofon: PCM16 16 kHz,
 // Vivi ovozi: PCM16 24 kHz. Gapni bo'lish, subtitrlar (transkripsiya), taymer va suhbat yozuvi.
 import type { CharacterId, ExplainLang, RoleId } from '../../data/characters';
-import type { SessionRecord } from './prefs';
+import type { InputMode, SessionRecord } from './prefs';
 import { talkStats, type Action, type Shape } from './markers';
 import { playSfx, type Sfx } from '../audio';
 
@@ -45,6 +45,7 @@ export interface LiveOptions {
   customRole: string;
   explicit: boolean;
   lang: ExplainLang;
+  inputMode: InputMode;
   context: () => unknown;
 }
 
@@ -276,6 +277,14 @@ export class LiveSession {
 
   private vadStep(rms: number, chunkMs: number, pcm: Uint8Array) {
     const v = this.vad;
+    // PTT must never be activated by microphone level (including speaker echo).
+    // Audio is sent only after the user explicitly toggles PTT on.
+    if (this.o.inputMode === 'ptt') {
+      if (!v.on) return;
+      this.sendAudio(pcm);
+      v.len += chunkMs;
+      return;
+    }
     const playing = this.sources.size > 0;
     // Shovqin darajasi: tez pasayadi, sekin ko'tariladi.
     v.floor = rms < v.floor ? v.floor * 0.7 + rms * 0.3 : v.floor + (rms - v.floor) * 0.003;
@@ -295,17 +304,19 @@ export class LiveSession {
     if (v.loud >= (playing ? 260 : 120)) this.activity(true);
   }
 
-  /** «Bosib gapirish»: bosib turganda gap, qo'yib yuborganda — tugadi. */
-  pushToTalk(down: boolean) {
-    if (this.snap.phase === 'ended' || this.snap.phase === 'connecting') return;
-    if (down) {
-      if (this.snap.muted) this.set({ muted: false });
-      this.vad.ptt = true;
-      if (!this.vad.on) this.activity(true);
-    } else {
+  /** Push-to-talk is click-to-toggle so a pointer release cannot cut speech off. */
+  togglePushToTalk() {
+    if (this.o.inputMode !== 'ptt' || this.snap.phase === 'ended' || this.snap.phase === 'connecting') return;
+    if (this.vad.ptt) {
       this.vad.ptt = false;
       if (this.vad.on) this.activity(false);
+      return;
     }
+    if (this.snap.muted) this.set({ muted: false });
+    // Do not leak audio captured before the user deliberately activates PTT.
+    this.vad.pre = [];
+    this.vad.ptt = true;
+    if (!this.vad.on) this.activity(true);
   }
 
   /** Model chaqirgan mimika: yuz shakli, imo-ishora, ovoz effekti. */
@@ -444,7 +455,13 @@ export class LiveSession {
   }
 
   toggleMute() {
-    this.set({ muted: !this.snap.muted, micLevel: 0 });
+    const muted = !this.snap.muted;
+    if (muted) {
+      this.vad.pre = [];
+      this.vad.ptt = false;
+      if (this.vad.on) this.activity(false);
+    }
+    this.set({ muted, micLevel: 0 });
   }
 
   private fail(message: string, reason: 'error' | 'limit' = 'error') {

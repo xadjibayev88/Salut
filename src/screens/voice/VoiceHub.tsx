@@ -153,7 +153,7 @@ export function VoiceHub() {
     return (
       <LiveCallScreen
         key={view.key}
-        options={{ character: options.character, role: options.role, customRole: options.customRole, explicit: !!options.explicit, lang: options.lang, context: options.context }}
+        options={{ character: options.character, role: options.role, customRole: options.customRole, explicit: !!options.explicit, lang: options.lang, inputMode: options.inputMode, context: options.context }}
         subtitles={prefs.subtitles}
         onEnded={onEnded}
       />

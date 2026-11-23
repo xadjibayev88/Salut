@@ -13,6 +13,7 @@ const fmt = (ms: number) => {
 export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveOptions; subtitles: boolean; onEnded: (s: LiveSession) => void }) {
   const session = useMemo(() => new LiveSession(options), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [s, setS] = useState<LiveSnap>(session.snap);
+  const ptt = options.inputMode === 'ptt';
   const ch = CHARACTERS.find((c) => c.id === options.character)!;
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
   const clean = (t: string) => t.replace(/\[\[[^\]]*\]\]/g, '').replace(/\[\/?fr\]/gi, '').replace(/\s{2,}/g, ' ').trim();
   const tutorLine = clean(s.liveTutor || lastTutor);
   const userLine = s.liveUser || (s.liveTutor ? '' : lastUser);
-  const label = s.phase === 'connecting' ? 'Ulanmoqda…' : s.userTalking ? 'Eshityapman…' : s.phase === 'speaking' ? 'Vivi gapirmoqda…' : s.phase === 'ended' ? 'Suhbat tugadi' : s.muted ? 'Mikrofon o\'chiq' : 'Tinglayapman — gapiring';
+  const label = s.phase === 'connecting' ? 'Ulanmoqda…' : s.userTalking ? 'Eshityapman…' : s.phase === 'speaking' ? 'Vivi gapirmoqda…' : s.phase === 'ended' ? 'Suhbat tugadi' : s.muted ? 'Mikrofon o\'chiq' : ptt ? 'Tinglash o\'chiq — boshlash uchun tugmani bosing' : 'Qo\'lsiz tinglayapman — gapiring';
 
   return (
     <div className={`call live-call phase-${s.phase === 'speaking' ? 'speaking' : 'ready'}`} style={{ ['--ch' as string]: ch.color }}>
@@ -72,7 +73,7 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
         </div>
         <div className="call-label" aria-live="polite">
           <b>{label}</b>
-          <small>{s.error ?? "Shunchaki gapiring. Eshitmasa — pastdagi tugmani bosib turib gapiring."}</small>
+          <small>{s.error ?? (ptt ? 'Tinglash faqat tugmani bosganda boshlanadi; tugmani yana bosing — to\'xtaydi.' : 'Qo\'lsiz rejim: tugmani bosmasdan gapiring.')}</small>
         </div>
         {subtitles && (tutorLine || userLine) && (
           <div className="call-subs">
@@ -87,21 +88,19 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
           <button type="button" className={`round-btn ${s.muted ? 'off' : ''}`} onClick={() => session.toggleMute()} disabled={s.phase === 'ended' || s.phase === 'connecting'} aria-label={s.muted ? 'Mikrofonni yoqish' : "Mikrofonni o'chirish"}>
             {s.muted ? '🔇' : '🎤'}
           </button>
-          <button
-            type="button"
-            className={`ptt-btn ${s.userTalking ? 'on' : ''}`}
-            disabled={s.phase === 'ended' || s.phase === 'connecting'}
-            onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture(e.pointerId);
-              session.pushToTalk(true);
-            }}
-            onPointerUp={() => session.pushToTalk(false)}
-            onPointerCancel={() => session.pushToTalk(false)}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            <span className="ptt-ring" style={{ ['--lvl' as string]: String(s.micLevel) }} />
-            <b>{s.userTalking ? 'Gapiring…' : 'Bosib gapirish'}</b>
-          </button>
+          {ptt && (
+            <button
+              type="button"
+              className={`ptt-btn ${s.userTalking ? 'on' : ''}`}
+              aria-pressed={s.userTalking}
+              disabled={s.phase === 'ended' || s.phase === 'connecting'}
+              onClick={() => session.togglePushToTalk()}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              <span className="ptt-ring" style={{ ['--lvl' as string]: String(s.micLevel) }} />
+              <b>{s.userTalking ? 'Gapirishni tugatish' : 'Gapirishni boshlash'}</b>
+            </button>
+          )}
           <button type="button" className="round-btn end" onClick={() => session.end('user')} aria-label="Tugatish">
             ✕
           </button>

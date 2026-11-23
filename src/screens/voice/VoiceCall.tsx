@@ -126,6 +126,8 @@ export function VoiceCallScreen({
         ? s.sttKind === 'cloud'
           ? 'Eshitmoqda… (yozib olinmoqda)'
           : 'Eshitmoqda…'
+        : s.phase === 'review'
+          ? 'Yuborishdan oldin tekshiring'
         : s.phase === 'thinking'
           ? 'Vivi o\'ylamoqda…'
           : s.phase === 'speaking'
@@ -137,11 +139,13 @@ export function VoiceCallScreen({
       ? ptt
         ? "Gapini bo'lish uchun Vivini bosib turing"
         : "Gapira boshlang — Vivi jim bo'lib tinglaydi"
-      : s.phase === 'ready'
-        ? ptt
-          ? 'Gapirish uchun Vivini yoki Space\'ni bosib turing'
-          : 'Shunchaki gapiring — Vivi tinglayapti'
-        : s.phase === 'user' && ptt
+        : s.phase === 'ready'
+          ? ptt
+            ? 'Gapirish uchun Vivini yoki Space\'ni bosib turing'
+            : 'Shunchaki gapiring — Vivi tinglayapti'
+          : s.phase === 'review'
+            ? 'Matnni tahrirlang yoki qayta yuboring'
+          : s.phase === 'user' && ptt
           ? "Gapirib bo'lgach, qo'yib yuboring"
           : '';
 
@@ -222,13 +226,28 @@ export function VoiceCallScreen({
           }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <KruaLive shape={game && g.ko ? 'puddle' : s.shape} action={act.action} actionKey={act.key} fx={s.fx?.kind ?? null} fxKey={s.fx?.key ?? 0} state={liveState} level={s.level} pressed={pressed} size={Math.min(300, Math.round(window.innerWidth * 0.62))} />
+          <KruaLive shape={game && g.ko ? 'puddle' : s.shape} action={act.action} actionKey={act.key} fx={s.fx?.kind ?? null} fxKey={s.fx?.key ?? 0} state={liveState} level={s.level} pressed={pressed} size={s.phase === 'review' ? 120 : Math.min(300, Math.round(window.innerWidth * 0.62))} />
         </button>
         {game && <RevengeOverlay g={g} />}
         <div className="call-label" aria-live="polite">
           <b>{label}</b>
           {hint && <small>{hint}</small>}
         </div>
+
+        {s.phase === 'review' && (
+          <div className="call-review" role="group" aria-label="Yuborishdan oldin matnni tekshirish">
+            <label htmlFor="voice-draft">Siz aytgan matn</label>
+            <textarea id="voice-draft" value={s.draft} onChange={(e) => ctrl.setDraft(e.target.value)} rows={4} autoFocus />
+            <div className="call-review-actions">
+              <button type="button" className="btn btn-primary" disabled={!s.draft.trim()} onClick={() => ctrl.submitDraft()}>
+                {s.retryAvailable ? 'Qayta yuborish' : 'Yuborish'}
+              </button>
+              <button type="button" className="btn btn-text" onClick={() => ctrl.discardDraft()}>
+                Qayta gapirish
+              </button>
+            </div>
+          </div>
+        )}
 
         {subtitles && (
           <div className="call-subs">

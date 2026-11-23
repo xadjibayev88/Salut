@@ -10,7 +10,7 @@ import { TtsQueue } from './tts';
 import { playSfx } from '../audio';
 import type { InputMode, SessionRecord, SttEngine } from './prefs';
 
-export type Phase = 'connecting' | 'ready' | 'user' | 'thinking' | 'speaking' | 'ended';
+export type Phase = 'connecting' | 'ready' | 'user' | 'review' | 'thinking' | 'speaking' | 'ended';
 export type Notice =
   | 'weak'
   | 'reconnecting'
@@ -83,6 +83,9 @@ export interface Snapshot {
   actionKey: number;
   level: number;
   partial: string;
+  /** STT natijasi: Vivi'ga yuborishdan oldin tahrirlash uchun. */
+  draft: string;
+  retryAvailable: boolean;
   live: string;
   turns: Turn[];
   notice: Notice;
@@ -116,6 +119,10 @@ export class VoiceCall {
   private finishing = false;
   private lastLevelEmit = 0;
   private disposed = false;
+  private requestSeq = 0;
+  private responseWaitingForDrain = false;
+  private draftSubmitted = false;
+  private draftTurnId: string | null = null;
   readonly id = uid();
   onUpdate?: (s: Snapshot) => void;
   onUserTurn?: () => void;
@@ -137,6 +144,8 @@ export class VoiceCall {
       actionKey: 0,
       level: 0,
       partial: '',
+      draft: '',
+      retryAvailable: false,
       live: '',
       turns: [],
       notice: null,
@@ -164,7 +173,10 @@ export class VoiceCall {
     };
     this.tts.onLevel = (l) => this.level(l);
     this.tts.onDrain = () => {
-      if (this.snap.phase === 'speaking' || this.snap.phase === 'thinking') this.toReady();
+      if (this.snap.phase === 'speaking' || (this.snap.phase === 'thinking' && this.responseWaitingForDrain)) {
+        this.responseWaitingForDrain = false;
+        this.toReady();
+      }
     };
     this.tts.onFail = (code) => code === 'tts_quota' && this.notice('ttsQuota');
   }
@@ -296,6 +308,7 @@ export class VoiceCall {
   }
 
   private beginUserTurn() {
+    if (this.snap.phase === 'review') return;
     this.tts.stop();
     this.ac?.abort();
     this.turnStart = Date.now();
@@ -326,10 +339,43 @@ export class VoiceCall {
       return this.toReady();
     }
     this.silentFails = 0;
-    this.addTurn('user', t);
-    this.set({ partial: '' });
-    this.onUserTurn?.();
-    await this.ask(t);
+    this.draftSubmitted = false;
+    this.draftTurnId = null;
+    this.set({ phase: 'review', draft: t, retryAvailable: false, partial: '', live: '', level: 0 });
+  }
+
+  /** STT matnini tahrirlash oynasida saqlash. */
+  setDraft(text: string) {
+    if (this.snap.phase !== 'review') return;
+    this.set({ draft: text });
+  }
+
+  /** Tahrirlangan matnni Vivi'ga yuborish; qayta urinishda user turn takrorlanmaydi. */
+  submitDraft(text = this.snap.draft) {
+    if (this.snap.phase !== 'review') return;
+    const draft = text.trim();
+    if (!draft) return;
+    this.set({ draft, retryAvailable: false, partial: '', live: '', phase: 'thinking', level: 0 });
+    if (!this.draftSubmitted) {
+      this.draftSubmitted = true;
+      this.draftTurnId = uid();
+      this.set({ turns: [...this.snap.turns, { id: this.draftTurnId, role: 'user', text: draft }] });
+      this.onUserTurn?.();
+    } else if (this.draftTurnId) {
+      this.set({ turns: this.snap.turns.map((turn) => turn.id === this.draftTurnId ? { ...turn, text: draft } : turn) });
+    }
+    void this.ask(draft);
+  }
+
+  /** Discard the pending draft and return to listening without sending it. */
+  discardDraft() {
+    if (this.snap.phase !== 'review') return;
+    if (this.draftTurnId) this.set({ turns: this.snap.turns.filter((turn) => turn.id !== this.draftTurnId) });
+    this.draftSubmitted = false;
+    this.draftTurnId = null;
+    this.notice(null);
+    this.set({ draft: '', retryAvailable: false, live: '', level: 0 });
+    this.toReady();
   }
 
   private onSttError(e: SttError, message?: string) {
@@ -362,10 +408,11 @@ export class VoiceCall {
   // ---------- Vivi javobi ----------
 
   private history() {
-    return this.snap.turns.slice(-21, -1).map((t) => ({ role: t.role, text: t.text }));
+    return this.snap.turns.filter((t) => t.id !== this.draftTurnId).slice(-20).map((t) => ({ role: t.role, text: t.text }));
   }
 
   private async ask(message: string, retry = 0): Promise<void> {
+    const seq = ++this.requestSeq;
     this.ac?.abort();
     const ac = new AbortController();
     this.ac = ac;
@@ -430,16 +477,27 @@ export class VoiceCall {
       for (const s of split.flush()) this.tts.push(s);
       clearTimeout(weak);
       clearTimeout(watchdog);
-      if (ac.signal.aborted) return;
+      if (ac.signal.aborted || seq !== this.requestSeq || this.snap.phase !== 'thinking') return;
       this.addTurn('tutor', acc.trim());
       this.autoMic(acc);
+      this.draftSubmitted = false;
+      this.draftTurnId = null;
+      this.set({ draft: '', retryAvailable: false });
+      this.responseWaitingForDrain = true;
       this.tts.end();
     } catch (e) {
       clearTimeout(weak);
       clearTimeout(watchdog);
+      if (seq !== this.requestSeq || this.snap.phase === 'ended') return;
       if (stalled && retry === 0 && this.ac === ac) {
         this.notice('reconnecting');
         return this.ask(message, 1);
+      }
+      if (stalled) {
+        this.notice('upstream', 'Vivi javob bermadi — matnni tekshirib, qayta yuboring.', 6000);
+        this.responseWaitingForDrain = false;
+        this.set({ phase: this.draftSubmitted ? 'review' : 'ready', draft: this.draftSubmitted ? this.snap.draft || message : this.snap.draft, retryAvailable: this.draftSubmitted, live: '', level: 0 });
+        return;
       }
       if (ac.signal.aborted || (e as Error).name === 'AbortError') return;
       const code = (e as { code?: string }).code;
@@ -448,6 +506,7 @@ export class VoiceCall {
       if (!acc && retry === 0 && !http && code !== 'blocked') {
         this.notice('reconnecting');
         await new Promise((r) => setTimeout(r, 700));
+        if (seq !== this.requestSeq) return;
         return this.ask(message, 1);
       }
       if (acc.trim()) this.addTurn('tutor', acc.trim());
@@ -458,7 +517,9 @@ export class VoiceCall {
         return this.end('limit');
       }
       this.notice(code === 'rate_limited' || code === 'busy' ? 'rateLimited' : 'upstream', (e as Error).message, 6000);
-      if (!acc) this.toReady();
+      this.responseWaitingForDrain = false;
+      if (this.draftSubmitted) this.set({ phase: 'review', draft: this.snap.draft || message, retryAvailable: true, live: '', level: 0 });
+      else this.toReady();
     }
   }
 
@@ -467,6 +528,8 @@ export class VoiceCall {
     const live = this.snap.live.trim();
     this.tts.stop();
     this.ac?.abort();
+    this.requestSeq++;
+    this.responseWaitingForDrain = false;
     if (live) {
       const last = this.snap.turns[this.snap.turns.length - 1];
       if (!last || last.role !== 'tutor' || displayText(last.text) !== live) this.addTurn('tutor', `${live}…`);
@@ -508,6 +571,8 @@ export class VoiceCall {
     this.stt?.abort();
     this.tts.stop();
     this.ac?.abort();
+    this.requestSeq++;
+    this.responseWaitingForDrain = false;
     this.mic.close();
     this.set({ phase: 'ended', endReason: reason, level: 0, partial: '', live: '' });
   }
