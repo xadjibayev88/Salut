@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { grantSuperFreeze, LEAGUES, MAX_HEARTS, msToNextHeart, streakActiveToday } from './engine/game';
 import { dayKey } from './engine/time';
 import { useStore } from './state/store';
@@ -49,6 +49,31 @@ function useMedia(q: string): boolean {
 
 const Loading = () => <div className="page-loading" aria-busy="true" />;
 
+/** Sahifa ichi: faqat id/onStart o'zgarsa chiziladi (ko'rsatish/yashirish uni qayta chizmaydi). */
+const PaneBody = memo(function PaneBody({ id, onStart }: { id: Tab; onStart: (c: SessionConfig) => void }) {
+  return (
+    <Suspense fallback={<Loading />}>
+      {id === 'learn' && <Learn onStart={onStart} />}
+      {id === 'tutor' && <Tutor />}
+      {id === 'practice' && <Practice onStart={onStart} />}
+      {id === 'leagues' && <Leagues />}
+      {id === 'profile' && <Profile />}
+      {id === 'shop' && <Shop />}
+      {id === 'about' && <About />}
+      {id === 'admin' && <Admin />}
+    </Suspense>
+  );
+});
+
+/** Sahifa qatlami: ko'rinmaydiganlari yashiriladi (o'chirilmaydi) — qaytib o'tish bir zumda. */
+const Pane = memo(function Pane({ id, on, dir, onStart }: { id: Tab; on: boolean; dir: 'fwd' | 'back'; onStart: (c: SessionConfig) => void }) {
+  return (
+    <div className={`tab-pane page-${dir}`} hidden={!on} aria-hidden={!on}>
+      <PaneBody id={id} onStart={onStart} />
+    </div>
+  );
+}, (a, b) => a.on === b.on && a.id === b.id && (!b.on || a.dir === b.dir) && a.onStart === b.onStart);
+
 import { initAds, loadAdsense, maybeInterstitial, setImmersive } from './engine/ads';
 
 type Tab = 'learn' | 'tutor' | 'practice' | 'leagues' | 'profile' | 'shop' | 'about' | 'admin';
@@ -71,6 +96,14 @@ export function App() {
   const { state } = useStore();
   const { premium } = useAccount();
   const [tab, setTab] = useState<Tab>(readTab);
+  // Bir marta ochilgan sahifalar xotirada qoladi (qayta chizilmaydi) — qaytib o'tish bir zumda.
+  const [visited, setVisited] = useState<Tab[]>(() => [readTab()]);
+  const scrolls = useRef<Partial<Record<Tab, number>>>({});
+  useEffect(() => setVisited((v) => (v.includes(tab) ? v : [...v, tab])), [tab]);
+  // Har sahifaning o'z joyiga qaytish (yangi sahifa — tepadan).
+  useLayoutEffect(() => {
+    window.scrollTo(0, scrolls.current[tab] ?? 0);
+  }, [tab]);
   const [session, setSession] = useState<SessionConfig | null>(null);
   const [blocked, setBlocked] = useState(false);
 
@@ -95,14 +128,21 @@ export function App() {
   const [tapped, setTapped] = useState<{ id: Tab; n: number } | null>(null);
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
   const go = (t: Tab) => {
+    if (t === tab) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    scrolls.current[tab] = window.scrollY;
     const from = TABS.findIndex((x) => x.id === tab);
     const to = TABS.findIndex((x) => x.id === t);
     setDir(to >= from ? 'fwd' : 'back');
-    location.hash = `#/${t}`;
+    history.replaceState(null, '', `#/${t}`);
+    setVisited((v) => (v.includes(t) ? v : [...v, t]));
     setTab(t);
-    window.scrollTo(0, 0);
   };
 
+  const startRef = useRef<(c: SessionConfig) => void>(() => {});
+  const stableStart = useCallback((c: SessionConfig) => startRef.current(c), []);
   const start = (c: SessionConfig) => {
     if (c.kind !== 'practice' && state.hearts <= 0 && !state.unlimitedHearts && !premium) {
       setBlocked(true);
@@ -110,6 +150,7 @@ export function App() {
     }
     setSession(c);
   };
+  startRef.current = start;
 
   if (!state.onboarded) return <Onboarding />;
   if (session)
@@ -146,18 +187,9 @@ export function App() {
       <div className="main">
         <TopBar onShop={() => go('shop')} onProfile={() => go('profile')} />
         <div className="content">
-          <div key={tab} className={`page-anim page-${dir}`}>
-          <Suspense fallback={<Loading />}>
-          {tab === 'learn' && <Learn onStart={start} />}
-          {tab === 'tutor' && <Tutor />}
-          {tab === 'practice' && <Practice onStart={start} />}
-          {tab === 'leagues' && <Leagues />}
-          {tab === 'profile' && <Profile />}
-          {tab === 'shop' && <Shop />}
-          {tab === 'about' && <About />}
-          {tab === 'admin' && <Admin />}
-          </Suspense>
-          </div>
+            {visited.map((id) => (
+              <Pane key={id} id={id} on={id === tab} dir={dir} onStart={stableStart} />
+            ))}
         </div>
       </div>
 
@@ -175,10 +207,15 @@ export function App() {
             key={t.id}
             type="button"
             className={`tab ${tab === t.id ? 'active' : ''} ${tapped?.id === t.id ? 'tapped' : ''}`}
-            onClick={() => {
+            // Barmoq tekkan zahoti o'tadi (qo'yib yuborishni kutmaydi); klaviatura uchun — onClick.
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
               setTapped({ id: t.id, n: (tapped?.n ?? 0) + 1 });
               if (navigator.vibrate) navigator.vibrate(8);
               go(t.id);
+            }}
+            onClick={(e) => {
+              if (e.detail === 0) go(t.id);
             }}
             aria-label={t.label}
             aria-current={tab === t.id ? 'page' : undefined}

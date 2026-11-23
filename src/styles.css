@@ -1333,3 +1333,13 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
 .lbadge { width: 62px; height: 58px; border-radius: 18px; font-size: 20px; }
 .lbadge.cur { width: 74px; height: 68px; font-size: 26px; border-radius: 20px; }
 .lbadge.locked { font-size: 15px; }
+
+/* Tez o'tish: yashirin sahifalar chizilmaydi; ko'rinishda — 160 ms yengil siljish (blur yo'q, faqat transform/opacity) */
+.tab-pane[hidden] { display: none !important; }
+.tab-pane { animation: pane-in .16s cubic-bezier(.2, .9, .3, 1) both; }
+.tab-pane.page-fwd { --from-x: 14px; }
+.tab-pane.page-back { --from-x: -14px; }
+@keyframes pane-in { from { opacity: .4; transform: translate3d(var(--from-x, 0), 0, 0); } to { opacity: 1; transform: none; } }
+.tutor-mode .tab-pane { height: 100%; }
+@media (prefers-reduced-motion: reduce) { .tab-pane { animation: none; } }
+.tab { touch-action: manipulation; }
