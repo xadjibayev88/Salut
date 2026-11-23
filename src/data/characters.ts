@@ -39,12 +39,12 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: 'kind',
-    name: 'Mehribon Vivi',
-    tagline: 'Iliq va rag\'batlantiruvchi',
-    description: "Har bir urinishingizni qadrlaydi va o'zingizga ishonchni oshiradi.",
-    sample: 'Deyarli to\'g\'ri! Shoshilmang — juda yaxshi ketyapsiz.',
-    color: '#0B7A59',
-    icon: '🫶',
+    name: 'Romantik Vivi',
+    tagline: 'Sevgi va iliqlik bilan',
+    description: "«Jonim, asalim, farishtam» — har bir so'zingizni sevgi bilan qadrlaydi, yurakchalar va o'pichlar bilan o'rgatadi.",
+    sample: "Voy, asalim, zo'r aytding! Mon cœur, yana bir marta ayt-chi — ovozingga to'yib bo'lmaydi 💕",
+    color: '#E11D74',
+    icon: '💘',
   },
   {
     id: 'witty',

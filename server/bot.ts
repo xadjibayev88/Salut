@@ -95,7 +95,7 @@ function welcomeText(name: string): string {
     "A1 dan C2 gacha 50 ta liniya: mashqlar, diktant, turnir va kunlik seriya — so'zlar o'zi yodda qoladi.",
     "",
     "🎭 <b>3. Har xil xarakterlar</b>",
-    "Mehribon ustoz, qattiqqo'l Professor, hazilkash yoki 18+ «bezori» Vivi — kim bilan o'rganishni o'zingiz tanlaysiz.",
+    "Romantik Vivi 💘, qattiqqo'l Professor, hazilkash yoki 18+ «bezori» Vivi — kim bilan o'rganishni o'zingiz tanlaysiz.",
     "",
     "Vaqtingizni qadrlang va tilni zamonaviy texnologiyalar bilan oson o'rganing! 💡",
     "",

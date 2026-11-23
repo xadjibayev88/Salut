@@ -263,7 +263,7 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
         </span>
       )}
       <button type="button" className={`stat streak ${active ? 'on' : ''}`} title="Kunlik seriya" onClick={onProfile}>
-        ☀️ <b>{state.streak}</b>
+        <StreakFlame on={active} /> <b>{state.streak}</b>
       </button>
       <button type="button" className="stat gems" title="Tangalar" onClick={onShop}>
         🪙 <b>{state.gems}</b>
@@ -333,5 +333,15 @@ function SidePanels({ onGo }: { onGo: (t: Tab) => void }) {
         </p>
       </div>
     </>
+  );
+}
+
+/** Seriya olovchasi: bugun dars qilingan bo'lsa — yonib, qimirlab turadi (Duolingo uslubida). */
+function StreakFlame({ on }: { on: boolean }) {
+  return (
+    <svg className={`streak-flame ${on ? 'lit' : ''}`} viewBox="0 0 24 28" width="22" height="26" aria-hidden="true">
+      <path className="sf-outer" d="M12 1.5c1.2 4.2 6.8 6.6 6.8 13.6A6.8 6.8 0 0 1 12 26a6.8 6.8 0 0 1-6.8-6.9c0-3.4 1.7-5.2 3-6.6.3 2 1.3 3.1 2.3 3.4C9.6 11 10.4 5.6 12 1.5z" />
+      <path className="sf-inner" d="M12 12.5c.8 2.4 3.6 3.8 3.6 7.2A3.6 3.6 0 0 1 12 23.4a3.6 3.6 0 0 1-3.6-3.7c0-2.3 1.4-3.2 2.1-4.6.4 1 .9 1.5 1.5 1.6-.4-1.6-.4-2.9 0-4.2z" />
+    </svg>
   );
 }
