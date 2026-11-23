@@ -65,11 +65,15 @@ export function plansPayload() {
 /** ADMIN_EMAILS (vergul bilan) — ilova egasi/sinovchilar: obunasiz ham Super hisoblanadi. */
 export function isAdmin(userId: string): boolean {
   const list = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
-  if (!list.length) return false;
   // Faqat email'i Google tomonidan TASDIQLANGAN hisob admin bo'la oladi: aks holda kimdir admin email'i bilan
   // parol orqali oldindan ro'yxatdan o'tib, admin huquqini egallab olishi mumkin edi.
   const u = db().prepare('SELECT email, google_sub FROM users WHERE id = ?').get(userId) as { email?: string; google_sub?: string | null } | undefined;
-  return !!u?.email && !!u.google_sub && list.includes(u.email.toLowerCase());
+  if (u?.email && u.google_sub && list.includes(u.email.toLowerCase())) return true;
+  // Yoki: hisob Telegram botida tasdiqlangan admin ID'siga bog'langan (ADMIN_TELEGRAM_CHAT_ID).
+  const tg = (process.env.ADMIN_TELEGRAM_CHAT_ID ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (!tg.length) return false;
+  const ids = db().prepare("SELECT subject FROM identities WHERE provider = 'telegram' AND user_id = ?").all(userId) as { subject: string }[];
+  return ids.some((r) => tg.includes(r.subject));
 }
 
 export function activePlan(userId: string | null): { plan: PlanId | 'free'; expiresAt: number | null } {
