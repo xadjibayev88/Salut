@@ -2,7 +2,11 @@ package uz.salut.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.webkit.WebSettings;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.CancellationSignal;
@@ -66,6 +70,28 @@ public final class MainActivity extends Activity {
     private PermissionRequest pendingPermission;
     private final Executor ui = command -> runOnUiThread(command);
 
+    // ---------------------------------------------------------------- Himoya
+    /** Ilovaning o'z sayti (START_URL) — JS ko'priklari faqat shu saytga xizmat qiladi. */
+    private String appHost() { return Uri.parse(BuildConfig.START_URL).getHost(); }
+    /** Ilova ichida ochilishi mumkin bo'lgan boshqa sahifalar: to'lov va kirish. Qolgani — tashqi brauzerda. */
+    private static final String[] INNER_HOSTS = { "checkout.paycom.uz", "checkout.test.paycom.uz", "my.click.uz", "accounts.google.com", "oauth.telegram.org" };
+    private boolean isAppUrl(String url) {
+        if (url == null) return false;
+        Uri u = Uri.parse(url);
+        return "https".equals(u.getScheme()) && appHost() != null && appHost().equalsIgnoreCase(u.getHost());
+    }
+    private boolean isInnerUrl(String url) {
+        if (isAppUrl(url)) return true;
+        Uri u = Uri.parse(url);
+        if (!"https".equals(u.getScheme()) || u.getHost() == null) return false;
+        for (String h : INNER_HOSTS) if (h.equalsIgnoreCase(u.getHost())) return true;
+        return false;
+    }
+    /** Hozir ochilgan sahifa ilovaning o'z saytimi (faqat UI oqimida chaqiriladi). */
+    private boolean trusted() { return webView != null && isAppUrl(webView.getUrl()); }
+    /** Ko'prik metodlari fon oqimida ishlaydi — sahifa manzili UI oqimida shu bayroqqa yoziladi. */
+    private volatile boolean pageTrusted = false;
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(NIGHT);
@@ -79,19 +105,44 @@ public final class MainActivity extends Activity {
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
-        webView.getSettings().setAllowFileAccess(false);
-        webView.getSettings().setAllowContentAccess(false);
+        WebSettings ws = webView.getSettings();
+        ws.setAllowFileAccess(false);
+        ws.setAllowContentAccess(false);
+        ws.setAllowFileAccessFromFileURLs(false);
+        ws.setAllowUniversalAccessFromFileURLs(false);
+        ws.setGeolocationEnabled(false);
+        ws.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        ws.setJavaScriptCanOpenWindowsAutomatically(false);
+        if (Build.VERSION.SDK_INT >= 26) ws.setSafeBrowsingEnabled(true);
+        // Chrome DevTools orqali ilovani kuzatish faqat sinov (debug) versiyasida.
+        WebView.setWebContentsDebuggingEnabled(isDebugBuild());
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.setWebViewClient(new WebViewClient() {
+            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+                pageTrusted = isAppUrl(url);
+            }
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                pageTrusted = isAppUrl(url);
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // To'lov sahifalari (Payme/Click) va tashqi havolalar ham shu oynada ochiladi, so'ng ilovaga qaytadi.
-                return false;
+                // Ilova sayti va to'lov/kirish sahifalari ichkarida; boshqa har qanday havola tashqi brauzerda ochiladi
+                // (begona sayt ilovaning JS ko'priklariga — Google kirish, reklama — yeta olmaydi).
+                String url = request.getUrl().toString();
+                if (isInnerUrl(url)) return false;
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()).addCategory(Intent.CATEGORY_BROWSABLE));
+                } catch (Exception ignored) {
+                    // brauzer topilmadi
+                }
+                return true;
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onPermissionRequest(final PermissionRequest request) {
                 runOnUiThread(() -> {
+                    // Mikrofon faqat ilovaning o'z saytiga beriladi.
+                    if (request.getOrigin() == null || appHost() == null || !appHost().equalsIgnoreCase(request.getOrigin().getHost())) { request.deny(); return; }
                     boolean audio = false;
                     for (String resource : request.getResources()) audio |= PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource);
                     if (!audio) { request.deny(); return; }
@@ -107,7 +158,7 @@ public final class MainActivity extends Activity {
     }
 
     private static String quote(String value) { return JSONObject.quote(value == null ? "" : value); }
-    private void js(String expression) { runOnUiThread(() -> webView.evaluateJavascript(expression, null)); }
+    private void js(String expression) { runOnUiThread(() -> { if (trusted()) webView.evaluateJavascript(expression, null); }); }
     private void resolve(String id, String value) { js("window.__gtAdResolve&&window.__gtAdResolve(" + quote(id) + "," + (value == null ? "true" : value) + ")"); }
     private void reject(String id, String message) { js("window.__gtAdReject&&window.__gtAdReject(" + quote(id) + "," + quote(message) + ")"); }
     private boolean isDebugBuild() { return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
@@ -116,10 +167,12 @@ public final class MainActivity extends Activity {
     // ------------------------------------------------------------------ AdMob
     private final class AdMobBridge {
         @JavascriptInterface public void initialize(String requestId, boolean testing) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> MobileAds.initialize(MainActivity.this, status -> resolve(requestId, "true")));
         }
 
         @JavascriptInterface public void showBanner(String requestId, String requestedId, boolean testing) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> {
                 if (banner == null) {
                     banner = new AdView(MainActivity.this);
@@ -133,10 +186,13 @@ public final class MainActivity extends Activity {
             });
         }
 
-        @JavascriptInterface public void hideBanner(String requestId) { runOnUiThread(() -> { if (banner != null) banner.setVisibility(AdView.GONE); resolve(requestId, "true"); }); }
-        @JavascriptInterface public void resumeBanner(String requestId) { runOnUiThread(() -> { if (banner != null) banner.setVisibility(AdView.VISIBLE); resolve(requestId, "true"); }); }
+        @JavascriptInterface public void hideBanner(String requestId) {
+            if (!pageTrusted) return; runOnUiThread(() -> { if (banner != null) banner.setVisibility(AdView.GONE); resolve(requestId, "true"); }); }
+        @JavascriptInterface public void resumeBanner(String requestId) {
+            if (!pageTrusted) return; runOnUiThread(() -> { if (banner != null) banner.setVisibility(AdView.VISIBLE); resolve(requestId, "true"); }); }
 
         @JavascriptInterface public void prepareRewardVideoAd(String requestId, String requestedId, boolean testing) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> RewardedAd.load(MainActivity.this, adId(requestedId, testing, TEST_REWARDED), new AdRequest.Builder().build(), new RewardedAdLoadCallback() {
                 @Override public void onAdLoaded(@NonNull RewardedAd ad) { rewardedAd = ad; resolve(requestId, "true"); }
                 @Override public void onAdFailedToLoad(@NonNull LoadAdError error) { rewardedAd = null; reject(requestId, error.getMessage()); }
@@ -144,6 +200,7 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface public void showRewardVideoAd(String requestId) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> {
                 RewardedAd ad = rewardedAd;
                 if (ad == null) { reject(requestId, "Rewarded ad is not ready"); return; }
@@ -157,6 +214,7 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface public void prepareInterstitial(String requestId, String requestedId, boolean testing) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> InterstitialAd.load(MainActivity.this, adId(requestedId, testing, TEST_INTERSTITIAL), new AdRequest.Builder().build(), new InterstitialAdLoadCallback() {
                 @Override public void onAdLoaded(@NonNull InterstitialAd ad) { interstitialAd = ad; resolve(requestId, "true"); }
                 @Override public void onAdFailedToLoad(@NonNull LoadAdError error) { interstitialAd = null; reject(requestId, error.getMessage()); }
@@ -164,6 +222,7 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface public void showInterstitial(String requestId) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> {
                 InterstitialAd ad = interstitialAd;
                 if (ad == null) { reject(requestId, "Interstitial is not ready"); return; }
@@ -180,7 +239,9 @@ public final class MainActivity extends Activity {
     // ------------------------------------------------------------------ Google bilan kirish
     private final class AuthBridge {
         @JavascriptInterface public void googleSignIn(String requestId, String serverClientId) {
+            if (!pageTrusted) return;
             runOnUiThread(() -> {
+                if (!trusted()) return; // faqat ilovaning o'z sayti Google kirishni so'ray oladi
                 GetGoogleIdOption option = new GetGoogleIdOption.Builder()
                     .setFilterByAuthorizedAccounts(false)
                     .setServerClientId(serverClientId)

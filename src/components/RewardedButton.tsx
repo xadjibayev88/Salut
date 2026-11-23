@@ -32,9 +32,22 @@ export function RewardedButton({ compact = false, onGranted, kind = 'coffee', vi
   const run = async () => {
     setBusy(true);
     setMsg(null);
+    // Vivi daqiqalari: server avval bir martalik chipta beradi (reklamani ko'rmasdan mukofot olib bo'lmasin).
+    let nonce = '';
+    const startedAt = Date.now();
+    if (kind === 'vivi') {
+      const st = await accountApi<{ nonce?: string; message?: string }>('reward/start', { method: 'POST', body: '{}' });
+      if (!st.ok || !st.body.nonce) {
+        setBusy(false);
+        return setMsg(st.body.message ?? "Hozir mukofot berib bo'lmaydi");
+      }
+      nonce = st.body.nonce;
+    }
     const r = await showRewarded(kind);
     if (r.ok && kind === 'vivi') {
-      const g = await accountApi<{ ok?: boolean; message?: string }>('reward/vivi', { method: 'POST', body: '{}' });
+      const wait = 15_500 - (Date.now() - startedAt);
+      if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+      const g = await accountApi<{ ok?: boolean; message?: string }>('reward/vivi', { method: 'POST', body: JSON.stringify({ nonce }) });
       setBusy(false);
       if (!g.ok) return setMsg(g.body.message ?? "Mukofotni qo'shib bo'lmadi");
       setMsg(t.done);

@@ -38,8 +38,17 @@ function sessionSecret(): Buffer {
 const b64 = (b: Buffer | string) => Buffer.from(b).toString('base64url');
 const sign = (data: string) => createHmac('sha256', sessionSecret()).update(data).digest('base64url');
 
+const tokenVersion = (userId: string): number | null => {
+  const r = db().prepare('SELECT token_version AS v FROM users WHERE id = ?').get(userId) as { v: number } | undefined;
+  return r ? r.v : null;
+};
+/** Foydalanuvchining barcha sessiyalarini bekor qiladi (masalan, hisob boshqa usul bilan egallanganda). */
+export function revokeSessions(userId: string) {
+  db().prepare('UPDATE users SET token_version = token_version + 1 WHERE id = ?').run(userId);
+}
+
 export function createSessionToken(userId: string, now = Date.now()): string {
-  const payload = b64(JSON.stringify({ u: userId, e: now + SESSION_DAYS * 86_400_000 }));
+  const payload = b64(JSON.stringify({ u: userId, e: now + SESSION_DAYS * 86_400_000, v: tokenVersion(userId) ?? 0 }));
   return `${payload}.${sign(payload)}`;
 }
 
@@ -51,8 +60,11 @@ export function verifySessionToken(token: string | undefined, now = Date.now()):
   const got = Buffer.from(mac);
   if (expected.length !== got.length || !timingSafeEqual(expected, got)) return null;
   try {
-    const { u, e } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { u?: string; e?: number };
-    return typeof u === 'string' && typeof e === 'number' && e > now ? u : null;
+    const { u, e, v } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { u?: string; e?: number; v?: number };
+    if (typeof u !== 'string' || typeof e !== 'number' || e <= now) return null;
+    // Hisob o'chirilgan yoki sessiyalar bekor qilingan bo'lsa — token yaroqsiz.
+    const cur = tokenVersion(u);
+    return cur !== null && (v ?? 0) === cur ? u : null;
   } catch {
     return null;
   }
@@ -122,12 +134,28 @@ export function register(emailRaw: unknown, passwordRaw: unknown, nameRaw: unkno
   return { ok: true, user: getUser(id)! };
 }
 
+// Parolni tanlab buzishga qarshi: bitta email uchun 15 daqiqada 6 ta xato — 15 daqiqa qulf.
+const failures = new Map<string, { n: number; first: number; lockedUntil: number }>();
+const LOCK_AFTER = 6;
+const LOCK_MS = 15 * 60_000;
+
 export function login(emailRaw: unknown, passwordRaw: unknown): AuthResult {
-  const email = String(emailRaw ?? '').trim().toLowerCase();
+  const email = String(emailRaw ?? '').trim().toLowerCase().slice(0, 254);
+  const f = failures.get(email);
+  if (f && f.lockedUntil > Date.now()) return { ok: false, status: 429, message: `Juda ko'p urinish. ${Math.ceil((f.lockedUntil - Date.now()) / 60_000)} daqiqadan so'ng qayta urinib ko'ring.` };
   const r = db().prepare('SELECT * FROM users WHERE email = ?').get(email) as Row | undefined;
   // Vaqt bo'yicha ma'lumot sizdirmaslik uchun foydalanuvchi bo'lmasa ham xeshlash bajariladi.
   const ok = checkPassword(String(passwordRaw ?? ''), r?.password_hash ?? 'scrypt$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-  if (!r || !ok) return { ok: false, status: 401, message: "Email yoki parol noto'g'ri" };
+  if (!r || !ok) {
+    const now = Date.now();
+    const cur = f && now - f.first < LOCK_MS ? f : { n: 0, first: now, lockedUntil: 0 };
+    cur.n++;
+    if (cur.n >= LOCK_AFTER) cur.lockedUntil = now + LOCK_MS;
+    failures.set(email, cur);
+    if (failures.size > 50_000) for (const [k, v] of failures) if (now - v.first > LOCK_MS && v.lockedUntil < now) failures.delete(k);
+    return { ok: false, status: 401, message: "Email yoki parol noto'g'ri" };
+  }
+  failures.delete(email);
   return { ok: true, user: toUser(r) };
 }
 
@@ -140,7 +168,10 @@ export function upsertGoogleUser(sub: string, email: string | null, name: string
   // Shu email bilan oldin ochilgan hisob bo'lsa — Google'ni unga bog'laymiz (email Google tomonidan tasdiqlangan).
   const byEmail = email ? (db().prepare('SELECT * FROM users WHERE email = ?').get(email) as Row | undefined) : undefined;
   if (byEmail) {
-    db().prepare('UPDATE users SET google_sub = ?, avatar = COALESCE(?, avatar) WHERE id = ?').run(sub, avatar, byEmail.id);
+    // Email'ni Google tasdiqladi. Agar hisob avval parol bilan ochilgan bo'lsa, u boshqa odam tomonidan oldindan
+    // ochilgan bo'lishi mumkin — parol o'chiriladi va eski sessiyalar bekor qilinadi (hisobni egallab olishning oldi olinadi).
+    db().prepare('UPDATE users SET google_sub = ?, avatar = COALESCE(?, avatar), password_hash = NULL WHERE id = ?').run(sub, avatar, byEmail.id);
+    if (byEmail.password_hash) revokeSessions(byEmail.id);
     return getUser(byEmail.id)!;
   }
   const id = randomUUID();
@@ -157,6 +188,11 @@ export function upsertSocialUser(provider: 'facebook' | 'apple' | 'telegram', su
   }
   // Tasdiqlangan email bilan oldin ochilgan hisob bo'lsa — unga bog'laymiz.
   const byEmail = email ? (db().prepare('SELECT * FROM users WHERE email = ?').get(email) as Row | undefined) : undefined;
+  if (byEmail?.password_hash) {
+    // Tasdiqlangan email (Facebook/Apple) parolli hisobga bog'lanmoqda — oldindan egallashdan himoya.
+    db().prepare('UPDATE users SET password_hash = NULL WHERE id = ?').run(byEmail.id);
+    revokeSessions(byEmail.id);
+  }
   const id = byEmail?.id ?? randomUUID();
   if (!byEmail) db().prepare('INSERT INTO users (id, email, name, avatar, created_at) VALUES (?, ?, ?, ?, ?)').run(id, email, name.slice(0, 40), avatar, Date.now());
   db().prepare('INSERT OR REPLACE INTO identities (provider, subject, user_id) VALUES (?, ?, ?)').run(provider, subject, id);

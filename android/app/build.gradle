@@ -47,7 +47,10 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            // Kod qisqartiriladi va chalkashtiriladi (R8) — ilovani ochib o'qish qiyinlashadi.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
             }

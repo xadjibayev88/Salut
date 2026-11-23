@@ -76,6 +76,9 @@ export function db(): DatabaseSync {
       paid_at INTEGER
     );
   `);
+  // Migratsiya: sessiyalarni bekor qilish uchun versiya (parol o'zgarsa / hisob egallansa — eski tokenlar o'ladi).
+  const cols = d.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'token_version')) d.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
   instance = d;
   return d;
 }

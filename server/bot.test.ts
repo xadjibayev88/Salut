@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 process.env.SALUT_DB = ':memory:';
 process.env.SESSION_SECRET = 'x'.repeat(40);
 import { resetDbForTests } from './db.ts';
-import { register } from './accounts.ts';
+import { register, upsertGoogleUser } from './accounts.ts';
 import { activePlan } from './billing.ts';
 import { adminChats, createBot, createLinkCode } from './bot.ts';
 
@@ -49,8 +49,8 @@ describe('telegram bot', () => {
   it('links an app account by code, takes a receipt, admin approves → Super', async () => {
     const { calls, bot } = setup();
     const user = register('ali@example.com', 'parol12345', 'Ali');
-    const boss = register('boss@example.com', 'parol12345', 'Boss');
-    if (!user.ok || !boss.ok) throw new Error('register');
+    if (!user.ok) throw new Error('register');
+    const boss = { user: upsertGoogleUser('g-boss', 'boss@example.com', 'Boss', null) };
     // Admin o'z hisobini bog'laydi — cheklar unga keladi.
     await bot.handle(msg(900, { text: `/start pay_${createLinkCode(boss.user.id)}` }));
     expect(adminChats()).toContain('900');

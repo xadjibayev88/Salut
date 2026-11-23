@@ -2,6 +2,7 @@
 // Ishga tushirish: GEMINI_API_KEY=... [ELEVENLABS_API_KEY=... ELEVENLABS_VOICES="Vivi:id"] node server/main.ts
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
+import { createHash, randomBytes } from 'node:crypto';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
@@ -49,6 +50,8 @@ const BUCKETS: Record<string, Bucket> = {
   'tts-free-el': { perMinute: 1_000_000, perDay: 1_000_000 },
   tts: { perMinute: num('TTS_PER_MINUTE', 60), perDay: num('TTS_PER_DAY', 1200) },
   feedback: { perMinute: 4, perDay: num('FEEDBACK_PER_DAY', 40) },
+  live: { perMinute: 4, perDay: num('LIVE_TOKENS_PER_DAY', 40) },
+  reward: { perMinute: 6, perDay: 40 },
   translate: { perMinute: 20, perDay: num('TRANSLATE_PER_DAY', 300) },
   auth: { perMinute: 10, perDay: 200 },
   billing: { perMinute: 10, perDay: 100 },
@@ -60,7 +63,8 @@ let active = 0;
 const CONCURRENCY = num('TUTOR_CONCURRENCY', 12);
 
 function clientIp(req: IncomingMessage): string {
-  const fwd = TRUST_PROXY ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : '';
+  // Proksi (Railway) haqiqiy IP'ni ro'yxat OXIRIGA qo'shadi; birinchi qiymatni mijoz o'zi yozishi mumkin (soxtalashtirish).
+  const fwd = TRUST_PROXY ? String(req.headers['x-forwarded-for'] ?? '').split(',').map((x) => x.trim()).filter(Boolean).pop() ?? '' : '';
   return fwd || req.socket.remoteAddress || 'unknown';
 }
 
@@ -91,7 +95,7 @@ setInterval(() => {
 
 // ---------- Yordamchilar ----------
 function json(res: ServerResponse, status: number, body: unknown) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
   res.end(JSON.stringify(body));
 }
 
@@ -116,12 +120,43 @@ function originOk(req: IncomingMessage): boolean {
   }
 }
 
-const SECURITY = {
+const SECURITY: Record<string, string> = {
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
-  'x-frame-options': 'DENY',
-  'permissions-policy': 'microphone=(self), camera=()',
+  'permissions-policy': 'microphone=(self), camera=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+  'strict-transport-security': 'max-age=63072000; includeSubDomains',
+  'cross-origin-opener-policy': 'same-origin-allow-popups',
+  'x-permitted-cross-domain-policies': 'none',
 };
+
+// Kontent xavfsizlik siyosati (CSP): faqat ruxsat etilgan manbalardan skript/ulanish; ichki skriptlar — xesh bilan.
+const CSP_BASE = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "form-action 'self' https://checkout.paycom.uz https://checkout.test.paycom.uz https://my.click.uz",
+  // Telegram Mini App (web.telegram.org) ichida ochilishi mumkin, boshqa saytlar iframe'ga ololmaydi.
+  "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
+  "connect-src 'self' wss://generativelanguage.googleapis.com https://*.wikipedia.org https://*.wikimedia.org https://accounts.google.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://telegram.org https://oauth.telegram.org",
+  "frame-src 'self' https://accounts.google.com https://oauth.telegram.org https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://www.facebook.com https://appleid.apple.com",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  'upgrade-insecure-requests',
+];
+const SCRIPT_HOSTS = "https://accounts.google.com https://apis.google.com https://telegram.org https://oauth.telegram.org https://connect.facebook.net https://appleid.cdn-apple.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.adtrafficquality.google";
+const cspCache = new Map<string, string>();
+function cspFor(html: string): string {
+  const hit = cspCache.get(html);
+  if (hit) return hit;
+  const hashes = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+  const csp = [...CSP_BASE, `script-src 'self' ${hashes.join(' ')} ${SCRIPT_HOSTS}`].join('; ');
+  cspCache.set(html, csp);
+  return csp;
+}
 
 /** Umumiy himoya: kalit, manba, tana, limit, parallel so'rovlar. */
 async function guarded<T>(
@@ -236,6 +271,8 @@ function freeLeft(req: IncomingMessage): number | null {
 const REWARD_VIVI_MIN = num('REWARD_VIVI_MINUTES', 2);
 const REWARD_VIVI_PER_DAY = num('REWARD_VIVI_PER_DAY', 3);
 const adBonus = new Map<string, { day: string; claims: number }>();
+const rewardNonces = new Map<string, { key: string; at: number }>();
+const REWARD_MIN_WATCH_MS = num('REWARD_MIN_WATCH_SECONDS', 15) * 1000;
 function bonusMin(req: IncomingMessage): number {
   const r = adBonus.get(quotaKey(req));
   return r && r.day === tashkentDay() ? r.claims * REWARD_VIVI_MIN : 0;
@@ -381,11 +418,27 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     json(res, 200, { ok: true });
   },
 
-  // Reklama (rewarded video) oxirigacha ko'rilgach: Vivi bilan qo'shimcha daqiqalar.
-  'POST /api/reward/vivi': (req, res) => {
+  // Reklama boshlanishidan oldin: bir martalik chipta (kamida 15 s o'tgach, faqat shu foydalanuvchi ishlatadi).
+  'POST /api/reward/start': (req, res) => {
     if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
-    const limited = take('billing', clientIp(req));
+    const limited = take('reward', clientIp(req));
     if (limited) return json(res, 429, { message: limited });
+    const nonce = randomBytes(18).toString('base64url');
+    rewardNonces.set(nonce, { key: quotaKey(req), at: Date.now() });
+    if (rewardNonces.size > 20_000) for (const [k, v] of rewardNonces) if (Date.now() - v.at > 15 * 60_000) rewardNonces.delete(k);
+    json(res, 200, { nonce });
+  },
+
+  // Reklama (rewarded video) oxirigacha ko'rilgach: Vivi bilan qo'shimcha daqiqalar.
+  'POST /api/reward/vivi': async (req, res) => {
+    if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
+    const limited = take('reward', clientIp(req));
+    if (limited) return json(res, 429, { message: limited });
+    const nb = (await readBody(req, 1024).catch(() => ({}))) as { nonce?: unknown };
+    const n = typeof nb.nonce === 'string' ? rewardNonces.get(nb.nonce) : undefined;
+    if (typeof nb.nonce === 'string') rewardNonces.delete(nb.nonce);
+    const age = n ? Date.now() - n.at : -1;
+    if (!n || n.key !== quotaKey(req) || age < REWARD_MIN_WATCH_MS || age > 10 * 60_000) return json(res, 403, { code: 'reward_invalid', message: "Reklama oxirigacha ko'rilmadi" });
     if (bonusClaimsLeft(req) <= 0) return json(res, 429, { code: 'limit', message: "Bugungi reklama mukofotlari tugadi — ertaga yana ko'ring" });
     const k = quotaKey(req);
     const day = tashkentDay();
@@ -570,7 +623,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     const data = receiptOf(Number(new URL(req.url ?? '/', 'http://x').searchParams.get('id')));
     const m = data && /^data:([^;]+);base64,(.*)$/.exec(data);
     if (!m) return json(res, 404, { message: 'Chek topilmadi' });
-    res.writeHead(200, { 'content-type': m[1], 'cache-control': 'private, no-store' });
+    // Chek fayli alohida «qum qutisi»da ochiladi — ichida skript bo'lsa ham ishlamaydi.
+    res.writeHead(200, { 'content-type': m[1], 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'", 'content-disposition': 'inline' });
     res.end(Buffer.from(m[2], 'base64'));
   },
 
@@ -581,6 +635,7 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     const b = (await readBody(req).catch(() => ({}))) as { id?: unknown; action?: unknown };
     const orderUser = (receiptOwner(Number(b.id)));
     const ok = decideOrder(Number(b.id), b.action === 'approve');
+    console.log('audit', JSON.stringify({ at: new Date().toISOString(), admin: uid, order: Number(b.id), action: b.action === 'approve' ? 'approve' : 'reject', ok }));
     if (!ok) return json(res, 409, { message: "Buyurtma allaqachon ko'rib chiqilgan yoki topilmadi" });
     if (orderUser && b.action !== 'approve') void bot()?.notifyDecision(orderUser, false);
     json(res, 200, { ok: true });
@@ -661,6 +716,9 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
 
   // Gemini Live: brauzer kalitni ko'rmaydi — server bir martalik token va sessiya sozlamasini beradi.
   'POST /api/live/token': (req, res) => {
+    // Bir martalik tokenlar soni ham cheklangan (IP bo'yicha).
+    const tooMany = originOk(req) ? take('live', clientIp(req)) : null;
+    if (tooMany) return json(res, 429, { code: 'rate', message: tooMany });
     if (!env.GEMINI_API_KEY || env.LIVE_DISABLED === '1') return json(res, 503, { code: 'config', message: 'Jonli rejim hozircha yoqilmagan.' });
     if (freeLeft(req) === 0) return json(res, 429, { code: 'daily_limit', message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Super bilan cheklovsiz davom eting 💜` });
     return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => {
@@ -798,8 +856,10 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse) {
   }
   try {
     const data = await readFile(file);
+    const isHtml = extname(file) === '.html';
     res.writeHead(200, {
       ...SECURITY,
+      ...(isHtml ? { 'content-security-policy': cspFor(data.toString('utf8')) } : {}),
       'content-type': MIME[extname(file)] ?? 'application/octet-stream',
       'cache-control': file.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
     });

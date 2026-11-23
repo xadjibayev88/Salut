@@ -66,8 +66,10 @@ export function plansPayload() {
 export function isAdmin(userId: string): boolean {
   const list = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
   if (!list.length) return false;
-  const u = db().prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email?: string } | undefined;
-  return !!u?.email && list.includes(u.email.toLowerCase());
+  // Faqat email'i Google tomonidan TASDIQLANGAN hisob admin bo'la oladi: aks holda kimdir admin email'i bilan
+  // parol orqali oldindan ro'yxatdan o'tib, admin huquqini egallab olishi mumkin edi.
+  const u = db().prepare('SELECT email, google_sub FROM users WHERE id = ?').get(userId) as { email?: string; google_sub?: string | null } | undefined;
+  return !!u?.email && !!u.google_sub && list.includes(u.email.toLowerCase());
 }
 
 export function activePlan(userId: string | null): { plan: PlanId | 'free'; expiresAt: number | null } {

@@ -28,11 +28,32 @@ describe('accounts', () => {
   });
 
   it('signs and verifies session tokens; rejects tampering and expiry', () => {
-    const t = createSessionToken('user-1');
-    expect(verifySessionToken(t)).toBe('user-1');
+    const u = register('tok@example.com', 'parol12345', 'Tok');
+    if (!u.ok) throw new Error('reg');
+    const t = createSessionToken(u.user.id);
+    expect(verifySessionToken(t)).toBe(u.user.id);
+    // Mavjud bo'lmagan foydalanuvchi uchun token yaroqsiz.
+    expect(verifySessionToken(createSessionToken('ghost'))).toBeNull();
     expect(verifySessionToken(t.replace(/.$/, (c) => (c === 'A' ? 'B' : 'A')))).toBeNull();
     expect(verifySessionToken(t, Date.now() + 61 * 86_400_000)).toBeNull();
     expect(verifySessionToken(undefined)).toBeNull();
+  });
+
+  it('Google takeover of a pre-registered email kills the squatter password and sessions', () => {
+    const squat = register('victim@example.com', 'parol12345', 'Squatter');
+    if (!squat.ok) throw new Error('reg');
+    const old = createSessionToken(squat.user.id);
+    upsertGoogleUser('g-victim', 'victim@example.com', 'Victim', null);
+    expect(verifySessionToken(old)).toBeNull();
+    expect(login('victim@example.com', 'parol12345').ok).toBe(false);
+  });
+
+  it('locks an email after repeated wrong passwords', () => {
+    register('lock@example.com', 'parol12345', 'L');
+    for (let i = 0; i < 6; i++) login('lock@example.com', 'wrong-pass');
+    const r = login('lock@example.com', 'parol12345');
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.status).toBe(429);
   });
 
   it('links Google sign-in to an existing email account', () => {
@@ -173,7 +194,10 @@ describe('admin rejimi', () => {
     if (!r.ok) throw new Error('reg');
     expect(activePlan(r.user.id).plan).toBe('free');
     process.env.ADMIN_EMAILS = 'someone@x.uz, OWNER@voila.test';
-    expect(activePlan(r.user.id).plan).toBe('year');
+    // Parol bilan ochilgan (tasdiqlanmagan) hisob admin bo'la olmaydi.
+    expect(activePlan(r.user.id).plan).toBe('free');
+    const g = upsertGoogleUser('g-owner', 'owner@voila.test', 'Owner', null);
+    expect(activePlan(g.id).plan).toBe('year');
     delete process.env.ADMIN_EMAILS;
   });
 });
