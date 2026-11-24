@@ -18,7 +18,8 @@ export interface AiRuntimeConfig {
   readonly provider: AiProvider | null;
   readonly model: AiModel | null;
   readonly location: AiLocation | null;
-  readonly credentialsPresent: boolean;
+  /** Operator attestation only; the parser does not inspect or validate ADC credentials. */
+  readonly adcOperatorAttested: boolean;
   readonly projectConfigured: boolean;
   readonly verification: Readonly<{
     provider: boolean;
@@ -73,8 +74,9 @@ function allQuotaValuesPositive(quota: Readonly<AiQuotaConfig>): boolean {
 
 /**
  * Parse the server-only AI configuration. Any missing, malformed, or unverified value fails closed.
- * Credential and project readiness are booleans only; secret values and credential paths are never
- * copied into this object. Live is deliberately hard-disabled regardless of environment input.
+ * `VIVI_AI_ADC_OPERATOR_ATTESTED` is an operator assertion that ADC was configured and separately
+ * verified; this function does not look up credentials, read credential files, or make auth/API calls.
+ * Live is deliberately hard-disabled regardless of environment input.
  */
 export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
   const rawProvider = env.VIVI_AI_PROVIDER;
@@ -83,7 +85,7 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
   const provider = rawProvider && VERIFIED_PROVIDERS.has(rawProvider) ? (rawProvider as AiProvider) : null;
   const model = rawModel && VERIFIED_MODELS.has(rawModel) ? (rawModel as AiModel) : null;
   const location = rawLocation && VERIFIED_LOCATION_CANDIDATES.has(rawLocation) ? (rawLocation as AiLocation) : null;
-  const credentialsPresent = exactTrue(env.GOOGLE_CLOUD_ADC_CONFIGURED);
+  const adcOperatorAttested = exactTrue(env.VIVI_AI_ADC_OPERATOR_ATTESTED);
   const projectConfigured = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(env.GOOGLE_CLOUD_PROJECT_ID ?? '');
   const projectAccessVerified = exactTrue(env.VIVI_AI_PROJECT_CONFIG_VERIFIED);
   const verification = Object.freeze({
@@ -99,7 +101,7 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
     provider !== null &&
     model !== null &&
     location !== null &&
-    credentialsPresent &&
+    adcOperatorAttested &&
     projectConfigured &&
     projectAccessVerified &&
     allQuotaValuesPositive(quota);
@@ -110,7 +112,7 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
     provider,
     model,
     location,
-    credentialsPresent,
+    adcOperatorAttested,
     projectConfigured,
     verification,
     quota,

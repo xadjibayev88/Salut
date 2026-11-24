@@ -7,7 +7,7 @@ const completeEnv: NodeJS.ProcessEnv = {
   VIVI_AI_MODEL: 'gemini-3.5-flash-lite',
   GOOGLE_CLOUD_PROJECT_ID: 'voila-ai-project',
   GOOGLE_CLOUD_LOCATION: 'asia-southeast1',
-  GOOGLE_CLOUD_ADC_CONFIGURED: 'true',
+  VIVI_AI_ADC_OPERATOR_ATTESTED: 'true',
   VIVI_AI_PROJECT_CONFIG_VERIFIED: 'true',
   VIVI_AI_KILL_SWITCH: 'off',
   VIVI_AI_MAX_REQUESTS_PER_DAY: '1000',
@@ -26,7 +26,7 @@ function expectDisabled(overrides: NodeJS.ProcessEnv, reason: string) {
 
 describe('loadAiRuntimeConfig', () => {
   expectDisabled({ VIVI_AI_ENABLED: undefined }, 'the provider flag is missing');
-  expectDisabled({ GOOGLE_CLOUD_ADC_CONFIGURED: undefined }, 'server-side credentials are not configured');
+  expectDisabled({ VIVI_AI_ADC_OPERATOR_ATTESTED: undefined }, 'ADC has not been operator-attested');
   expectDisabled({ VIVI_AI_MAX_REQUESTS_PER_DAY: undefined }, 'a quota is missing');
   expectDisabled({ VIVI_AI_MODEL: 'unverified-model' }, 'the model is not verified');
   expectDisabled({ GOOGLE_CLOUD_LOCATION: 'moon-1' }, 'the location is not verified');
@@ -46,8 +46,16 @@ describe('loadAiRuntimeConfig', () => {
     expect(config.provider).toBe('google-agent-platform');
     expect(config.model).toBe('gemini-3.5-flash-lite');
     expect(config.location).toBe('asia-southeast1');
-    expect(config.credentialsPresent).toBe(true);
+    expect(config.adcOperatorAttested).toBe(true);
     expect(config.configurationReady).toBe(true);
+  });
+
+  it('treats ADC readiness as an operator attestation, not a credential presence check', () => {
+    // This fixture has no credential file, key, token, or ADC lookup; the marker is only an attestation.
+    const config = loadAiRuntimeConfig(completeEnv);
+    expect(config.adcOperatorAttested).toBe(true);
+    expect(config.configurationReady).toBe(true);
+    expect(config.providerEnabled).toBe(false);
   });
 
   it('keeps the provider disabled until its Google transport is implemented', () => {
@@ -62,11 +70,11 @@ describe('loadAiRuntimeConfig', () => {
     expect(loadAiRuntimeConfig({ ...completeEnv, VIVI_AI_MAX_SPEND_USD_PER_DAY: ' 1.25 ' }).providerEnabled).toBe(false);
   });
 
-  it('returns a deeply immutable server-only snapshot without credential values', () => {
-    const config = loadAiRuntimeConfig({ ...completeEnv, GOOGLE_APPLICATION_CREDENTIALS: '/secret/service-account.json' });
+  it('returns a deeply immutable server-only snapshot without environment values', () => {
+    const config = loadAiRuntimeConfig(completeEnv);
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.quota)).toBe(true);
-    expect(JSON.stringify(config)).not.toContain('service-account.json');
-    expect(JSON.stringify(config)).not.toContain('GOOGLE_APPLICATION_CREDENTIALS');
+    expect(JSON.stringify(config)).not.toContain('VIVI_AI_ADC_OPERATOR_ATTESTED');
+    expect(JSON.stringify(config)).not.toContain('voila-ai-project');
   });
 });
