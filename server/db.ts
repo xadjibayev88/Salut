@@ -75,6 +75,15 @@ export function db(): DatabaseSync {
       created_at INTEGER NOT NULL,
       paid_at INTEGER
     );
+    CREATE TABLE IF NOT EXISTS ai_consents (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      policy_version TEXT NOT NULL,
+      granted_at INTEGER NOT NULL,
+      revoked_at INTEGER,
+      PRIMARY KEY (user_id, scope)
+    );
   `);
   // Migratsiya: sessiyalarni bekor qilish uchun versiya (parol o'zgarsa / hisob egallansa — eski tokenlar o'ladi).
   const cols = d.prepare('PRAGMA table_info(users)').all() as { name: string }[];

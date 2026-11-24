@@ -203,4 +203,4 @@ export function useAccount(): AccountCtx {
   return c;
 }
 
-export { api as accountApi };
+export const accountApi = api;

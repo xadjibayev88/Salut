@@ -12,6 +12,7 @@ import { Mascot } from './components/Mascot';
 import { TabIcon } from './components/TabIcons';
 import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
+import { AiConsentDialog } from './components/AiConsentDialog';
 // Og'ir sahifalar alohida yuklanadi (birinchi ochilish tezroq), bo'sh paytda oldindan olib qo'yiladi.
 const loaders = {
   Tutor: () => import('./screens/Tutor').then((m) => ({ default: m.Tutor })),
@@ -50,14 +51,14 @@ function useMedia(q: string): boolean {
 const Loading = () => <div className="page-loading" aria-busy="true" />;
 
 /** Sahifa ichi: faqat id/onStart o'zgarsa chiziladi (ko'rsatish/yashirish uni qayta chizmaydi). */
-const PaneBody = memo(function PaneBody({ id, onStart }: { id: Tab; onStart: (c: SessionConfig) => void }) {
+const PaneBody = memo(function PaneBody({ id, onStart, onManageAiConsent }: { id: Tab; onStart: (c: SessionConfig) => void; onManageAiConsent: () => void }) {
   return (
     <Suspense fallback={<Loading />}>
       {id === 'learn' && <Learn onStart={onStart} />}
       {id === 'tutor' && <Tutor />}
       {id === 'practice' && <Practice onStart={onStart} />}
       {id === 'leagues' && <Leagues />}
-      {id === 'profile' && <Profile />}
+      {id === 'profile' && <Profile onManageAiConsent={onManageAiConsent} />}
       {id === 'shop' && <Shop />}
       {id === 'about' && <About />}
       {id === 'admin' && <Admin />}
@@ -66,13 +67,13 @@ const PaneBody = memo(function PaneBody({ id, onStart }: { id: Tab; onStart: (c:
 });
 
 /** Sahifa qatlami: ko'rinmaydiganlari yashiriladi (o'chirilmaydi) — qaytib o'tish bir zumda. */
-const Pane = memo(function Pane({ id, on, dir, onStart }: { id: Tab; on: boolean; dir: 'fwd' | 'back'; onStart: (c: SessionConfig) => void }) {
+const Pane = memo(function Pane({ id, on, dir, onStart, onManageAiConsent }: { id: Tab; on: boolean; dir: 'fwd' | 'back'; onStart: (c: SessionConfig) => void; onManageAiConsent: () => void }) {
   return (
     <div className={`tab-pane page-${dir}`} hidden={!on} aria-hidden={!on}>
-      <PaneBody id={id} onStart={onStart} />
+      <PaneBody id={id} onStart={onStart} onManageAiConsent={onManageAiConsent} />
     </div>
   );
-}, (a, b) => a.on === b.on && a.id === b.id && (!b.on || a.dir === b.dir) && a.onStart === b.onStart);
+}, (a, b) => a.on === b.on && a.id === b.id && (!b.on || a.dir === b.dir) && a.onStart === b.onStart && a.onManageAiConsent === b.onManageAiConsent);
 
 import { initAds, loadAdsense, maybeInterstitial, setImmersive } from './engine/ads';
 
@@ -106,6 +107,8 @@ export function App() {
   }, [tab]);
   const [session, setSession] = useState<SessionConfig | null>(null);
   const [blocked, setBlocked] = useState(false);
+  const [aiConsentOpen, setAiConsentOpen] = useState(false);
+  const openAiConsent = useCallback(() => setAiConsentOpen(true), []);
 
   useEffect(() => {
     const on = () => setTab(readTab());
@@ -188,7 +191,7 @@ export function App() {
         <TopBar onShop={() => go('shop')} onProfile={() => go('profile')} />
         <div className="content">
             {visited.map((id) => (
-              <Pane key={id} id={id} on={id === tab} dir={dir} onStart={stableStart} />
+              <Pane key={id} id={id} on={id === tab} dir={dir} onStart={stableStart} onManageAiConsent={openAiConsent} />
             ))}
         </div>
       </div>
@@ -244,6 +247,7 @@ export function App() {
           </div>
         </div>
       )}
+      <AiConsentDialog open={aiConsentOpen} onClose={() => setAiConsentOpen(false)} />
     </div>
   );
 }

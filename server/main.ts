@@ -7,13 +7,14 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback, liveInstruction } from './tutor.ts';
-import { clearCookie, createSessionToken, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
+import { clearCookie, createSessionToken, currentAiSubject, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
 import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases, stats, submitReview } from './social.ts';
 import { parseTranslateRequest, translateBody } from './voice.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 import { loadAiRuntimeConfig } from './ai-config.ts';
+import { AI_CONSENT_POLICY_VERSION, AI_ROUTE_REQUIREMENTS, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, type AiGrant } from './ai-consent.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -123,6 +124,22 @@ function originOk(req: IncomingMessage): boolean {
   }
 }
 
+/** Consent writes require an explicit allowed Origin; Fetch Metadata rejects cross-site writes too. */
+function consentMutationOriginOk(req: IncomingMessage): boolean {
+  return !!req.headers.origin && originOk(req) && req.headers['sec-fetch-site'] !== 'cross-site';
+}
+
+function aiConsentFailure(req: IncomingMessage): { status: number; body: unknown } | null {
+  const routeKey = `${req.method} ${(req.url ?? '/').split('?')[0]}`;
+  const requirement = AI_ROUTE_REQUIREMENTS[routeKey];
+  if (!requirement) return null;
+  const subject = currentAiSubject(req);
+  if (!subject) return { status: 401, body: { code: 'auth', message: 'AI ustoz uchun hisobga kiring.' } };
+  if (!hasAiConsent(subject, requirement.scope, requirement.provider))
+    return { status: 403, body: { code: 'ai_consent_required', scope: requirement.scope, message: 'Bu AI vazifasi uchun rozilik berilmagan yoki eskirgan.' } };
+  return null;
+}
+
 const SECURITY: Record<string, string> = {
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
@@ -181,6 +198,8 @@ async function guarded<T>(
   const limited = take(opts.bucket, clientIp(req));
   if (limited) return json(res, 429, { code: 'rate_limited', message: limited });
   if (active >= CONCURRENCY) return json(res, 429, { code: 'busy', message: "Vivi hozir boshqa o'quvchilar bilan gaplashyapti. Bir necha soniyadan keyin urinib ko'ring." });
+  const consentFailure = aiConsentFailure(req);
+  if (consentFailure) return json(res, consentFailure.status, consentFailure.body);
   active++;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(Object.assign(new Error('timeout'), { name: 'TimeoutError' })), 30_000);
@@ -526,6 +545,47 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
+  },
+
+  'GET /api/ai/consent': (req, res) => {
+    const subject = currentAiSubject(req);
+    if (!subject) return json(res, 401, { code: 'auth', message: 'Rozilik sozlamalari uchun hisobga kiring.' });
+    json(res, 200, { policyVersion: AI_CONSENT_POLICY_VERSION, consent: getAiConsent(subject) });
+  },
+
+  'PUT /api/ai/consent': async (req, res) => {
+    if (!consentMutationOriginOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
+    const subject = currentAiSubject(req);
+    if (!subject) return json(res, 401, { code: 'auth', message: 'Rozilik berish uchun hisobga kiring.' });
+    let body: unknown;
+    try {
+      body = await readBody(req, 8 * 1024);
+    } catch (e) {
+      return json(res, (e as { code?: string }).code === 'too_large' ? 413 : 400, { code: 'bad_request', message: 'So‘rov noto‘g‘ri.' });
+    }
+    const input = (body ?? {}) as { policyVersion?: unknown; grants?: unknown };
+    if (input.policyVersion !== AI_CONSENT_POLICY_VERSION) return json(res, 409, { code: 'policy_version', policyVersion: AI_CONSENT_POLICY_VERSION });
+    if (!Array.isArray(input.grants)) return json(res, 400, { code: 'bad_request', message: 'Rozilik doiralari noto‘g‘ri.' });
+    try {
+      const consent = grantAiConsent(subject, input.grants as AiGrant[], AI_CONSENT_POLICY_VERSION);
+      json(res, 200, { policyVersion: AI_CONSENT_POLICY_VERSION, consent });
+    } catch {
+      json(res, 400, { code: 'bad_request', message: 'Tanlangan scope yoki provayder ruxsat etilmagan.' });
+    }
+  },
+
+  'DELETE /api/ai/consent': (req, res) => {
+    if (!consentMutationOriginOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
+    const subject = currentAiSubject(req);
+    if (!subject) return json(res, 401, { code: 'auth', message: 'Rozilikni bekor qilish uchun hisobga kiring.' });
+    json(res, 200, { consent: revokeAiConsent(subject) });
+  },
+
+  'DELETE /api/ai/memory': (req, res) => {
+    if (!consentMutationOriginOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
+    const subject = currentAiSubject(req);
+    if (!subject) return json(res, 401, { code: 'auth', message: 'Vivi xotirasini o‘chirish uchun hisobga kiring.' });
+    json(res, 200, { deleted: deleteAiMemory(subject) });
   },
 
   // ---------- Hisob ----------
@@ -938,8 +998,11 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse) {
 
 const server = createServer((req, res) => {
   const path = (req.url ?? '/').split('?')[0];
-  const route = routes[`${req.method} ${path}`];
+  const routeKey = `${req.method} ${path}`;
+  const route = routes[routeKey];
   if (route) {
+    const consentFailure = aiConsentFailure(req);
+    if (consentFailure) return json(res, consentFailure.status, consentFailure.body);
     return void Promise.resolve(route(req, res)).catch((e) => {
       console.error(e);
       if (!res.headersSent) json(res, 500, { message: 'Server xatosi' });

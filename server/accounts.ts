@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { IncomingMessage } from 'node:http';
 import { db } from './db.ts';
+import type { AiSubject } from './ai-consent.ts';
 
 export const SESSION_COOKIE = 'salut_session';
 const SESSION_DAYS = 60;
@@ -87,6 +88,12 @@ export function readCookie(req: IncomingMessage, name: string): string | undefin
 export function currentUserId(req: IncomingMessage): string | null {
   const bearer = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization ?? ''))?.[1];
   return verifySessionToken(bearer ?? readCookie(req, SESSION_COOKIE));
+}
+
+/** AI consent comes only from the HMAC-signed account session; there is no IP or guest fallback. */
+export function currentAiSubject(req: IncomingMessage): AiSubject | null {
+  const userId = currentUserId(req);
+  return userId ? { kind: 'account', userId } : null;
 }
 
 // ---------- Parollar ----------
