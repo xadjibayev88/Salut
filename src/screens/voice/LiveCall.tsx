@@ -60,13 +60,7 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
       <main className="call-stage">
         <div className="call-avatar" aria-hidden="true">
           <KruaLive
-            shape={s.cue.shape}
-            action={s.cue.action}
-            actionKey={s.cue.key}
-            burnKey={s.cue.angry ? s.cue.key : 0}
-            fx={s.cue.fx}
-            fxKey={s.cue.key}
-            state={s.phase === 'speaking' ? 'speaking' : s.phase === 'connecting' ? 'thinking' : s.micLevel > 0.08 ? 'listening' : 'idle'}
+            cue={{ ...s.cue, state: s.phase === 'speaking' ? 'speaking' : s.phase === 'connecting' ? 'thinking' : s.micLevel > 0.08 ? 'listening' : 'idle' }}
             level={s.phase === 'speaking' ? s.level : s.micLevel}
             size={Math.min(300, Math.round(window.innerWidth * 0.62))}
           />

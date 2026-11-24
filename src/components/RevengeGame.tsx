@@ -3,7 +3,6 @@
 // qidiruv yulduzlari, nokaut va qayta tirilish. Hammasi original (kod, nom, dizayn).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playSfx, vibrate, type Sfx } from '../engine/audio';
-import type { Action } from '../engine/voice/markers';
 
 export interface Weapon {
   id: string;
@@ -37,7 +36,6 @@ export function useRevenge(enabled: boolean, sound: boolean) {
   const [wheel, setWheel] = useState(false);
   const [pops, setPops] = useState<Pop[]>([]);
   const [shake, setShake] = useState(0);
-  const [hitAct, setHitAct] = useState<{ action: Action; key: number } | null>(null);
   const last = useRef(0);
   const heat = useRef(0);
   const lastHit = useRef(0);
@@ -76,7 +74,6 @@ export function useRevenge(enabled: boolean, sound: boolean) {
       setPops((p) => [...p.slice(-14), ...add]);
       add.forEach((a) => setTimeout(() => setPops((p) => p.filter((q) => q.id !== a.id)), 900));
       if (weapon.heavy) setShake((k) => k + 1);
-      setHitAct({ action: weapon.id === 'rocket' ? 'flare' : weapon.heavy ? 'squish' : Math.random() < 0.5 ? 'squish' : 'giggle', key: seq.current });
       heat.current = Math.min(400, heat.current + dmg);
       setStars(Math.min(5, Math.floor(heat.current / 60)));
       setHp((h) => {
@@ -111,7 +108,7 @@ export function useRevenge(enabled: boolean, sound: boolean) {
     return () => window.removeEventListener('keydown', onKey);
   }, [enabled, fire]);
 
-  return { weapon, setWeapon, hp, stars, ko, wheel, setWheel, pops, shake, hitAct, fire };
+  return { weapon, setWeapon, hp, stars, ko, wheel, setWheel, pops, shake, fire };
 }
 
 export type Revenge = ReturnType<typeof useRevenge>;

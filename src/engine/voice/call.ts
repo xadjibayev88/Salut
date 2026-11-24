@@ -3,11 +3,11 @@
 // Qotmaslik uchun: hamma narsa asinxron va bekor qilinadigan; birinchi gap tayyor bo'lishi bilan ovoz;
 // keyingi gap ovozi oldindan yuklanadi; tarmoq uzilsa bir marta avtomatik qayta urinadi.
 import { ROLES, type CharacterId, type ExplainLang, type RoleId } from '../../data/characters';
-import { answerLang, displayText, SentenceSplitter, talkStats, type Action, type Shape } from './markers';
+import { answerLang, displayText, SentenceSplitter, talkStats } from './markers';
 import { Mic, type MicError } from './mic';
 import { cloudSttSupported, CloudStt, type ReviewedStt, type SttError, type SttResult } from './stt';
 import { TtsQueue } from './tts';
-import { NEUTRAL_VIVI_CUE, validateViviCue, type ViviCue } from './vivi-cues';
+import { NEUTRAL_VIVI_CUE, validateViviCue, type ViviCue } from '../../shared/vivi-cue';
 import type { InputMode, SessionRecord, SttEngine } from './prefs';
 
 export type Phase = 'connecting' | 'ready' | 'user' | 'review' | 'thinking' | 'speaking' | 'ended';
@@ -74,13 +74,8 @@ export interface Turn {
 
 export interface Snapshot {
   phase: Phase;
-  shape: Shape;
   /** Rasm effekti: so'nggi [[img:...]] (key — har safar yangidan chiqishi uchun). */
   image: { q: string; key: number } | null;
-  /** Tana effekti ([fart], [burps]). */
-  fx: { kind: 'fart' | 'burp'; key: number } | null;
-  action: Action | null;
-  actionKey: number;
   level: number;
   partial: string;
   /** STT natijasi: Vivi'ga yuborishdan oldin tahrirlash uchun. */
@@ -140,11 +135,7 @@ export class VoiceCall {
     this.tts.merge = o.config.ttsTier === 'gemini';
     this.snap = {
       phase: 'connecting',
-      shape: 'pill',
       image: null,
-      fx: null,
-      action: null,
-      actionKey: 0,
       level: 0,
       partial: '',
       draft: '',

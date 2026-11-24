@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContents, configureRotation, friendlyError, isExhausted, parseTutorReply, parseTutorRequest, streamGemini, streamTutor, streamTutorWithFallback, systemInstruction, tutorBehaviorContract, tutorSseEvents, type TutorRequest } from './tutor.ts';
+import { buildContents, configureRotation, friendlyError, isExhausted, parseTutorReply, parseTutorRequest, stripLegacyTutorMarkers, streamGemini, streamTutor, streamTutorWithFallback, systemInstruction, tutorBehaviorContract, tutorSseEvents, type TutorRequest } from './tutor.ts';
 import { parseRich, frenchParts } from '../src/engine/tutor.ts';
 
 const base = { scenario: 'free', message: 'Salom!', history: [], context: { name: 'Ali', lessons: ['Salom!'], words: ['bonjour'], mistakes: [], streak: 2 } };
@@ -311,4 +311,33 @@ describe('Task 7 French tutor behavior contract', () => {
   it('never creates a successful SSE completion event for blank reply text', () => {
     expect(() => tutorSseEvents({ text: ' \n ', cue: { state: 'idle', face: 'neutral' } })).toThrow(/javobi bo‘sh/);
   });
+});
+
+describe('Task 8 legacy server sound-marker safety', () => {
+  it.each([
+    ['soundeffect', '[soundeffect:meow]'],
+    ['sound-effect', '[sound-effect:meow]'],
+    ['sound_effect', '[sound_effect:meow]'],
+    ['double bracket', '[[soundeffect:meow]]'],
+    ['unclosed soundeffect', '[soundeffect:meow'],
+    ['unclosed sound-effect', '[sound-effect:meow'],
+    ['unclosed sound_effect', '[sound_effect:meow'],
+    ['malformed double bracket', '[[soundeffect:meow]'],
+    ['unclosed marker with later bracketed safe text', '[soundeffect:meow Safe text [safe] after.'],
+    ['malformed double bracket with later bracketed safe text', '[[soundeffect:meow Safe text [safe] after.'],
+  ])('strips %s markers before text is emitted', (_label, marker) => {
+    const cleaned = stripLegacyTutorMarkers(`${marker} Safe text.`);
+    expect(cleaned.toLowerCase()).not.toMatch(/sound(?:[-_ ]?effect)/);
+    if (_label.includes('unclosed') || _label.includes('malformed')) {
+      const expected = _label.includes('later bracketed') ? 'Safe text [safe] after. Safe text.' : 'Safe text.';
+      expect(cleaned).toBe(expected);
+    }
+  });
+
+  it.each(['[laughing]', '[sneeze]', '[cries]', '[sobs]', '[sobbing]'])(
+    'strips the complete legacy vocal marker %s before text is emitted',
+    (marker) => {
+      expect(stripLegacyTutorMarkers(`${marker} Safe`)).toBe('Safe');
+    },
+  );
 });

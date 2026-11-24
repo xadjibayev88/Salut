@@ -155,13 +155,13 @@
 
 **Interfeys/kontrakt:** `ViviCue` state: `idle|listening|thinking|speaking`; face: `neutral|happy|amused|curious|confused|surprised|supportive|proud`; action: `blink|head_tilt|ear_perk|tail_wag|giggle|hop|wave`; ixtiyoriy bitta ornament: `sparkle|thought_dots|heart`. `validateViviCue(value): ViviCue` unknown qiymatni neutralga tushiradi.
 
-- [ ] Failing schema testlarini yozing: barcha whitelist qiymatlari o‘tadi; `angry`, `slap`, `punch`, `spit`, `flip`, arbitrary code, sound-effect command va shape morphing rad etiladi.
-- [ ] Failing testni ishga tushiring: `npm test -- src/shared/vivi-cue.test.ts server/vivi-cues.test.ts`.
-- [ ] Server va client ayni versioned schema/validatorni ishlatsin; unknown cue `neutral` bo‘lsin.
-- [ ] Mascot mapping faqat semantic cue’dan foydalanib, Vivi siluetini mushukcha qilib qoldirsin; tanani boshqa shaklga aylantiruvchi animatsiyalarni olib tashlang.
-- [ ] Listening’da quloq, thinking’da bosh qiyshayishi/thought dots, speaking’da audio og‘iz, to‘g‘ri javobda yengil hop, hazilda yumshoq giggle va support’da tail/ko‘z mappingini belgilang.
-- [ ] `prefers-reduced-motion`da kuchli animatsiya va motion effect’lar kamaytirilishini test/CSS bilan tekshiring.
-- [ ] Fokuslangan schema/UI testlari va buildni bajaring.
+- [x] Failing schema testlarini yozing: barcha whitelist qiymatlari o‘tadi; `angry`, `slap`, `punch`, `spit`, `flip`, arbitrary code, sound-effect command va shape morphing rad etiladi.
+- [x] Failing testni ishga tushiring: `npm test -- src/shared/vivi-cue.test.ts server/vivi-cues.test.ts`.
+- [x] Server va client ayni versioned schema/validatorni ishlatsin; unknown cue `neutral` bo‘lsin.
+- [x] Mascot mapping faqat semantic cue’dan foydalanib, Vivi siluetini mushukcha qilib qoldirsin; tanani boshqa shaklga aylantiruvchi animatsiyalarni olib tashlang.
+- [x] Listening’da quloq, thinking’da bosh qiyshayishi/thought dots, speaking’da audio og‘iz, to‘g‘ri javobda yengil hop, hazilda yumshoq giggle va support’da tail/ko‘z mappingini belgilang.
+- [x] `prefers-reduced-motion`da kuchli animatsiya va motion effect’lar kamaytirilishini test/CSS bilan tekshiring.
+- [x] Fokuslangan schema/UI testlari va buildni bajaring.
 - [ ] Commit: `git add src/shared/vivi-cue.ts src/shared/vivi-cue.test.ts server/vivi-cues.ts server/vivi-cues.test.ts src/components/Mascot.tsx src/components/KruaLive.tsx src/engine/voice/markers.ts src/styles.css src/screens/voice/VoiceCall.tsx src/screens/voice/LiveCall.tsx && git commit -m "feat(vivi): enforce safe mascot cue schema"`.
 
 ## Task 9: Vertex Live-ni POC gacha o‘chirish

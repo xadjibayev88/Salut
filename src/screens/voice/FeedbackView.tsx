@@ -63,7 +63,14 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
   return (
     <div className="page feedback-page">
       <div className="fb-hero">
-        <KruaLive shape={tooShort ? 'drop' : fb ? 'star' : 'book'} state={fb === undefined && !tooShort && !failed ? 'thinking' : 'idle'} size={130} />
+        <KruaLive
+          cue={{
+            state: fb === undefined && !tooShort && !failed ? 'thinking' : 'idle',
+            face: tooShort ? 'supportive' : fb ? 'proud' : failed ? 'confused' : 'curious',
+            ...(fb === undefined && !tooShort && !failed ? { ornament: 'thought_dots' as const } : {}),
+          }}
+          size={130}
+        />
         <div>
           <h1 className="page-title">Suhbat tahlili</h1>
           <p className="muted">Suhbatimizda sezganlarim</p>

@@ -231,7 +231,7 @@ export function VoiceHub() {
       <div className="voice-intro">
         <div className="intro-hero">
           <h1>Yangi Vivi bilan tanishing</h1>
-          <KruaLive shape="pill" action="wave" actionKey={1} size={220} />
+          <KruaLive cue={{ state: 'idle', face: 'happy', action: 'wave' }} size={220} />
           <ul className="intro-beats">
             <li>🤝 Do'stona</li>
             <li>🧘 Sabrli</li>
@@ -463,7 +463,7 @@ export function VoiceHub() {
       <div className="vh-start">
         {liveOut ? (
           <div className="rest-card">
-            <KruaLive state="sleeping" shape="pill" size={110} />
+            <KruaLive cue={{ state: 'idle', face: 'neutral' }} size={110} />
             <div>
               <b>Bugungi jonli suhbat tugadi</b>
               <p className="muted">Kuniga {10} daqiqa jonli suhbat bepul. Ertaga yana — yoki Super bilan cheklovsiz gaplashing.</p>
@@ -484,7 +484,7 @@ export function VoiceHub() {
           </div>
         ) : resting ? (
           <div className="rest-card">
-            <KruaLive state="sleeping" shape="pill" size={110} />
+            <KruaLive cue={{ state: 'idle', face: 'neutral' }} size={110} />
             <div>
               <b>Vivi dam olyapti</b>
               <p className="muted">Yaxshi suhbatlashdingiz! Keyingi suhbatdan oldin Viviga dam kerak. Yana tayyor bo'lishiga {fmtLeft(rest - now)} qoldi.</p>

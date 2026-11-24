@@ -124,3 +124,36 @@ describe('Gemini Live input mode', () => {
     expect(session.snap.phase).toBe('ended');
   });
 });
+
+
+const { playSfxMock } = vi.hoisted(() => ({ playSfxMock: vi.fn() }));
+vi.mock('../audio', () => ({ playSfx: playSfxMock }));
+import { NEUTRAL_VIVI_CUE } from '../../shared/vivi-cue.ts';
+
+describe('Task 8 Live cue safety boundary (unit-only; no Live session is started)', () => {
+  it.each([
+    ['angry face', { face: 'angry', gesture: 'wave' }],
+    ['flip action', { face: 'happy', gesture: 'flip' }],
+    ['punch action', { face: 'happy', gesture: 'punch' }],
+    ['sound command', { face: 'happy', gesture: 'wave', sfx: 'slap' }],
+    ['sound-command field even when none', { face: 'happy', gesture: 'wave', sfx: 'none' }],
+    ['action without required face', { gesture: 'wave' }],
+    ['shape morph', { face: 'happy', gesture: 'wave', shape: 'heart' }],
+    ['arbitrary command', { face: 'happy', gesture: 'wave', code: 'alert(1)' }],
+  ])('maps %s to neutral and dispatches no effect', (_label, cue) => {
+    playSfxMock.mockClear();
+    const session = new LiveSession(options('ptt'));
+    const react = (session as unknown as { react: (value: Record<string, string>) => void }).react;
+    react.call(session, cue);
+    expect(session.snap.cue).toEqual(NEUTRAL_VIVI_CUE);
+    expect(playSfxMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a valid semantic action inside the shared cue contract', () => {
+    const session = new LiveSession(options('ptt'));
+    const react = (session as unknown as { react: (value: Record<string, string>) => void }).react;
+    react.call(session, { face: 'happy', gesture: 'wave' });
+    expect(session.snap.cue).toEqual({ state: 'idle', face: 'happy', action: 'wave' });
+    expect(playSfxMock).not.toHaveBeenCalled();
+  });
+});

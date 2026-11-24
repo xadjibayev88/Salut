@@ -2,7 +2,7 @@ import { normalizeMarkers } from './voice/markers';
 // Vivi ustoz — mijoz tomoni: kontekst yig'ish, oqimli so'rov, javobni bo'laklash.
 import { ALL_LESSONS } from '../data/course';
 import type { GameState } from './game';
-import { validateViviCue, type ViviCue } from './voice/vivi-cues';
+import { validateViviCue, type ViviCue } from '../shared/vivi-cue';
 
 export type Scenario = 'free' | 'cafe' | 'meet' | 'grammar' | 'mistakes';
 

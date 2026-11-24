@@ -12,7 +12,7 @@ describe('client tutor SSE contract', () => {
   it('delivers learner-facing text and the separately validated cue through distinct callbacks', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response([
       JSON.stringify({ t: 'Bonjour !' }),
-      JSON.stringify({ cue: { state: 'speaking', face: 'happy', action: 'hop', injected: 'ignored' } }),
+      JSON.stringify({ cue: { state: 'speaking', face: 'happy', action: 'hop' } }),
       JSON.stringify({ done: true }),
     ])));
     const onText = vi.fn();
@@ -38,6 +38,21 @@ describe('client tutor SSE contract', () => {
     await askTutor(payload, onText, undefined, onCue);
 
     expect(onText).toHaveBeenCalledWith('Je voudrais un café.');
+    expect(onCue).toHaveBeenCalledWith({ state: 'idle', face: 'neutral' });
+  });
+
+  it('maps a cue with an unknown field to neutral without changing text', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response([
+      JSON.stringify({ t: 'La réponse reste inchangée.' }),
+      JSON.stringify({ cue: { state: 'speaking', face: 'happy', action: 'hop', injected: 'ignored' } }),
+      JSON.stringify({ done: true }),
+    ])));
+    const onText = vi.fn();
+    const onCue = vi.fn();
+
+    await askTutor(payload, onText, undefined, onCue);
+
+    expect(onText).toHaveBeenCalledWith('La réponse reste inchangée.');
     expect(onCue).toHaveBeenCalledWith({ state: 'idle', face: 'neutral' });
   });
 

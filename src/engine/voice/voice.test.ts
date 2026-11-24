@@ -4,14 +4,14 @@ import { compareStats, type SessionRecord } from './prefs';
 import { TtsQueue } from './tts';
 
 describe('markers', () => {
-  it('extracts shape and actions and hides them from text', () => {
+  it('extracts only approved actions and hides shape and unknown markers from text', () => {
     const { clean, cue } = extractCues('[[shape:heart]][[do:hop]] Zo\'r! [[do:nope]] [[shape:xx]]');
-    expect(cue).toEqual({ shape: 'heart', actions: ['hop'] });
+    expect(cue).toEqual({ actions: ['hop'] });
     expect(clean.trim()).toBe("Zo'r!");
   });
   it('accepts shorthand markers and drops unknown ones', () => {
     const { clean, cue } = extractCues('[[tall]] [[point]] [[zzz]] Yetarli emas.');
-    expect(cue).toEqual({ shape: 'tall', actions: ['point'] });
+    expect(cue).toEqual({ actions: [] });
     expect(clean.trim()).toBe('Yetarli emas.');
   });
   it('strips audio tags for display and for non-v3 speech', () => {
@@ -104,7 +104,7 @@ describe('effektlar: rasm va noto\'g\'ri teglar', () => {
   it('[[img:...]] ajratiladi va matndan olinadi', () => {
     const { clean, cue } = extractCues("[[shape:heart]] Voy, [[img:Ulug'bek Rahmatullayev]] kabi romantik!");
     expect(cue.image).toBe("Ulug'bek Rahmatullayev");
-    expect(cue.shape).toBe('heart');
+    expect(cue.actions).toEqual([]);
     expect(clean).not.toContain('[[');
   });
   it('«[[fr]» xatosi tuzatiladi', () => {
@@ -112,14 +112,14 @@ describe('effektlar: rasm va noto\'g\'ri teglar', () => {
   });
 });
 
-describe('ovoz teglari tanani harakatlantiradi', () => {
-  it('[laughs] → giggle, [crying] → puddle, [fart]/[burps] → fx, [fuck] → flip (aytilmaydi)', () => {
+describe('ovoz teglari va xavfsiz Vivi imo-ishoralari', () => {
+  it('maps laughter only to approved giggle and strips unsafe/sound tags without side effects', () => {
     expect(extractCues('[laughs] Voy!').cue.actions).toContain('giggle');
-    expect(extractCues('[crying] Nega?').cue.shape).toBe('puddle');
-    expect(extractCues('[fart] Uzr.').cue.fx).toBe('fart');
-    expect(extractCues('[burps] Pardon.').cue.fx).toBe('burp');
+    expect(extractCues('[crying] Nega?').cue).toEqual({ actions: [] });
+    expect(extractCues('[fart] Uzr.').cue).toEqual({ actions: [] });
+    expect(extractCues('[burps] Pardon.').cue).toEqual({ actions: [] });
     const f = extractCues('[fuck] Bu fignya.');
-    expect(f.cue.actions[0]).toBe('flip');
+    expect(f.cue).toEqual({ actions: [] });
     expect(f.clean).not.toContain('[fuck]');
     expect(speechText('[boundaries] Chegaralarni belgilaymiz.', true)).toBe('Chegaralarni belgilaymiz.');
   });
@@ -129,7 +129,7 @@ describe('noto\'g\'ri yozilgan belgilar', () => {
   it('bitta qavsli belgilar ham ishlaydi va ko\'rinmaydi', () => {
     const r = extractCues("Jonim, xuddi [img:Samarqand] Registondagi [do:flip] mushukdek.");
     expect(r.cue.image).toBe('Samarqand');
-    expect(r.cue.actions).toContain('flip');
+    expect(r.cue.actions).toEqual([]);
     expect(r.clean).not.toMatch(/\[/);
     const segs = parseRichAns('Salom, mening [[fr]mon chéri[/fr]] sho\'xginam!');
     expect(segs.find((x) => x.kind === 'fr')?.text).toBe('mon chéri');
@@ -237,6 +237,49 @@ describe('Task 7 TTS fallback must remain text-only', () => {
     } finally {
       queue.dispose();
       vi.unstubAllGlobals();
+    }
+  });
+});
+
+
+describe('Task 8 legacy marker safety', () => {
+  it('does not turn shape, unsafe action, or sound-effect markers into mascot commands', () => {
+    const result = extractCues('[[shape:heart]] [[do:flip]] [spit] [punch] [slap] [fart] [burp] Salom.');
+    expect(result.cue).toEqual({ actions: [] });
+    expect(result.clean.trim()).toBe('Salom.');
+  });
+
+  it('still permits a safe legacy action without any shape or sound side effect', () => {
+    expect(extractCues('[[do:wave]] Salom.').cue).toEqual({ actions: ['wave'] });
+  });
+
+  it('removes bare unsafe and sound commands instead of exposing or executing them', () => {
+    const result = extractCues('[flip] [angry] [sfx:bell] [sound:meow] [[shape:cat]] Oddiy matn.');
+    expect(result.cue).toEqual({ actions: [] });
+    expect(result.clean.trim()).toBe('Oddiy matn.');
+    expect(speechText('[flip] [angry] [sfx:bell] Oddiy matn.', true)).toBe('Oddiy matn.');
+  });
+
+  it.each([
+    ['soundeffect', '[soundeffect:meow]'],
+    ['sound-effect', '[sound-effect:meow]'],
+    ['sound_effect', '[sound_effect:meow]'],
+    ['double bracket', '[[soundeffect:meow]]'],
+    ['unclosed soundeffect', '[soundeffect:meow'],
+    ['unclosed sound-effect', '[sound-effect:meow'],
+    ['unclosed sound_effect', '[sound_effect:meow'],
+    ['malformed double bracket', '[[soundeffect:meow]'],
+    ['unclosed marker with later bracketed safe text', '[soundeffect:meow Safe text [safe] after.'],
+    ['malformed double bracket with later bracketed safe text', '[[soundeffect:meow Safe text [safe] after.'],
+  ])('strips %s command markers from display and speech text', (_label, marker) => {
+    const source = `${marker} Safe text.`;
+    expect(extractCues(source).clean.toLowerCase()).not.toMatch(/sound(?:[-_ ]?effect)/);
+    expect(displayText(source).toLowerCase()).not.toMatch(/sound(?:[-_ ]?effect)/);
+    expect(speechText(source, true).toLowerCase()).not.toMatch(/sound(?:[-_ ]?effect)/);
+    if (_label.includes('unclosed') || _label.includes('malformed')) {
+      const expected = _label.includes('later bracketed') ? 'Safe text [safe] after. Safe text.' : 'Safe text.';
+      expect(extractCues(source).clean.trim()).toBe(expected);
+      expect(speechText(source, true)).toBe(expected);
     }
   });
 });

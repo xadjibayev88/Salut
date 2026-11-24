@@ -3,21 +3,12 @@
 // Vivi ovozi: PCM16 24 kHz. Gapni bo'lish, subtitrlar (transkripsiya), taymer va suhbat yozuvi.
 import type { CharacterId, ExplainLang, RoleId } from '../../data/characters';
 import type { InputMode, SessionRecord } from './prefs';
-import { talkStats, type Action, type Shape } from './markers';
-import { playSfx, type Sfx } from '../audio';
+import { talkStats } from './markers';
+import { NEUTRAL_VIVI_CUE, validateViviCue, type ViviCue } from '../../shared/vivi-cue';
 import type { SttResult, SttReviewReason } from './stt-result';
 
-/** Vivining jonli mimikasi (model `vivi` funksiyasini chaqirganda). */
-export interface LiveCue {
-  shape: Shape;
-  action: Action | null;
-  /** Boshida olov (jahl). */
-  angry: boolean;
-  fx: 'fart' | 'burp' | null;
-  key: number;
-}
-const FACE_SHAPE: Record<string, Shape> = { happy: 'pill', angry: 'pill', love: 'heart', star: 'star', sad: 'drop', shocked: 'circle', confused: 'cloud' };
-const SFX = new Set(['sneeze', 'spit', 'punch', 'slap', 'drama', 'laugh', 'kiss']);
+/** Live cue data uses the same strict versioned semantic contract as the rest of the app. */
+export type LiveCue = ViviCue;
 
 export type LivePhase = 'connecting' | 'listening' | 'speaking' | 'ended';
 
@@ -136,7 +127,7 @@ export class LiveSession {
   private readonly id = `live-${Date.now()}`;
 
   constructor(private o: LiveOptions) {
-    this.snap = { phase: 'connecting', level: 0, micLevel: 0, turns: [], liveUser: '', liveTutor: '', elapsedMs: 0, limitMs: 5 * 60_000, muted: false, error: null, endReason: null, cue: { shape: 'pill', action: null, angry: false, fx: null, key: 0 }, userTalking: false };
+    this.snap = { phase: 'connecting', level: 0, micLevel: 0, turns: [], liveUser: '', liveTutor: '', elapsedMs: 0, limitMs: 5 * 60_000, muted: false, error: null, endReason: null, cue: { ...NEUTRAL_VIVI_CUE }, userTalking: false };
   }
 
   private set(p: Partial<LiveSnap>) {
@@ -357,16 +348,31 @@ export class LiveSession {
     if (!this.vad.on) this.activity(true);
   }
 
-  /** Model chaqirgan mimika: yuz shakli, imo-ishora, ovoz effekti. */
+  /** Old Live function-call payloads are translated only at this strict semantic boundary. */
   private react(a: Record<string, string>) {
-    const face = a.face ?? 'happy';
-    const gesture = a.gesture && a.gesture !== 'none' ? a.gesture : null;
-    const allowFlip = this.o.explicit || this.o.character === 'adult';
-    const action = (gesture === 'flip' && !allowFlip ? 'squish' : gesture) as Action | null;
-    const sfx = a.sfx && a.sfx !== 'none' ? a.sfx : null;
-    const fx = sfx === 'fart' || sfx === 'burp' ? sfx : null;
-    if (sfx && SFX.has(sfx)) playSfx(sfx as Sfx);
-    this.set({ cue: { shape: FACE_SHAPE[face] ?? 'pill', action: action ?? (face === 'angry' ? 'flare' : face === 'star' ? 'hop' : null), angry: face === 'angry', fx, key: this.snap.cue.key + 1 } });
+    const state = this.snap.phase === 'speaking' ? 'speaking' : this.snap.phase === 'listening' ? 'listening' : 'idle';
+    const neutralize = () => this.set({ cue: { ...NEUTRAL_VIVI_CUE } });
+    try {
+      if (typeof a !== 'object' || a === null || Array.isArray(a)) return neutralize();
+      const prototype = Object.getPrototypeOf(a) as object | null;
+      if (prototype !== Object.prototype && prototype !== null) return neutralize();
+      const keys = Reflect.ownKeys(a);
+      if (keys.some((key) => typeof key !== 'string' || !['face', 'gesture'].includes(key))) return neutralize();
+      const descriptors = Object.getOwnPropertyDescriptors(a) as Record<string, PropertyDescriptor>;
+      if (keys.some((key) => !('value' in (descriptors[key as string] ?? {})))) return neutralize();
+      const face = descriptors.face?.value;
+      const gesture = descriptors.gesture?.value;
+      if (typeof face !== 'string') return neutralize();
+      this.set({
+        cue: validateViviCue({
+          state,
+          face,
+          ...(gesture !== undefined && gesture !== 'none' ? { action: gesture } : {}),
+        }),
+      });
+    } catch {
+      this.set({ cue: { ...NEUTRAL_VIVI_CUE } });
+    }
   }
 
   /** Funksiya chaqirilmasa ham: matndan oddiy his-tuyg'ularni taxmin qilamiz. */

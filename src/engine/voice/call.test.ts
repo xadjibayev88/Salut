@@ -373,3 +373,34 @@ describe('Task 7 sequential text and cue handling', () => {
     call.dispose();
   });
 });
+
+
+describe('Task 8 strict client cue validation', () => {
+  it('maps an otherwise valid cue carrying a shape or sound command to neutral', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(encoder.encode('data: {"t":"Bonjour."}\n\n'));
+        controller.enqueue(encoder.encode('data: {"cue":{"state":"speaking","face":"happy","action":"hop","shape":"heart","soundEffect":"slap"}}\n\n'));
+        await held;
+        controller.enqueue(encoder.encode('data: {"done":true}\n\n'));
+        controller.close();
+      },
+    }), { headers: { 'content-type': 'text/event-stream' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'review', draft: 'Je voudrais un café.' };
+
+    try {
+      call.submitDraft();
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(call.snap.live).toContain('Bonjour.'));
+      expect(call.snap.cue).toEqual({ state: 'idle', face: 'neutral' });
+    } finally {
+      release();
+      call.dispose();
+    }
+  });
+});

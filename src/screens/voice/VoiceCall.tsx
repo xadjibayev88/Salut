@@ -80,12 +80,6 @@ export function VoiceCallScreen({
   const ptt = options.inputMode === 'ptt';
   const ch = CHARACTERS.find((c) => c.id === options.character)!;
   const g = useRevenge(game, true);
-  // Imo-ishora: Vivining o'zi yoki o'yindagi zarbaga reaksiya — qaysi biri oxirgi bo'lsa.
-  const [act, setAct] = useState<{ action: Snapshot['action']; key: number }>({ action: null, key: 0 });
-  useEffect(() => setAct((a) => ({ action: s.action, key: a.key + 1 })), [s.actionKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (g.hitAct) setAct((a) => ({ action: g.hitAct!.action, key: a.key + 1 }));
-  }, [g.hitAct]);
 
   useEffect(() => {
     setImmersive(true);
@@ -130,7 +124,8 @@ export function VoiceCallScreen({
     };
   }, [ctrl, ptt]);
 
-  const liveState: LiveState = s.phase === 'user' ? 'listening' : s.phase === 'thinking' ? 'thinking' : s.phase === 'speaking' ? 'speaking' : s.phase === 'ended' ? 'sleeping' : 'idle';
+  const liveState: LiveState = s.phase === 'user' ? 'listening' : s.phase === 'thinking' ? 'thinking' : s.phase === 'speaking' ? 'speaking' : 'idle';
+  const liveCue = { ...s.cue, state: liveState };
   const label =
     s.phase === 'connecting'
       ? 'Ulanmoqda…'
@@ -169,7 +164,7 @@ export function VoiceCallScreen({
   if (s.error) {
     return (
       <div className="call call-error">
-        <KruaLive state="sleeping" shape="puddle" size={180} />
+        <KruaLive cue={{ state: 'idle', face: 'neutral' }} size={180} />
         <h2>Suhbatni boshlab bo'lmadi</h2>
         <p className="muted">{MIC_ERRORS[s.error] ?? MIC_ERRORS.unsupported}</p>
         <button type="button" className="btn btn-primary btn-lg" onClick={() => onEnded(ctrl)}>
@@ -209,7 +204,7 @@ export function VoiceCallScreen({
         {s.image && <ImagePop key={s.image.key} query={s.image.q} />}
         <button
           type="button"
-          className={`call-avatar ${game && g.ko ? 'rv-down' : ''}`}
+          className="call-avatar"
           aria-label={game ? 'Urish uchun Vivini bosing' : ptt ? 'Gapirish uchun bosib turing' : 'Vivi'}
           onClick={(e) => {
             if (!game) return;
@@ -238,7 +233,7 @@ export function VoiceCallScreen({
           }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <KruaLive shape={game && g.ko ? 'puddle' : s.shape} action={act.action} actionKey={act.key} fx={s.fx?.kind ?? null} fxKey={s.fx?.key ?? 0} state={liveState} level={s.level} pressed={pressed} size={s.phase === 'review' ? 120 : Math.min(300, Math.round(window.innerWidth * 0.62))} />
+          <KruaLive cue={liveCue} level={s.level} pressed={pressed} size={s.phase === 'review' ? 120 : Math.min(300, Math.round(window.innerWidth * 0.62))} />
         </button>
         {game && <RevengeOverlay g={g} />}
         <div className="call-label" aria-live="polite">

@@ -166,8 +166,8 @@ function requireTutorText(text: string): string {
 /** Strip historic display/audio commands before text reaches the UI or speech layer. */
 export function stripLegacyTutorMarkers(value: string): string {
   return value
+    .replace(/\[{1,2}(?:\/?(?:shape|do|img|ans|sfx|fx|sound(?:[-_\s]?effect)?)(?::[^\]\s]*)?|laughing|laughs?|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|cries|sobbing|sobs?|sneeze|sarcastic|angry|shouts|screams|burps?|farts?|coughs|yawns|gasps|fuck|boundaries|spit|slap|punch|drama|kiss)(?:\b[^\]\s]*)?\]{0,2}/gi, '')
     .replace(/\[\[[\s\S]*?\]\]/g, '')
-    .replace(/\[(?:\/?(?:shape|do|img|ans|sfx|fx)(?::[^\]]*)?|laughs?|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|sarcastic|angry|shouts|screams|burps?|farts?|coughs|yawns|gasps|fuck|boundaries|spit|slap|punch|drama|kiss)\]/gi, '')
     .replace(/[ \t]+([,.;!?])/g, '$1')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')

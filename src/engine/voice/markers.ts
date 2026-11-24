@@ -1,95 +1,67 @@
-// Vivi javobidagi maxsus belgilar:
-//   [[shape:star]] — maskot shakli (keyingi replikagacha saqlanadi)
-//   [[do:hop]]     — bir martalik imo-ishora
-//   [laughs]       — ovoz tegi (faqat ElevenLabs v3 uchun; boshqa holatda olib tashlanadi)
-//   [fr]...[/fr]   — fransuzcha qism
+// Vivi matnidagi maxsus belgilar: xavfsiz imo-ishoralar faqat shared whitelist orqali; shakl va tovush buyruqlari ijro etilmaydi.
+import { VIVI_CUE_ACTIONS, type ViviCueAction } from '../../shared/vivi-cue';
 
-export const SHAPES = ['pill', 'circle', 'tall', 'puddle', 'star', 'heart', 'drop', 'bubble', 'cloud', 'book', 'pencil', 'headphones', 'bulb', 'card', 'slab'] as const;
-export const ACTIONS = ['hop', 'wave', 'point', 'squish', 'stretch', 'roam', 'giggle', 'flare', 'flip'] as const;
-export type Shape = (typeof SHAPES)[number];
-export type Action = (typeof ACTIONS)[number];
+export const ACTIONS = VIVI_CUE_ACTIONS;
+export type Action = ViviCueAction;
 
-const AUDIO_TAGS = /\[(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|cries|sobs|sobbing|burps|burp|fart|farts|coughs|yawns|gasps|screams|shouts|angry|sarcastic)\]/gi;
-/** Ovozda aytilmaydigan, faqat tanani boshqaradigan teglar. */
-const SILENT_TAGS = /\[(fuck|boundaries|sneeze|spit|punch|slap|drama|kiss)\]/gi;
+const AUDIO_TAGS = /\[(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|cries|sobs|sobbing|coughs|yawns|gasps|screams|shouts|angry|sarcastic)\]/gi;
+/** Faqat matndan olib tashlanadi; bu teglar harakat yoki tovush effektini ishga tushirmaydi. */
+const SILENT_TAGS = /\[{1,2}(?:fuck|boundaries|sneeze|spit|punch|slap|drama|kiss|burps?|farts?|angry|flip|sfx|sound(?:[-_\s]?effect)?|fx)(?:\b[^\]\s]*)?\]{0,2}/gi;
+/** Legacy cue namespaces are never executable; strip even malformed single-bracket forms. */
+const COMMAND_TAGS = /\[(?:shape|action|actions|face|state|mood|emotion|cue|do)\b[^\]]*\]/gi;
 
-/** Ovoz teglari Vivining tanasini ham harakatlantiradi (Preppy'dagi kabi). */
 function tagCues(text: string, cue: Cue) {
-  const t = text.toLowerCase();
-  if (/\[(laughs|laughing|giggles|chuckles)\]/.test(t)) cue.actions.push('giggle', 'hop');
-  if (/\[(crying|cries|sobs|sobbing)\]/.test(t)) {
-    cue.shape ??= 'puddle';
-    cue.actions.push('squish');
-  }
-  if (/\[(fart|farts)\]/.test(t)) cue.fx = 'fart';
-  if (/\[(burps?|burp)\]/.test(t)) cue.fx = 'burp';
-  if (/\[fuck\]/.test(t)) cue.actions.unshift('flip');
-  const sfx = /\[(sneeze|spit|punch|slap|drama|kiss)\]/.exec(t);
-  if (sfx) cue.sfx = sfx[1] as CueSfx;
-  if (/\[boundaries\]/.test(t)) {
-    cue.shape ??= 'tall';
-    cue.actions.unshift('point');
-  }
+  if (/\[(laughs|laughing|giggles|chuckles)\]/i.test(text)) cue.actions.push('giggle');
 }
 
 export interface Cue {
-  shape?: Shape;
-  actions: Action[];
-  /** [[img:Sevara Nazarxon]] — ekranda rasm chiqadi. */
+  /** Only actions shared with src/shared/vivi-cue.ts are retained. */
+  actions: ViviCueAction[];
+  /** [[img:...]] — standalone image display, not a Vivi cue. */
   image?: string;
-  /** Tana effekti: [fart] — yashil bulut, [burps] — pufak. */
-  fx?: 'fart' | 'burp';
-  /** Ovoz effekti: [sneeze], [spit], [punch], [slap], [drama], [kiss]. */
-  sfx?: CueSfx;
 }
-export type CueSfx = 'sneeze' | 'spit' | 'punch' | 'slap' | 'drama' | 'kiss' | 'laugh';
 
-/**
- * Model ba'zan belgilarni noto'g'ri yozadi: [img:x], [do:flip], [[fr]...[/fr]], [/fr]] —
- * hammasini to'g'ri shaklga keltiramiz.
- */
+/** Malformed markers are removed rather than repaired into executable commands. */
 export function normalizeMarkers(text: string): string {
   return text
-    // Ovoz teglarining «yopuvchi» shakli ([/sarcastic], [/whispers]) — kerak emas.
     .replace(/\[\/(laughs|laughing|chuckles|giggles|sighs|whispers|excited|curious|happy|sad|surprised|crying|sarcastic|angry|shouts|screams)\]/gi, '')
     .replace(/\[\[(\/?fr)\]\]?/gi, '[$1]')
     .replace(/\[(\/fr)\]\]/gi, '[$1]')
     .replace(/(^|[^[])\[\s*(shape|do|img|ans)\s*:\s*([^\]\[]{1,80})\](?!\])/gi, '$1[[$2:$3]]');
 }
 
-/** Matndan belgilarni ajratadi: ko'rsatish uchun toza matn va maskot buyruqlari. */
+/** Parse only whitelisted gesture markers and images; never create shape/SFX cues. */
 export function extractCues(text: string): { clean: string; cue: Cue } {
   const cue: Cue = { actions: [] };
   const clean = normalizeMarkers(text)
+    .replace(SILENT_TAGS, '')
     .replace(/\[\[\s*img\s*:\s*([^\]]{2,80})\]\]/gi, (_m, q: string) => {
       cue.image ??= q.trim();
       return '';
     })
-    // To'g'ri shakl: [[shape:star]] / [[do:hop]]. Model ba'zan [[star]] yoki [[hop]] deb yozadi —
-    // nomidan qaysi turligini aniqlaymiz. Noma'lum [[...]] belgilar shunchaki olib tashlanadi.
     .replace(/\[\[\s*(?:(shape|do)\s*:\s*)?([a-z]+)\s*\]\]/gi, (_m, kind: string | undefined, name: string) => {
       const n = name.toLowerCase();
       const k = kind?.toLowerCase();
-      if ((k === 'shape' || !k) && (SHAPES as readonly string[]).includes(n)) cue.shape = n as Shape;
-      else if ((k === 'do' || !k) && (ACTIONS as readonly string[]).includes(n)) cue.actions.push(n as Action);
+      if (k !== 'shape' && (!k || k === 'do') && (VIVI_CUE_ACTIONS as readonly string[]).includes(n)) {
+        cue.actions.push(n as ViviCueAction);
+      }
       return '';
     })
     .replace(/\[\[[^\]]*\]\]/g, '')
-    .replace(/\[\[[^\]]*$/, '') // oqim paytidagi chala belgi
-    .replace(SILENT_TAGS, '')
+    .replace(/\[\[[^\]]*$/, '')
+    .replace(COMMAND_TAGS, '')
     .replace(/[ \t]{2,}/g, ' ');
   tagCues(text, cue);
   return { clean, cue };
 }
 
-/** Subtitr / chat uchun: ovoz teglari va belgilarsiz matn. */
+/** Display text without voice tags or command markers. */
 export function displayText(text: string): string {
   return extractCues(text).clean.replace(AUDIO_TAGS, '').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
-/** TTS ga yuboriladigan matn. audioTags=false bo'lsa teglar olib tashlanadi. */
+/** audioTags controls only voice-performance tags; unsafe sound-effect markers are already removed. */
 export function speechText(text: string, audioTags: boolean): string {
-  // Fransuzcha iboradan keyingi qavs — talaffuz/tarjima izohi: subtitrda qoladi, ovozda o'qilmaydi.
   let t = extractCues(text)
     .clean.replace(/(\[\/fr\])\s*\([^)]{1,80}\)/gi, '$1')
     .replace(/\[\/?fr\]/gi, '')
@@ -98,19 +70,15 @@ export function speechText(text: string, audioTags: boolean): string {
   return t.replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Oqimdagi matnni gaplarga bo'lib beradi — birinchi gap tayyor bo'lishi bilan ovoz boshlanadi
- * (javobni to'liq kutmasdan, kechikishsiz).
- */
+/** Split streaming text into sentences without cutting inside a [fr] segment. */
 export class SentenceSplitter {
   private buf = '';
   private emitted = 0;
   push(delta: string): string[] {
     this.buf += delta;
     const out: string[] = [];
-    // Birinchi bo'lak: ovoz tezroq boshlanishi uchun uzun gapni vergul yoki tire joyida bo'lamiz.
     if (this.emitted === 0) {
-      const m = /^([\s\S]{40,}?[^\d][,;—–])\s+/.exec(this.buf);
+      const m = /^([\s\S]{40,}[^\d][,;—–])\s+/.exec(this.buf);
       if (m && !/[.!?…]/.test(m[1]) && (m[1].match(/\[fr\]/gi) ?? []).length === (m[1].match(/\[\/fr\]/gi) ?? []).length) {
         out.push(m[1].trim());
         this.buf = this.buf.slice(m[0].length);
@@ -118,7 +86,6 @@ export class SentenceSplitter {
       }
     }
     for (;;) {
-      // [fr]...[/fr] ichida bo'lishmaymiz.
       const re = /([.!?…]+["»)]?)(\s+)|\n+/g;
       let m: RegExpExecArray | null;
       let cut = -1;
@@ -149,7 +116,7 @@ export class SentenceSplitter {
   }
 }
 
-/** Matnni til bo'laklariga ajratadi: fransuzcha ([fr]) va asosiy til. */
+/** Split text into French ([fr]) and base-language segments. */
 export function langSegments(text: string): { fr: boolean; text: string }[] {
   const out: { fr: boolean; text: string }[] = [];
   const re = /\[fr\]([\s\S]*?)(?:\[\/fr\]|$)/gi;
@@ -176,20 +143,15 @@ export function talkStats(utterances: string[]): TalkStats {
   return { words: words.length, sentences: utterances.length ? sentences : 0, unique: new Set(words).size };
 }
 
-/**
- * Vivi o'quvchidan keyingi javobni qaysi tilda kutyapti?
- * Avval modelning [[ans:fr]] / [[ans:uz]] belgisi, bo'lmasa matndan taxmin qilinadi.
- */
+/** Infer whether Vivi expects the learner to answer in French or Uzbek. */
 export function answerLang(raw: string): 'fr' | 'uz' | null {
   const m = /\[\[\s*ans\s*:\s*(fr|uz|ru|en)\s*\]\]/i.exec(raw);
   const tail = raw.replace(/\[\[[^\]]*\]\]/g, '').trim().slice(-260);
-  // Oxirgi fransuzcha bo'lak savol bo'lsa va undan keyin faqat izoh/tarjima qolgan bo'lsa — fransuzcha javob kutilyapti.
   const lastFr = /\[fr\]([^[]*)\[\/fr\]([^[]*)$/i.exec(tail);
   if (lastFr && /\?\s*$/.test(lastFr[1]) && lastFr[2].length < 90) return 'fr';
   if (m) return m[1].toLowerCase() === 'fr' ? 'fr' : 'uz';
   if (/(fransuzcha|frantsuzcha|fransuz tilida)[^.?!]{0,30}(ayt|yoz|javob|takrorla|qaytar|tuz|gapir)/i.test(tail)) return 'fr';
   if (/\b(takrorlang|qaytaring|takrorla)\b/i.test(tail) && /\[fr\]/i.test(tail)) return 'fr';
-  // Oxirgi gap butunlay fransuzcha savol: «... Et toi ?[/fr]»
   if (/\?\s*\[\/fr\]\s*(\([^)]*\))?\s*$/i.test(tail)) return 'fr';
   return null;
 }

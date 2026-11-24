@@ -7,11 +7,11 @@ import { Mascot } from '../components/Mascot';
 import { FrChip } from '../components/FrChip';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
-import { answerLang, type Action } from '../engine/voice/markers';
+import { answerLang } from '../engine/voice/markers';
 import { KruaLive } from '../components/KruaLive';
 import { CloudStt, cloudSttSupported } from '../engine/voice/stt';
 import { MemoryReviewDialog, type MemoryReviewTurn } from '../components/MemoryReviewDialog';
-import type { ViviCue } from '../engine/voice/vivi-cues';
+import { NEUTRAL_VIVI_CUE, validateViviCue, type ViviCue } from '../shared/vivi-cue';
 
 const CHAT_KEY = 'salut.chat.v1';
 type Chats = Partial<Record<Scenario, ChatMessage[]>>;
@@ -32,8 +32,6 @@ function saveChats(c: Chats) {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-const visibleCueAction = (cue?: ViviCue): Action | null =>
-  cue?.action === 'hop' || cue?.action === 'wave' || cue?.action === 'giggle' ? cue.action : null;
 
 type SR = {
   lang: string;
@@ -268,12 +266,10 @@ function TextChat() {
 
   // Faqat alohida kelgan, validatsiya qilingan semantik cue ko'rsatiladi; matn belgilaridan harakat olinmaydi.
   const lastTutor = [...messages].reverse().find((m) => m.role === 'tutor' && !m.error);
-  const live = useMemo(() => {
-    const cue = streamCue ?? lastTutor?.cue;
-    return { state: busy ? 'thinking' as const : cue?.state ?? 'idle' as const, action: busy ? null : visibleCueAction(cue), key: `${lastTutor?.id ?? 'none'}:${cue?.state ?? ''}:${cue?.action ?? ''}` };
-  }, [busy, lastTutor?.cue, lastTutor?.id, streamCue]);
-  const [actKey, setActKey] = useState(0);
-  useEffect(() => setActKey((k) => k + 1), [live.key]);
+  const live = useMemo<ViviCue>(() => busy
+    ? { state: 'thinking', face: 'curious', ornament: 'thought_dots' }
+    : validateViviCue(streamCue ?? lastTutor?.cue ?? NEUTRAL_VIVI_CUE),
+  [busy, lastTutor?.cue, streamCue]);
 
   const showSuggestions = !busy && messages.length < 2;
   const lastIsError = messages[messages.length - 1]?.error;
@@ -282,7 +278,7 @@ function TextChat() {
     <div className="tutor-chat">
       <div className="tutor-head">
         <div className="tutor-live">
-          <KruaLive shape="pill" action={live.action} actionKey={actKey} state={live.state} size={58} />
+          <KruaLive cue={live} size={58} />
         </div>
         <div className="tutor-title">
           <b>Vivi ustoz</b>
