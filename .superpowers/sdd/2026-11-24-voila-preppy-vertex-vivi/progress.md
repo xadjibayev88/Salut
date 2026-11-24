@@ -84,3 +84,12 @@ Task 1: complete (commits `c2ac47b`..`848794f`, review clean).
 - Final `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Build retains Vite warnings for non-module `ads-config.js` / `site-config.js` tags and the existing >500 kB chunk.
 - Final independent re-review found no actionable findings and cleared the scoped Task 3 changes for commit.
 - No Google/provider request, billing change, paid request, Live POC, or deployment was performed.
+
+## Task 4 independent-review fix round — pending re-review
+- Added server-only `AiProvider` interfaces, Google-only registry, and `createGoogleCloudProvider(config, { auth, fetchImpl })`; auth and fetch are injected, config is verified before use, errors are sanitized, and no vendor fallback exists.
+- Fixed both P2 findings from `task-4-review.md`: aborts during `response.json()`/body consumption are surfaced as `request_aborted`; TTS now validates RIFF size, `WAVE` form, chunk bounds/padding, `fmt ` and non-empty `data` chunks, and PCM alignment. Regression tests cover body-read abort, a valid PCM WAV fixture, and malformed/truncated WAV cases.
+- Fake-transport result: `npm test -- server/ai-provider.test.ts server/google-cloud-provider.test.ts` PASS (2 files / 20 tests); cancellation before auth, during auth, and during body reading is covered. `npm run typecheck` PASS.
+- The adapter is not wired into `main.ts`; browser source has no imports. `GOOGLE_PROVIDER_TRANSPORT_READY` and `AI_QUOTA_RESERVATION_MIDDLEWARE_READY` remain `false`; all AI routes remain disabled pending Task 5 quota/handler wiring.
+- Retry-plan variance explicitly reconciled in the Task 4 brief and report: **no retry until a documented provider idempotency contract is available.** The checked REST contracts do not establish idempotency; no automatic retry is added because it could duplicate a billable POST. `streamTutor` currently uses unary `generateContent` and yields one full text chunk because the stream REST reference does not establish the wire framing needed for a parser.
+- STT/TTS runtime configuration (including project-verified recognizer/model/location/voice) is not established; methods fail closed until explicitly supplied. No ADC lookup, Google request, API enablement, billing change, paid request, Live POC, or deployment occurred.
+- Updated report: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-4-report.md`. No commit; await independent re-review.
