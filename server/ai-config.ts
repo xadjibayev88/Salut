@@ -19,7 +19,10 @@ export interface AiQuotaConfig {
 export interface AiRuntimeConfig {
   /** Effective gate used by the server route registry. */
   readonly providerEnabled: boolean;
-  /** Google Agent Platform Live has no approved transport/POC in this task. */
+  /**
+   * Google Agent Platform Live stays false until an approved POC proves Node/hosting WebSocket,
+   * server-only ADC, user/session binding, revoke/cancel, timeout, atomic quota, location and lifecycle.
+   */
   readonly liveEnabled: false;
   readonly provider: AiProvider | null;
   readonly model: AiModel | null;

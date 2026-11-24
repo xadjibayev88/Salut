@@ -46,6 +46,7 @@ describe('loadAiRuntimeConfig', () => {
   it('keeps Live disabled even when the environment requests it', () => {
     const config = loadAiRuntimeConfig({ ...completeEnv, VIVI_AI_LIVE_ENABLED: 'true' });
     expect(config.liveEnabled).toBe(false);
+    expect(config.configurationReady).toBe(true);
     expect(config.providerEnabled).toBe(false);
   });
 

@@ -641,7 +641,7 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse) {
 const server = createServer((req, res) => {
   const path = (req.url ?? '/').split('?')[0];
   const routeKey = `${req.method} ${path}`;
-  // Preserve an explicit disabled response without registering Live in the production route table.
+  // Return the hard-disabled response without reading identity/body or minting a token/session.
   if (routeKey === 'POST /api/live/token') return void aiRouteHandlers['POST /api/live/token'](req, res);
   const route = routes[routeKey];
   if (route) {

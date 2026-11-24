@@ -170,13 +170,13 @@
 
 **Interfeys/kontrakt:** `liveEnabled` qat’iy `false`; `/api/live/token` token bermaydi va Gemini Developer API ephemeral-token oqimini Vertex auth deb ko‘rsatmaydi. Browser Vertex WebSocket’ga bevosita ulanmaydi.
 
-- [ ] Failing regression test yozing: client Live token so‘rasa disabled javob, provider call count `0`, browser bundleda secret/token yo‘q.
-- [ ] Failing testni ishga tushiring: `npm test -- server/ai-config.test.ts server/ai-routes.test.ts`.
-- [ ] Live clientni disabled state va cascade yo‘liga ulang; Uzbek yoki mixed Uzbek–French turn Live’ga ketmasin.
-- [ ] Kelajak POC uchun faqat hujjatli gate’larni qoldiring: Node/hosting WebSocket, ADC server-only auth, user/session binding, revoke/cancel, timeout, atomic quota, location/lifecycle.
-- [ ] Bu vazifada haqiqiy Node/hosting WebSocket POC, GCP API enablement, billing yoki paid traffic bajarmang.
-- [ ] Regression test va buildni bajaring.
-- [ ] Commit: `git add server/ai-config.ts server/ai-config.test.ts server/ai-routes.ts server/ai-routes.test.ts server/main.ts src/engine/voice/live.ts src/screens/voice/LiveCall.tsx && git commit -m "chore(live): keep Vertex Live disabled before POC"`.
+- [x] Failing regression test yozing: client Live token so‘rasa disabled javob, provider call count `0`, browser bundleda secret/token yo‘q.
+- [x] Failing testni ishga tushiring: `npm test -- server/ai-config.test.ts server/ai-routes.test.ts src/engine/voice/live.test.ts`.
+- [x] Live clientni disabled state va cascade yo‘liga ulang; Uzbek yoki mixed Uzbek–French turn Live’ga ketmasin.
+- [x] Kelajak POC uchun faqat hujjatli gate’larni qoldiring: Node/hosting WebSocket, ADC server-only auth, user/session binding, revoke/cancel, timeout, atomic quota, location/lifecycle.
+- [x] Bu vazifada haqiqiy Node/hosting WebSocket POC, GCP API enablement, billing yoki paid traffic bajarilmasligini saqlang.
+- [x] Regression test va buildni bajaring.
+- [x] Commit: `git add server/ai-config.ts server/ai-config.test.ts server/ai-routes.ts server/ai-routes.test.ts server/main.ts src/engine/voice/live.ts src/engine/voice/live.test.ts src/screens/voice/LiveCall.tsx && git commit -m "chore(live): keep Vertex Live disabled before POC"`.
 
 ## Task 10: Regression, rollout gate va yakuniy review
 

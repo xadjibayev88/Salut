@@ -579,6 +579,23 @@ describe('AI route consent/quota middleware', () => {
     }
   });
 
+  it('returns a token-free Live-disabled response before reading identity, consent, config, quota, or body', async () => {
+    const harness = createRouteHarness();
+    const { state } = await invoke(LIVE, harness, { token: 'must-not-be-read', secret: 'must-not-leak' });
+    const body = JSON.parse(state.body) as Record<string, unknown>;
+
+    expect(state.status).toBe(503);
+    expect(body).toMatchObject({ code: 'live_disabled' });
+    expect(body).not.toHaveProperty('token');
+    expect(body).not.toHaveProperty('setup');
+    expect(JSON.stringify(body)).not.toContain('must-not-leak');
+    expect(harness.events).toEqual([]);
+    expect(harness.readBody).not.toHaveBeenCalled();
+    expect(harness.consentChecks).toHaveLength(0);
+    expect(harness.reserve).not.toHaveBeenCalled();
+    expect(harness.providerCalls).toHaveLength(0);
+  });
+
   it('keeps the provider and quota readiness gates false in the production route registry', () => {
     const harness = createRouteHarness();
     const routes = enabledAiRoutes(harness.routes, {
