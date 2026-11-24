@@ -13,9 +13,11 @@ import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
 import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases, stats, submitReview } from './social.ts';
 import { parseTranslateRequest, translateBody } from './voice.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { loadAiRuntimeConfig } from './ai-config.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
+const AI_RUNTIME_CONFIG = loadAiRuntimeConfig(env);
 const num = (k: string, d: number) => (Number(env[k]) > 0 ? Number(env[k]) : d);
 const PORT = num('PORT', 8787);
 // gemini-3.5-flash-lite: sinovda birinchi so'z ~0,55 s (3.1-flash-lite: ~3,4 s) — ovozli suhbat uchun eng tezi.
@@ -407,7 +409,7 @@ async function clickRoute(req: IncomingMessage, res: ServerResponse, action: 0 |
   }
 }
 
-const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void> = {
+const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void> = Object.freeze({
   // Ilovadan texnik hisobot (masalan Live suhbat tugaganda): faqat raqamlar va xato matni, loglarga yoziladi.
   'POST /api/client-log': async (req, res) => {
     const limited = take('feedback', clientIp(req));
@@ -495,18 +497,23 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
     json(res, ok ? 200 : 409, { ok });
   },
 
-  'GET /api/health': (_q, res) => json(res, 200, { ok: true, ai: !!env.GEMINI_API_KEY, model: MODEL, exhausted: rotationStatus().map((r) => r.model) }),
+  'GET /api/health': (_q, res) => json(res, 200, {
+    ok: true,
+    ai: AI_RUNTIME_CONFIG.providerEnabled,
+    model: AI_RUNTIME_CONFIG.providerEnabled ? AI_RUNTIME_CONFIG.model : null,
+    exhausted: AI_RUNTIME_CONFIG.providerEnabled ? rotationStatus().map((r) => r.model) : [],
+  }),
 
   'GET /api/voice/config': (req, res) => {
     const premium = isPremium(req);
     json(res, 200, {
-      ai: !!env.GEMINI_API_KEY,
-      stt: !!env.GEMINI_API_KEY,
+      ai: AI_RUNTIME_CONFIG.providerEnabled,
+      stt: AI_RUNTIME_CONFIG.providerEnabled,
       // Server ovozi: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. Ikkalasi ham bo'lmasa — brauzer.
-      tts: (premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length) || env.GEMINI_API_KEY ? 'elevenlabs' : 'browser',
-      ttsTier: premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : env.GEMINI_API_KEY ? 'gemini' : 'browser',
-      audioTags: !!(premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
-      voices: premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
+      tts: !AI_RUNTIME_CONFIG.providerEnabled ? 'browser' : premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : 'gemini',
+      ttsTier: !AI_RUNTIME_CONFIG.providerEnabled ? 'browser' : premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : 'gemini',
+      audioTags: !!(AI_RUNTIME_CONFIG.providerEnabled && premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
+      voices: AI_RUNTIME_CONFIG.providerEnabled && premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
       // Super obunachilari: uzunroq sessiya, dam olish talab qilinmaydi.
       // Bepul: kuniga bitta qisqa sessiya (keyingisi — ertaga), Super: uzun sessiyalar, tanaffussiz.
       sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN) + bonusMin(req),
@@ -514,8 +521,8 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       rewardsLeft: premium ? 0 : bonusClaimsLeft(req),
       cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
       messagesLeft: freeLeft(req),
-      live: !!env.GEMINI_API_KEY && env.LIVE_DISABLED !== '1',
-      liveMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : liveMinutesLeft(req),
+      live: AI_RUNTIME_CONFIG.liveEnabled,
+      liveMinutes: AI_RUNTIME_CONFIG.liveEnabled ? premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : liveMinutesLeft(req) : 0,
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
@@ -885,7 +892,24 @@ const routes: Record<string, (req: IncomingMessage, res: ServerResponse) => Prom
       },
     );
   },
-};
+});
+
+const AI_ROUTE_KEYS = Object.freeze([
+  'POST /api/tutor',
+  'POST /api/tutor/feedback',
+  'POST /api/live/token',
+  'POST /api/translate',
+  'POST /api/tutor/memory',
+  'POST /api/stt',
+  'POST /api/tts',
+] as const);
+const routes = Object.freeze(
+  Object.fromEntries(
+    Object.entries(routeHandlers).filter(([key]) =>
+      !AI_ROUTE_KEYS.includes(key as (typeof AI_ROUTE_KEYS)[number]) || AI_RUNTIME_CONFIG.providerEnabled,
+    ),
+  ),
+) as Readonly<Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void>>;
 
 // ---------- Statik fayllar ----------
 async function serveStatic(req: IncomingMessage, res: ServerResponse) {
@@ -929,5 +953,5 @@ server.keepAliveTimeout = 65_000;
 
 startBot();
 server.listen(PORT, () =>
-  console.log(`Voilà! server: http://localhost:${PORT} · AI: ${env.GEMINI_API_KEY ? MODEL : "o'chiq"} · ovoz: ${env.ELEVENLABS_API_KEY && VOICES.length ? `ElevenLabs (${TTS_MODEL})` : 'brauzer'}`),
+  console.log(`Voilà! server: http://localhost:${PORT} · AI: ${AI_RUNTIME_CONFIG.providerEnabled ? AI_RUNTIME_CONFIG.model : "o'chiq"} · ovoz: ${AI_RUNTIME_CONFIG.providerEnabled && env.ELEVENLABS_API_KEY && VOICES.length ? `ElevenLabs (${TTS_MODEL})` : 'brauzer'}`),
 );
