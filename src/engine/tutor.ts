@@ -2,6 +2,7 @@ import { normalizeMarkers } from './voice/markers';
 // Vivi ustoz — mijoz tomoni: kontekst yig'ish, oqimli so'rov, javobni bo'laklash.
 import { ALL_LESSONS } from '../data/course';
 import type { GameState } from './game';
+import { validateViviCue, type ViviCue } from './voice/vivi-cues';
 
 export type Scenario = 'free' | 'cafe' | 'meet' | 'grammar' | 'mistakes';
 
@@ -12,6 +13,8 @@ export interface ChatMessage {
   error?: boolean;
   /** Bepul limit tugadi — Super taklifi ko'rsatiladi. */
   upsell?: boolean;
+  /** Optional structured metadata, kept separate from learner-facing text. */
+  cue?: ViviCue;
   ts: number;
 }
 
@@ -117,11 +120,24 @@ export class TutorError extends Error {
   }
 }
 
+/** Return only a user-visible error entry; partial stream text is never a completed chat turn. */
+export function tutorFailureMessage(e: unknown): Pick<ChatMessage, 'role' | 'text' | 'error' | 'upsell'> | null {
+  if (e instanceof Error && e.name === 'AbortError') return null;
+  const tutorError = e instanceof TutorError;
+  return {
+    role: 'tutor',
+    text: tutorError ? e.message : 'Kutilmagan xato yuz berdi.',
+    error: true,
+    upsell: tutorError && e.code === 'daily_limit',
+  };
+}
+
 /** /api/tutor ga so'rov yuboradi va matn bo'laklarini onDelta orqali uzatadi. */
 export async function askTutor(
   payload: { scenario: Scenario; message: string; history: { role: 'user' | 'tutor'; text: string }[]; context: ReturnType<typeof learnerContext>; character?: string; lang?: string; explicit?: boolean },
   onDelta: (text: string) => void,
   signal?: AbortSignal,
+  onCue?: (cue: ViviCue) => void,
 ): Promise<void> {
   let res: Response;
   try {
@@ -138,6 +154,8 @@ export async function askTutor(
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = '';
+  let responseComplete = false;
+  let responseText = '';
   for (;;) {
     const { value, done } = await reader.read();
     buf += dec.decode(value ?? new Uint8Array(), { stream: !done });
@@ -146,13 +164,22 @@ export async function askTutor(
       const line = buf.slice(0, i).replace(/^data:\s?/, '');
       buf = buf.slice(i + 2);
       if (!line) continue;
-      const ev = JSON.parse(line) as { t?: string; done?: boolean; error?: string; message?: string };
-      if (ev.t) onDelta(ev.t);
+      const ev = JSON.parse(line) as { t?: string; cue?: unknown; done?: boolean; error?: string; message?: string };
+      if (ev.t) {
+        responseText += ev.t;
+        onDelta(ev.t);
+      }
       if (ev.error) throw new TutorError(ev.error, ev.message ?? 'Javob uzilib qoldi.');
-      if (ev.done) return;
+      if (Object.prototype.hasOwnProperty.call(ev, 'cue')) onCue?.(validateViviCue(ev.cue));
+      if (ev.done) {
+        if (!responseText.trim()) throw new TutorError('empty_response', 'Tutor javobi bo‘sh. Qayta urinib ko‘ring.');
+        responseComplete = true;
+        return;
+      }
     }
-    if (done) return;
+    if (done) break;
   }
+  if (!responseComplete) throw new TutorError('incomplete_response', 'Tutor javobi to‘liq kelmadi. Qayta urinib ko‘ring.');
 }
 
 export type Segment = { kind: 'text' | 'fr' | 'bold'; text: string };

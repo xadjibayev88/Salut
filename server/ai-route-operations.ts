@@ -1,6 +1,6 @@
 import type { AiContent, AiPrompt } from './ai-provider.ts';
-import type { AiRouteExecutionContext, AiRouteKey, AiRouteOperation, AiRoutePrepared } from './ai-routes.ts';
-import { type TutorRequest, buildContents, parseTutorRequest, SAFETY, systemInstruction } from './tutor.ts';
+import type { AiRouteExecutionContext, AiRouteKey, AiRouteOperation, AiRoutePrepared, AiRouteResult } from './ai-routes.ts';
+import { type TutorRequest, buildContents, parseTutorReply, parseTutorRequest, SAFETY, systemInstruction, tutorSseEvents, TUTOR_RESPONSE_SCHEMA, TutorReplyError } from './tutor.ts';
 import {
   cleanFeedback,
   cleanMemory,
@@ -55,9 +55,11 @@ function promptFromLegacyBody(body: Record<string, unknown>): AiPrompt {
 
 function tutorPrompt(request: TutorRequest): AiPrompt {
   const generationConfig = {
-    temperature: request.character === 'witty' || request.character === 'adult' ? 0.95 : 0.85,
+    temperature: 0.75,
     topP: 0.95,
     maxOutputTokens: request.mode === 'voice' ? 320 : 700,
+    responseMimeType: 'application/json',
+    responseSchema: TUTOR_RESPONSE_SCHEMA,
   };
   return Object.freeze({
     systemInstruction: systemInstruction(request),
@@ -76,6 +78,7 @@ function operation<T>(options: {
   readonly minimize: (input: T) => unknown;
   readonly estimateUsage: (input: T) => AiUsage;
   readonly sanitizeResult?: (result: unknown, input: T) => unknown;
+  readonly formatResult?: (result: unknown, input: T) => AiRouteResult;
 }): AiRouteOperation {
   return Object.freeze({
     maxBodyBytes: options.maxBodyBytes,
@@ -89,6 +92,7 @@ function operation<T>(options: {
     },
     async run(_input: unknown, context: AiRouteExecutionContext) {
       const providerResult = await context.providerCall();
+      if (options.formatResult) return options.formatResult(providerResult, _input as T);
       return { status: 200, body: options.sanitizeResult ? options.sanitizeResult(providerResult, _input as T) : providerResult };
     },
   });
@@ -114,8 +118,17 @@ export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOp
       textLength(input.message) + input.history.reduce((sum, turn) => sum + textLength(turn.text), 0)
         + input.context.words.reduce((sum, word) => sum + textLength(word), 0)
         + input.context.mistakes.reduce((sum, mistake) => sum + textLength(mistake), 0)
-        + textLength(input.context.memory) + 700,
+        + textLength(input.context.memory) + 900,
     ),
+    formatResult: (result) => {
+      try {
+        const reply = parseTutorReply(result);
+        return { status: 200, body: reply, sseEvents: tutorSseEvents(reply) };
+      } catch (error) {
+        if (error instanceof TutorReplyError) return { status: 502, body: { code: error.code, message: error.message } };
+        throw error;
+      }
+    },
   });
   const feedback = operation<FeedbackRequest>({
     maxBodyBytes: 128 * 1024,

@@ -1,11 +1,11 @@
 // Ovozlashtirish navbati (gap-gap bo'yicha, kechikishsiz):
 //  - ElevenLabs (server /api/tts): har bir gap darhol yuklana boshlaydi (prefetch),
 //    oldingisi tugashi bilan keyingisi uziluvsiz ijro etiladi.
-//  - Brauzer ovozi (speechSynthesis): fransuzcha qism — fr ovoz, qolgani — tushuntirish tilidagi ovoz (bo'lsa).
+//  - Brauzer ovozi faqat alohida engine sifatida tanlansa ishlaydi; TTS xatosi unga yashirincha o'tmaydi.
 // Barge-in: stop() hamma narsani darhol to'xtatadi.
 import { displayText, langSegments, speechText } from './markers';
 
-export type TtsEngine = 'elevenlabs' | 'browser';
+export type TtsEngine = 'elevenlabs' | 'browser' | 'text';
 
 interface Item {
   raw: string;
@@ -179,11 +179,12 @@ export class TtsQueue {
       if (this.engine === 'elevenlabs' && item.audio) {
         const blob = await item.audio;
         if (this.stopped) return;
-        // Maskot shakli va "gapirmoqda" holati ovoz aynan boshlanganda o'zgaradi.
-        this.onSentence?.(item.raw);
-        if (blob) await this.playBlob(blob);
-        else await this.speakBrowser(item.raw); // ovoz xizmati ishlamasa — brauzer ovozi bilan davom etamiz
-      } else {
+        if (blob) {
+          // "Gapirmoqda" holati faqat audio ijro etilayotganda o'zgaradi.
+          this.onSentence?.(item.raw);
+          await this.playBlob(blob);
+        }
+      } else if (this.engine === 'browser') {
         this.onSentence?.(item.raw);
         await this.speakBrowser(item.raw);
       }

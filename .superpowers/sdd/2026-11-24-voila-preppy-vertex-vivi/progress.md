@@ -186,3 +186,50 @@ Task 1: complete (commits `c2ac47b`..`848794f`, review clean).
 ## Task 6 post-review commit authorization
 
 After the final clean independent re-review, the owner explicitly authorized a local commit limited to the Task 6 source/test paths plus the Task 6 brief, report and progress ledger. This authorization excludes review artifacts and every other file, and does not authorize provider, API, billing or deployment actions.
+
+
+## Task 7 implementation — verification complete, independent review pending
+- Implemented one shared French A1–C2 tutor behavior contract for text, voice, and voice-session feedback: natural concise Uzbek by default, optional gentle humor, valid French alternatives accepted, and at most one short important correction. Updated legacy prompt regressions and made the new-session greeting instruction natural Uzbek.
+- Added server `ViviCue` whitelist validation against Task 8's approved values. Structured tutor output is normalized to `{text, cue}`, legacy executable marker syntax is removed from text, and separate `{t}` / `{cue}` / completion SSE frames are emitted. Client parser and UI retain cue metadata separately; raw text markers do not animate the mascot. Client schema remains a temporary mirror pending Task 8 consolidation.
+- VoiceCall preserves Task 6's confirmed-transcript boundary, waits for the completion event before queueing TTS, and rejects incomplete streams. Unverified/failing TTS stays text-only; configured TTS failure has no hidden browser-speech fallback. Runtime/VoiceHub TTS metadata and privacy disclosure now say text-only until human evaluation.
+- Added `task-7-report.md` with a future human listening checklist and 24 Uzbek/mixed Uzbek–French examples. No audio or provider request was made.
+- Focused test run: 6 files / 163 tests PASS. `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Existing build warnings remain for non-module `ads-config.js`/`site-config.js` tags and the >500 kB client bundle.
+- Readiness, quota/provider and Live gates remain false/disabled; tests confirm Live remains disabled regardless of gates. No Google auth/API call, paid request, billing change, Live POC, deployment, staging, or commit occurred.
+- Task 7 plan and brief updated; independent review of the complete uncommitted diff is requested. No staging/commit until review findings are received and handled. Report: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-7-report.md`.
+
+
+## Task 7 independent-review fix round — fresh re-review pending
+- Initial independent review found two issues: an incomplete/error-terminated tutor stream could persist partial assistant text as a completed turn, and the TTS quota notice claimed browser speech despite the no-fallback text-only behavior.
+- Fixes: `VoiceCall` persists tutor text only after the completion boundary; an incomplete response clears transient text/cue, queues no TTS, and preserves the confirmed user draft for retry. The quota notice now accurately states that the reply remains text-only. Added regressions for incomplete-stream persistence/speech/cue reset and quota notice copy.
+- Verification after these fixes: focused Task 7 suite PASS (7 files / 165 tests); `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Existing Vite warnings remain for non-module `ads-config.js`/`site-config.js` tags and the >500 kB client chunk.
+- Provider transport, route/quota readiness, and Live gates remain false/disabled. No real provider/API/auth request, paid request, billing change, Live POC, deployment, staging, or commit occurred.
+- Updated Task 7 brief and report. Fresh independent review of the updated uncommitted diff is pending; no staging or commit until the review is received and handled.
+
+
+## Task 7 text-chat failure-path fix — fresh independent review pending
+- A second independent review found the same partial-response persistence risk in text chat: the `send()` catch path wrote accumulated text to history after abort or incomplete/error termination, despite `askTutor()` requiring an explicit completion event.
+- Text-chat failures now append only a user-visible error entry; aborts append no assistant message. Added a testable `tutorFailureMessage()` mapper and regressions for incomplete-stream text and abort behavior. The user message remains in the chat; partial assistant output is cleared and not sent to memory or future prompt history.
+- Final focused tests: 8 files / 182 tests PASS, including cue-validator, text/voice tutor, controller sequencing and quota-copy suites. `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Existing Vite script-tag and >500 kB bundle warnings remain.
+- Provider/readiness/quota and Live remain false/disabled. No real provider/auth/API request, paid request, billing change, Live POC, deployment, staging, or commit. A fresh independent review of the complete updated diff is pending.
+
+
+## Task 7 voice barge-in partial-response fix — fresh independent review pending
+- The latest independent review found that `VoiceCall.interrupt()` persisted `snap.live` as a tutor turn during an in-flight response. This could make uncompleted text appear in history and post-call review even though the normal incomplete-stream path rejects it.
+- `interrupt()` now stops speech/request, increments the request sequence, and clears transient live text without adding any tutor turn. A completed response remains in history from the normal completion path; an unfinished response is discarded. Regression test interrupts a held partial SSE response and asserts no tutor turn or TTS queue entry is created.
+- Final verification after this fix: focused Task 7 suites PASS (8 files / 183 tests); `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Existing Vite script-tag and >500 kB client bundle warnings remain.
+- Provider/readiness/quota and Live gates remain false/disabled. No Google/provider/auth/API call, paid request, billing change, Live POC, deployment, staging, or commit. A fresh independent review of the complete updated diff is pending.
+
+
+## Task 7 independent-review fix round 2 — earlier clean disposition superseded
+- An earlier review reported all five findings resolved, but the subsequently updated `task-7-review.md` supersedes that disposition: findings 1, 2, 3, and 5 remain resolved; finding 4 remains open because the default-on text-tutor `tutorVoice` setting was not accurately disclosed.
+- The other fixes remain in place: saved-memory startup uses a static local greeting with no tutor POST or TTS request; automatic tutor POST retries after a stall or ambiguous network failure are removed; blank tutor text is rejected before server SSE completion and clients do not persist placeholders; `interrupt()` clears the transient cue as well as live text and level.
+- Corrected the privacy disclosure to say that a new profile defaults to automatic browser/device `SpeechSynthesis` playback for French text-tutor segments, that the setting is user-toggleable, and that the selected engine’s own privacy behavior applies. It separately states server TTS is disabled/text-only and has no hidden browser-speech fallback.
+- Extended the existing privacy/runtime regression: it checks the actual `initialState().settings.tutorVoice` value, the Tutor screen’s automatic speak/toggle wiring, the new privacy statements, and the distinction from runtime `tts: 'text'`. Final verification passed: focused Task 7 suites (8 files / 197 tests), full `npm test` (21 files / 373 tests), `npm run typecheck`, `npm run build`, and `git diff --check`. Build retains the existing >500 kB client-chunk warning.
+- Provider transport, quota/readiness and Live gates remain false/disabled. No Google/provider/auth/API request, paid audio, staging, commit, or deployment has occurred. Worktree remains unstaged and uncommitted.
+- An interim review dispatch to `xfwYGR96kgQA3bcbdSMeYF` was unavailable through the current agent-job interface; a separate fallback reviewer independently cleared the technical finding. This interim limitation is superseded by the final review result below.
+
+## Task 7 final independent re-review — ACCEPT
+- The latest final independent review in `task-7-review.md` gives **ACCEPT** for commit. It confirms all five original findings are resolved, specifically verifies the default-on, toggleable browser/device SpeechSynthesis privacy disclosure against `initialState()` and the Tutor screen, and finds no remaining Task 7 blocker.
+- The review confirms `GOOGLE_PROVIDER_TRANSPORT_READY`, `AI_QUOTA_RESERVATION_MIDDLEWARE_READY`, and `AI_ROUTE_OPERATIONS_READY` are false; `liveEnabled` and runtime Live are false, server STT is false, and runtime TTS remains text-only. It reiterates no provider/API request, paid audio, billing change, Live POC, or deployment.
+- Final verification: focused Task 7 suites PASS (8 files / 197 tests); full `npm test` PASS (21 files / 373 tests); `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Existing Vite warnings remain for script tags and the >500 kB client chunk.
+- Remaining activation risks: provider transport and production quota/readiness are unverified and disabled; TTS voice quality still requires human listening evaluation; Live remains disabled; the client/server cue schema remains duplicated until Task 8. The ACCEPT authorizes only the scoped Task 7 source/tests, approved plan update, and Task 7 brief/report/progress ledger; `task-7-review.md` and unrelated ignored files are excluded.

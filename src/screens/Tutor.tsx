@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyChatTurn } from '../engine/game';
 import { playSfx, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio';
-import { askTutor, updateMemory, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, type ChatMessage, type Scenario } from '../engine/tutor';
+import { askTutor, updateMemory, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, tutorFailureMessage, type ChatMessage, type Scenario } from '../engine/tutor';
 import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
 import { FrChip } from '../components/FrChip';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
-import { answerLang, extractCues } from '../engine/voice/markers';
+import { answerLang, type Action } from '../engine/voice/markers';
 import { KruaLive } from '../components/KruaLive';
-import { InlineImage } from '../components/ImagePop';
 import { CloudStt, cloudSttSupported } from '../engine/voice/stt';
 import { MemoryReviewDialog, type MemoryReviewTurn } from '../components/MemoryReviewDialog';
+import type { ViviCue } from '../engine/voice/vivi-cues';
 
 const CHAT_KEY = 'salut.chat.v1';
 type Chats = Partial<Record<Scenario, ChatMessage[]>>;
@@ -32,6 +32,8 @@ function saveChats(c: Chats) {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const visibleCueAction = (cue?: ViviCue): Action | null =>
+  cue?.action === 'hop' || cue?.action === 'wave' || cue?.action === 'giggle' ? cue.action : null;
 
 type SR = {
   lang: string;
@@ -72,6 +74,7 @@ function TextChat() {
   const [chats, setChats] = useState<Chats>(loadChats);
   const [input, setInput] = useState('');
   const [streamText, setStreamText] = useState<string | null>(null);
+  const [streamCue, setStreamCue] = useState<ViviCue | undefined>();
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [memoryReview, setMemoryReview] = useState<{ memory: string; turns: MemoryReviewTurn[]; name: string } | null>(null);
@@ -119,17 +122,24 @@ function TextChat() {
     setInput('');
     setBusy(true);
     setStreamText('');
+    setStreamCue(undefined);
     playSfx('tap', state.settings.sound);
     const ac = new AbortController();
     abortRef.current = ac;
     let acc = '';
+    let replyCue: ViviCue | undefined;
     try {
       const vp = loadPrefs();
       await askTutor({ scenario, message: text, history, context: learnerContext(state), character: vp.character, lang: vp.lang, explicit: vp.explicit && vp.adultConfirmed }, (d) => {
         acc += d;
         setStreamText(acc);
-      }, ac.signal);
-      const reply: ChatMessage = { id: uid(), role: 'tutor', text: acc.trim() || '...', ts: Date.now() };
+      }, ac.signal, (cue) => {
+        replyCue = cue;
+        setStreamCue(cue);
+      });
+      const replyText = acc.trim();
+      if (!replyText) throw new TutorError('empty_response', 'Tutor javobi bo‘sh. Qayta urinib ko‘ring.');
+      const reply: ChatMessage = { id: uid(), role: 'tutor', text: replyText, cue: replyCue, ts: Date.now() };
       setMessages((m) => [...m, reply]);
       // Har 6 ta xabardan keyin Vivi xotirasini yangilaymiz (fon rejimida).
       const userCount = messages.filter((m) => m.role === 'user').length + 1;
@@ -148,16 +158,12 @@ function TextChat() {
         setTimeout(() => setXpToast(null), 1400);
       }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') {
-        if (acc.trim()) setMessages((m) => [...m, { id: uid(), role: 'tutor', text: acc.trim(), ts: Date.now() }]);
-      } else {
-        const msg = e instanceof TutorError ? e.message : 'Kutilmagan xato yuz berdi.';
-        const upsell = e instanceof TutorError && e.code === 'daily_limit';
-        setMessages((m) => [...m, ...(acc.trim() ? [{ id: uid(), role: 'tutor' as const, text: acc.trim(), ts: Date.now() }] : []), { id: uid(), role: 'tutor', text: msg, error: true, upsell, ts: Date.now() }]);
-      }
+      const failure = tutorFailureMessage(e);
+      if (failure) setMessages((m) => [...m, { ...failure, id: uid(), ts: Date.now() }]);
     } finally {
       setBusy(false);
       setStreamText(null);
+      setStreamCue(undefined);
       abortRef.current = null;
     }
   }
@@ -260,15 +266,12 @@ function TextChat() {
     setTimeout(() => send(lastUser.text), 0);
   };
 
-  // Matnli chatda ham Vivi jonli: oxirgi javobdagi shakl va imo-ishora sarlavhadagi maskotda ko'rinadi.
+  // Faqat alohida kelgan, validatsiya qilingan semantik cue ko'rsatiladi; matn belgilaridan harakat olinmaydi.
   const lastTutor = [...messages].reverse().find((m) => m.role === 'tutor' && !m.error);
   const live = useMemo(() => {
-    const raw = lastTutor?.text ?? '';
-    const cues = raw.split(/(?<=[.!?…])\s+/).map((x) => extractCues(x).cue);
-    const shape = [...cues].reverse().find((c) => c.shape)?.shape ?? 'pill';
-    const action = cues.find((c) => c.actions.length)?.actions[0] ?? null;
-    return { shape, action, key: lastTutor?.id ?? 'none' };
-  }, [lastTutor?.id, lastTutor?.text]);
+    const cue = streamCue ?? lastTutor?.cue;
+    return { state: busy ? 'thinking' as const : cue?.state ?? 'idle' as const, action: busy ? null : visibleCueAction(cue), key: `${lastTutor?.id ?? 'none'}:${cue?.state ?? ''}:${cue?.action ?? ''}` };
+  }, [busy, lastTutor?.cue, lastTutor?.id, streamCue]);
   const [actKey, setActKey] = useState(0);
   useEffect(() => setActKey((k) => k + 1), [live.key]);
 
@@ -279,7 +282,7 @@ function TextChat() {
     <div className="tutor-chat">
       <div className="tutor-head">
         <div className="tutor-live">
-          <KruaLive shape={busy ? 'pill' : live.shape} action={busy ? null : live.action} actionKey={actKey} state={busy ? 'thinking' : 'idle'} size={58} />
+          <KruaLive shape="pill" action={live.action} actionKey={actKey} state={live.state} size={58} />
         </div>
         <div className="tutor-title">
           <b>Vivi ustoz</b>
@@ -312,7 +315,6 @@ function TextChat() {
             {m.role === 'tutor' && <div className="msg-avatar"><Mascot size={30} mood="happy" /></div>}
             <div className="msg-bubble">
               {m.role === 'tutor' ? <RichText text={m.text} /> : m.text}
-              {m.role === 'tutor' && !m.error && extractCues(m.text).cue.image && <InlineImage query={extractCues(m.text).cue.image!} />}
               {m.role === 'tutor' && !m.error && frenchParts(m.text).length > 0 && ttsSupported() && (
                 <button type="button" className="msg-play" onClick={() => speakQueue(frenchParts(m.text), state.settings.ttsRate)} title="Fransuzcha qismlarni tinglash">
                   ▶︎ fransuzcha

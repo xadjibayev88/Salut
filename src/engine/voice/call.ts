@@ -3,11 +3,11 @@
 // Qotmaslik uchun: hamma narsa asinxron va bekor qilinadigan; birinchi gap tayyor bo'lishi bilan ovoz;
 // keyingi gap ovozi oldindan yuklanadi; tarmoq uzilsa bir marta avtomatik qayta urinadi.
 import { ROLES, type CharacterId, type ExplainLang, type RoleId } from '../../data/characters';
-import { answerLang, displayText, extractCues, SentenceSplitter, talkStats, type Action, type Shape } from './markers';
+import { answerLang, displayText, SentenceSplitter, talkStats, type Action, type Shape } from './markers';
 import { Mic, type MicError } from './mic';
 import { cloudSttSupported, CloudStt, type ReviewedStt, type SttError, type SttResult } from './stt';
 import { TtsQueue } from './tts';
-import { playSfx } from '../audio';
+import { NEUTRAL_VIVI_CUE, validateViviCue, type ViviCue } from './vivi-cues';
 import type { InputMode, SessionRecord, SttEngine } from './prefs';
 
 export type Phase = 'connecting' | 'ready' | 'user' | 'review' | 'thinking' | 'speaking' | 'ended';
@@ -27,7 +27,7 @@ export type Notice =
 export interface VoiceConfig {
   ai: boolean;
   stt: boolean;
-  tts: 'elevenlabs' | 'browser';
+  tts: 'elevenlabs' | 'browser' | 'text';
   audioTags: boolean;
   voices: { id: string; name: string }[];
   sessionMinutes: number;
@@ -44,7 +44,7 @@ export interface VoiceConfig {
   rewardsLeft?: number;
   rewardMinutes?: number;
   /** Ovoz manbai: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. */
-  ttsTier?: 'elevenlabs' | 'gemini' | 'browser';
+  ttsTier?: 'elevenlabs' | 'gemini' | 'browser' | 'text';
 }
 
 export interface CallOptions {
@@ -89,6 +89,8 @@ export interface Snapshot {
   sttResult: SttResult | null;
   retryAvailable: boolean;
   live: string;
+  /** Validated semantic cue; never parsed from learner-facing text or executable markers. */
+  cue: ViviCue;
   turns: Turn[];
   notice: Notice;
   noticeText: string;
@@ -149,6 +151,7 @@ export class VoiceCall {
       sttResult: null,
       retryAvailable: false,
       live: '',
+      cue: { ...NEUTRAL_VIVI_CUE },
       turns: [],
       notice: null,
       noticeText: '',
@@ -160,19 +163,7 @@ export class VoiceCall {
       micLang: o.micLang,
       endReason: null,
     };
-    this.tts.onSentence = (raw) => {
-      const { cue } = extractCues(raw);
-      const patch: Partial<Snapshot> = { phase: 'speaking' };
-      if (cue.shape) patch.shape = cue.shape;
-      if (cue.fx) patch.fx = { kind: cue.fx, key: (this.snap.fx?.key ?? 0) + 1 };
-      if (cue.sfx) playSfx(cue.sfx);
-      if (cue.image) patch.image = { q: cue.image, key: (this.snap.image?.key ?? 0) + 1 };
-      if (cue.actions.length) {
-        patch.action = cue.actions[0];
-        patch.actionKey = this.snap.actionKey + 1;
-      }
-      this.set(patch);
-    };
+    this.tts.onSentence = () => this.set({ phase: 'speaking' });
     this.tts.onLevel = (l) => this.level(l);
     this.tts.onDrain = () => {
       if (this.snap.phase === 'speaking' || (this.snap.phase === 'thinking' && this.responseWaitingForDrain)) {
@@ -225,16 +216,16 @@ export class VoiceCall {
     this.mic.vadEnabled = this.o.inputMode === 'handsfree';
     this.startedAt = Date.now();
     this.timer = window.setInterval(() => this.tick(), 500);
-    // Xotira bo'lsa — Vivi o'tgan suhbatlarni eslab, o'zi salomlashadi.
+    // A saved-memory greeting stays local and silent; only a confirmed learner turn may call the tutor.
     const memory = (this.o.context() as { memory?: string })?.memory;
-    if (memory && memory.trim()) {
-      void this.ask("[SUHBAT BOSHLANDI] Salomlash va xotiradan bir narsani eslat.");
-      return;
-    }
-    // Salomlashish: LLM kutmasdan darhol gapiradi.
     const role = ROLES.find((r) => r.id === this.o.role) ?? ROLES[0];
     const greet = role.voiceGreet(this.o.name);
     this.addTurn('tutor', greet);
+    if (memory && memory.trim()) {
+      this.set({ phase: 'ready', live: '', cue: { ...NEUTRAL_VIVI_CUE } });
+      return;
+    }
+    // Salomlashish: LLM kutmasdan darhol gapiradi.
     this.set({ phase: 'speaking', live: '' });
     this.tts.reset();
     this.tts.push(greet);
@@ -391,17 +382,18 @@ export class VoiceCall {
     return this.snap.turns.filter((t) => t.id !== this.draftTurnId).slice(-20).map((t) => ({ role: t.role, text: t.text }));
   }
 
-  private async ask(message: string, retry = 0): Promise<void> {
+  private async ask(message: string): Promise<void> {
     const seq = ++this.requestSeq;
     this.ac?.abort();
     const ac = new AbortController();
     this.ac = ac;
     this.tts.reset();
-    this.set({ phase: 'thinking', live: '' });
+    this.set({ phase: 'thinking', live: '', cue: { ...NEUTRAL_VIVI_CUE } });
     const split = new SentenceSplitter();
     let acc = '';
+    let responseComplete = false;
     const weak = window.setTimeout(() => !acc && this.notice('weak'), 3500);
-    // Kuzatuvchi: 9 soniyada birinchi so'z kelmasa — so'rov osilib qolgan, bekor qilib qayta yuboramiz.
+    // If no first token arrives within 9 seconds, abort once and leave retry to the learner.
     let stalled = false;
     const watchdog = window.setTimeout(() => {
       if (!acc && !ac.signal.aborted) {
@@ -443,21 +435,25 @@ export class VoiceCall {
           const line = buf.slice(0, i).replace(/^data:\s?/, '');
           buf = buf.slice(i + 2);
           if (!line) continue;
-          const ev = JSON.parse(line) as { t?: string; done?: boolean; error?: string; message?: string };
+          const ev = JSON.parse(line) as { t?: string; cue?: unknown; done?: boolean; error?: string; message?: string };
           if (ev.error) throw Object.assign(new Error(ev.message ?? 'upstream'), { code: ev.error });
           if (ev.t) {
             clearTimeout(watchdog);
             acc += ev.t;
             this.set({ live: displayText(acc) });
-            for (const s of split.push(ev.t)) this.tts.push(s);
           }
+          if (Object.prototype.hasOwnProperty.call(ev, 'cue')) this.set({ cue: validateViviCue(ev.cue) });
+          if (ev.done) responseComplete = true;
         }
         if (done) break;
       }
-      for (const s of split.flush()) this.tts.push(s);
       clearTimeout(weak);
       clearTimeout(watchdog);
+      if (!responseComplete) throw Object.assign(new Error('Tutor response ended before done event'), { code: 'incomplete_response' });
+      if (!acc.trim()) throw Object.assign(new Error('Tutor javobi bo‘sh. Qayta urinib ko‘ring.'), { code: 'empty_response' });
       if (ac.signal.aborted || seq !== this.requestSeq || this.snap.phase !== 'thinking') return;
+      for (const s of split.push(acc)) this.tts.push(s);
+      for (const s of split.flush()) this.tts.push(s);
       this.addTurn('tutor', acc.trim());
       this.autoMic(acc);
       this.draftSubmitted = false;
@@ -469,10 +465,6 @@ export class VoiceCall {
       clearTimeout(weak);
       clearTimeout(watchdog);
       if (seq !== this.requestSeq || this.snap.phase === 'ended') return;
-      if (stalled && retry === 0 && this.ac === ac) {
-        this.notice('reconnecting');
-        return this.ask(message, 1);
-      }
       if (stalled) {
         this.notice('upstream', 'Vivi javob bermadi — matnni tekshirib, qayta yuboring.', 6000);
         this.responseWaitingForDrain = false;
@@ -481,15 +473,8 @@ export class VoiceCall {
       }
       if (ac.signal.aborted || (e as Error).name === 'AbortError') return;
       const code = (e as { code?: string }).code;
-      const http = (e as { http?: number }).http;
-      // Tarmoq uzilishi: hali hech narsa kelmagan bo'lsa — bir marta jimgina qayta urinamiz.
-      if (!acc && retry === 0 && !http && code !== 'blocked') {
-        this.notice('reconnecting');
-        await new Promise((r) => setTimeout(r, 700));
-        if (seq !== this.requestSeq) return;
-        return this.ask(message, 1);
-      }
-      if (acc.trim()) this.addTurn('tutor', acc.trim());
+      if (!responseComplete || !acc.trim()) this.set({ live: '', cue: { ...NEUTRAL_VIVI_CUE } });
+      if (responseComplete && acc.trim()) this.addTurn('tutor', acc.trim());
       this.tts.end();
       if (code === 'voice_limit') {
         // Bepul ovozli suhbat limiti tugadi — suhbat yakunlanadi (tahlil va dam olish ekrani).
@@ -505,16 +490,11 @@ export class VoiceCall {
 
   /** Vivi gapini bo'lish: ovoz va oqim darhol to'xtaydi. */
   interrupt() {
-    const live = this.snap.live.trim();
     this.tts.stop();
     this.ac?.abort();
     this.requestSeq++;
     this.responseWaitingForDrain = false;
-    if (live) {
-      const last = this.snap.turns[this.snap.turns.length - 1];
-      if (!last || last.role !== 'tutor' || displayText(last.text) !== live) this.addTurn('tutor', `${live}…`);
-    }
-    this.set({ live: '', level: 0 });
+    this.set({ live: '', level: 0, cue: { ...NEUTRAL_VIVI_CUE } });
   }
 
   private addTurn(role: 'user' | 'tutor', text: string) {

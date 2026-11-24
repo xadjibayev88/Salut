@@ -341,9 +341,9 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
       aiProvider: aiReady ? AI_RUNTIME_CONFIG.provider : null,
       stt: false,
       sttProvider: null,
-      tts: 'browser',
-      ttsTier: 'browser',
-      ttsProvider: 'browser',
+      tts: 'text',
+      ttsTier: 'text',
+      ttsProvider: null,
       audioTags: false,
       voices: [],
       sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN) + bonusMin(req),
@@ -657,5 +657,5 @@ server.keepAliveTimeout = 65_000;
 
 startBot();
 server.listen(PORT, () =>
-  console.log(`Voilà! server: http://localhost:${PORT} · AI: o'chiq · ovoz: brauzer`),
+  console.log(`Voilà! server: http://localhost:${PORT} · AI: o'chiq · TTS: faqat matn (tekshirilmagan)`),
 );

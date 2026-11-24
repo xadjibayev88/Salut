@@ -28,6 +28,8 @@ export interface AiRouteResult {
   readonly status?: number;
   readonly body: unknown;
   readonly actualUsage?: AiUsage;
+  /** Optional server-encoded SSE frames, used only after the operation has normalized its result. */
+  readonly sseEvents?: readonly string[];
 }
 
 export interface AiRouteExecutionContext {
@@ -111,6 +113,18 @@ function safeRequestBodyError(error: unknown): { status: number; body: unknown }
 function safeRespond(res: ServerResponse, respond: AiRouteDependencies['respond'], status: number, body: unknown): void {
   if (res.writableEnded) return;
   respond(res, status, body);
+}
+
+function safeRespondSse(res: ServerResponse, status: number, events: readonly string[]): void {
+  if (res.writableEnded) return;
+  res.writeHead(status, {
+    'content-type': 'text/event-stream; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    connection: 'keep-alive',
+  });
+  for (const event of events) res.write(event);
+  res.end();
 }
 
 /**
@@ -286,6 +300,7 @@ export function createAiRoutes(deps: AiRouteDependencies): Readonly<Record<AiRou
         const body = providerAttempts > 0 ? AI_UPSTREAM_ERROR : AI_EXECUTION_ERROR;
         return safeRespond(res, deps.respond, 503, body);
       }
+      if (result?.sseEvents) return safeRespondSse(res, result.status ?? 200, result.sseEvents);
       return safeRespond(res, deps.respond, result?.status ?? 200, result?.body ?? null);
     };
   }

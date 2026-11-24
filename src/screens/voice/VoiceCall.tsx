@@ -24,14 +24,14 @@ const MIC_ERRORS: Record<string, string> = {
   stt: 'Cloud nutqni aniqlash hozir mavjud emas. Matnli ustozdan foydalaning yoki keyinroq qayta urinib ko‘ring.',
 };
 
-const NOTICES: Record<string, string> = {
+export const VOICE_CALL_NOTICES: Record<string, string> = {
   weak: 'Aloqa zaif — Vivi biroz kechikib javob berishi mumkin.',
   reconnecting: "Aloqa uzildi — qayta ulanmoqdamiz. Vivi to'xtagan joyidan davom etadi.",
   turnFailed: 'Vivi eshitmadi — yana bir bor ayting.',
   nudgeSilence: "Ovozingiz eshitilmayaptimi? «Bosib gapirish» rejimini sinab ko'ring.",
   nudgeNoise: "Atrofingiz shovqinlimi? «Bosib gapirish» rejimini sinab ko'ring.",
   tooLong: "Replika bir daqiqagacha bo'lsin — qisqaroq gapiring.",
-  ttsQuota: 'Bugungi ovoz limiti tugadi — Vivi brauzer ovozida davom etadi.',
+  ttsQuota: 'Bugungi ovoz limiti tugadi — Vivi javobi matn ko‘rinishida qoladi.',
   sttFailed: "Nutqni aniqlab bo'lmadi — qayta urinib ko'ring.",
   upstream: "Vivi vaqtincha javob bera olmadi. Birozdan so'ng qayta urinib ko'ring.",
   rateLimited: "Juda ko'p so'rov — bir daqiqadan keyin urinib ko'ring.",
@@ -281,7 +281,7 @@ export function VoiceCallScreen({
         )}
       </main>
 
-      {s.notice && <div className="call-notice">{s.noticeText || NOTICES[s.notice]}</div>}
+      {s.notice && <div className="call-notice">{s.noticeText || VOICE_CALL_NOTICES[s.notice]}</div>}
 
       <footer className="call-bottom">
         {game && ptt && (

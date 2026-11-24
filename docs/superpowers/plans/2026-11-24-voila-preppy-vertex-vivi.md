@@ -140,13 +140,13 @@
 
 **Interfeys/kontrakt:** Tutor text va cue alohida SSE event bo‘ladi: `{t: string}` va `{cue: ViviCue}`. Raw model action string frontend animationini bevosita ishga tushirmaydi. TTS xatosi yoki sifati yetarli emasligi text-only natijaga olib keladi.
 
-- [ ] Failing tutor regression testlarini yozing: A1–C2 French practice, tabiiy qisqa Uzbek explanation, optional hazil, maqbul French variantni rad etmaslik va bir turn’da ko‘pi bilan bitta muhim correction.
-- [ ] Failing testni ishga tushiring: `npm test -- server/tutor.test.ts`.
-- [ ] Prompt contractni `server/tutor.ts` va `server/voice.ts`da bir xil qiling; majburiy hazil, kamsituvchi gap yoki taqiqlangan cue so‘ralmasin.
-- [ ] Structured JSON cue’ni server validatoridan o‘tkazing va text eventdan alohida yuboring.
-- [ ] Ketma-ket cascade’ni saqlang: tasdiqlangan transcript → Gemini text → Gemini TTS. TTS fail bo‘lsa response matni va foydalanuvchi davom etish yo‘li qoladi.
-- [ ] Kamida 20 ta Uzbek/mixed TTS javob uchun insoniy audio baholash gate’ini hujjatlang; haqiqiy audio request bu ishda bajarilmaydi.
-- [ ] Fokuslangan tutor/voice testlari, typecheck va buildni bajaring.
+- [x] Failing tutor regression testlarini yozing: A1–C2 French practice, tabiiy qisqa Uzbek explanation, optional hazil, maqbul French variantni rad etmaslik va bir turn’da ko‘pi bilan bitta muhim correction.
+- [x] Failing testni ishga tushiring: `npm test -- server/tutor.test.ts`.
+- [x] Prompt contractni `server/tutor.ts` va `server/voice.ts`da bir xil qiling; majburiy hazil, kamsituvchi gap yoki taqiqlangan cue so‘ralmasin.
+- [x] Structured JSON cue’ni server validatoridan o‘tkazing va text eventdan alohida yuboring.
+- [x] Ketma-ket cascade’ni saqlang: tasdiqlangan transcript → Gemini text → Gemini TTS. TTS fail bo‘lsa response matni va foydalanuvchi davom etish yo‘li qoladi.
+- [x] Kamida 20 ta Uzbek/mixed TTS javob uchun insoniy audio baholash gate’ini hujjatlang; haqiqiy audio request bu ishda bajarilmaydi.
+- [x] Fokuslangan tutor/voice testlari, typecheck va buildni bajaring.
 - [ ] Commit: `git add server/tutor.ts server/tutor.test.ts server/voice.ts src/engine/tutor.ts src/engine/voice/tts.ts src/engine/voice/call.ts server/vivi-cues.ts server/vivi-cues.test.ts && git commit -m "feat(tutor): add validated cue and text-only voice cascade"`.
 
 ## Task 8: Bitta Vivi schema va taniladigan mushuk animation-i

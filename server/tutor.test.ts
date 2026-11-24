@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContents, configureRotation, friendlyError, isExhausted, parseTutorRequest, streamGemini, streamTutor, streamTutorWithFallback, systemInstruction, type TutorRequest } from './tutor.ts';
+import { buildContents, configureRotation, friendlyError, isExhausted, parseTutorReply, parseTutorRequest, streamGemini, streamTutor, streamTutorWithFallback, systemInstruction, tutorBehaviorContract, tutorSseEvents, type TutorRequest } from './tutor.ts';
 import { parseRich, frenchParts } from '../src/engine/tutor.ts';
 
 const base = { scenario: 'free', message: 'Salom!', history: [], context: { name: 'Ali', lessons: ['Salom!'], words: ['bonjour'], mistakes: [], streak: 2 } };
@@ -44,7 +44,7 @@ describe('prompt', () => {
     expect(s).toContain('Vivi');
     expect(s).toContain('[fr]');
     expect(s).toContain('ofitsiant');
-    expect(s).toContain('"ism":"Ali"');
+    expect(s).toContain('"name":"Ali"');
   });
   it('builds alternating Gemini contents starting with user', () => {
     const r = parseTutorRequest({ ...base, history: [{ role: 'tutor', text: 'greet' }, { role: 'user', text: 'a' }, { role: 'user', text: 'b' }, { role: 'tutor', text: 'c' }] }) as TutorRequest;
@@ -130,11 +130,11 @@ describe('resilience', () => {
     expect(calls).toEqual(['slow-main', 'fast-backup']);
     expect(aborted).toContain('slow-main');
   });
-  it('ends a cut reply gracefully instead of mid-sentence', async () => {
+  it('preserves only received text from a cut provider stream', async () => {
     const f = sse([{ candidates: [{ content: { parts: [{ text: 'Islom, tushkun' }] } }] }, { candidates: [{ finishReason: 'SAFETY' }] }]);
     let out = '';
     for await (const t of streamTutor(req, { apiKey: 'k', model: 'm', fetchImpl: f })) out += t;
-    expect(out).toMatch(/^Islom, tushkun… Kechirasiz/);
+    expect(out).toBe('Islom, tushkun');
   });
 });
 
@@ -158,25 +158,27 @@ describe('parseRich (client)', () => {
   });
 });
 
-describe('Bezori Vivi 18+', () => {
-  it("xarakter qabul qilinadi va promptda chegaralar bor", () => {
+describe('adult character prompt boundaries', () => {
+  it('allows adult-life topics without instructing insults or raw action markers', () => {
     const r = parseTutorRequest({ scenario: 'free', message: 'salom', character: 'adult' });
     expect(typeof r).not.toBe('string');
     const sys = systemInstruction(r as TutorRequest);
-    expect(sys).toContain('Bezori Vivi (18+');
-    expect(sys).toContain("QAT'IY TAQIQLAR");
-    expect(sys).toContain('[[ans:fr]]');
+    expect(sys).toContain('kattalar hayotiga mos mavzular');
+    expect(sys).toContain('haqorat, bosim va majburiy so\'kinish yo\'q');
+    expect(sys).not.toContain('[[shape:');
   });
 });
 
-describe('Senzurasiz rejim', () => {
-  it("explicit bayrog'i istalgan xarakterga qo'shiladi", () => {
+describe('explicit mode does not override the tutor contract', () => {
+  it("retains the user's explicit-topic choice without adding insults or executable markers", () => {
     const r = parseTutorRequest({ scenario: 'free', message: 'salom', character: 'strict', explicit: true, mode: 'voice', audioTags: true }) as TutorRequest;
     const sys = systemInstruction(r);
-    expect(sys).toContain('SENZURASIZ REJIM');
-    expect(sys).toContain('[fuck]');
+    expect(sys).toContain('18+ mavzulardagi ochiqroq fransuzcha misol');
+    expect(sys).toContain('hurmat, rozilik va bitta qisqa tuzatish qoidalarini o\'zgartirmaydi');
+    expect(sys).not.toContain('[fuck]');
+    expect(sys).not.toContain('[[shape:');
     const plain = systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom', character: 'strict', mode: 'voice', audioTags: true }) as TutorRequest);
-    expect(plain).not.toContain('SENZURASIZ REJIM');
+    expect(plain).not.toContain('18+ mavzulardagi ochiqroq fransuzcha misol');
     expect(plain).not.toContain('[fuck]');
   });
 });
@@ -222,10 +224,10 @@ describe('xotira promptda', () => {
   it("xotira va yangi suhbat ko'rsatmasi qo'shiladi", () => {
     const r = parseTutorRequest({ scenario: 'free', message: '[SUHBAT BOSHLANDI] salom', context: { memory: '- Parijga bormoqchi' } }) as TutorRequest;
     const sys = systemInstruction(r);
-    expect(sys).toContain('XOTIRA');
+    expect(sys).toContain('Oldingi suhbat xotirasi');
     expect(sys).toContain('Parijga bormoqchi');
-    expect(sys).toContain('YANGI SUHBAT BOSHLANDI');
-    expect(systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom' }) as TutorRequest)).not.toContain('XOTIRA —');
+    expect(sys).toContain('Yangi suhbat boshlandi');
+    expect(systemInstruction(parseTutorRequest({ scenario: 'free', message: 'salom' }) as TutorRequest)).not.toContain('Oldingi suhbat xotirasi');
   });
 });
 
@@ -236,5 +238,77 @@ describe('Gemini Live ko\'rsatmasi', () => {
     expect(t).toContain('JONLI OVOZLI SUHBAT');
     expect(t.split('JONLI OVOZLI SUHBAT')[0]).not.toMatch(/\[fr\]|\[\[/);
     expect(t).not.toContain('FRANSUZCHA (MAJBURIY)');
+  });
+});
+
+
+describe('Task 7 French tutor behavior contract', () => {
+  const request = (overrides: Record<string, unknown> = {}) => parseTutorRequest({
+    scenario: 'free',
+    message: 'Est-ce que je peux dire « je voudrais » ?',
+    history: [],
+    context: { lessons: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] },
+    ...overrides,
+  }) as TutorRequest;
+
+  it('keeps Voilà! on French A1–C2 practice rather than IELTS', () => {
+    const prompt = systemInstruction(request());
+    expect(prompt).toContain('A1–C2');
+    expect(prompt).toContain('fransuz');
+    expect(prompt).not.toMatch(/IELTS/i);
+  });
+
+  it('asks for natural concise Uzbek explanations and makes humor optional', () => {
+    const prompt = systemInstruction(request());
+    expect(prompt).toMatch(/o'zbek.{0,80}(qisqa|ixcham|tabiiy)/i);
+    expect(prompt).toMatch(/hazil.{0,80}(ixtiyoriy|shart emas|majburiy emas)/i);
+    expect(prompt).not.toMatch(/hazil har javobda majburiy/i);
+  });
+
+  it('does not reject acceptable French alternatives and limits ordinary turns to one gentle correction', () => {
+    const prompt = systemInstruction(request());
+    expect(prompt).toMatch(/maqbul.{0,80}(variant|fransuzcha)/i);
+    expect(prompt).toMatch(/ko'pi bilan bitta.{0,80}(tuzat|correction)/i);
+    expect(prompt).not.toMatch(/xatoni masxara|o'quvchini qovur/i);
+  });
+
+  it('uses the same core teaching contract in text and voice modes', () => {
+    const text = systemInstruction(request({ mode: 'chat' }));
+    const voice = systemInstruction(request({ mode: 'voice' }));
+    const shared = tutorBehaviorContract('uz');
+    expect(text).toContain(shared);
+    expect(voice).toContain(shared);
+  });
+
+  it('keeps structured text and validated cue in separate server-sent events', () => {
+    const reply = parseTutorReply({
+      text: '[[do:slap]] [fr]Je voudrais un café.[/fr] [[img:person]]',
+      cue: { state: 'speaking', face: 'angry', action: 'slap', soundEffect: 'punch' },
+    });
+    expect(reply.text).toBe('[fr]Je voudrais un café.[/fr]');
+    expect(reply.cue).toEqual({ state: 'idle', face: 'neutral' });
+    const events = tutorSseEvents(reply).map((event) => JSON.parse(event.match(/^data: (.*)\n\n$/)![1]));
+    expect(events).toEqual([
+      { t: '[fr]Je voudrais un café.[/fr]' },
+      { cue: { state: 'idle', face: 'neutral' } },
+      { done: true },
+    ]);
+  });
+
+  it('keeps plain unparseable text and returns a neutral cue', () => {
+    expect(parseTutorReply('Salom! [[do:slap]]')).toEqual({ text: 'Salom!', cue: { state: 'idle', face: 'neutral' } });
+  });
+
+  it.each([
+    ['missing text', {}],
+    ['empty text', { text: '' }],
+    ['whitespace-only text', { text: ' \n\t ' }],
+    ['blank plain text', ' \n '],
+  ])('rejects %s after tutor text normalization', (_label, value) => {
+    expect(() => parseTutorReply(value)).toThrow(/javobi bo‘sh/);
+  });
+
+  it('never creates a successful SSE completion event for blank reply text', () => {
+    expect(() => tutorSseEvents({ text: ' \n ', cue: { state: 'idle', face: 'neutral' } })).toThrow(/javobi bo‘sh/);
   });
 });

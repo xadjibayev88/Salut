@@ -142,3 +142,101 @@ describe('yopuvchi ovoz teglari', () => {
     expect(displayText('[sarcastic] Machine à thé[/sarcastic]?! Blin.')).toBe('Machine à thé?! Blin.');
   });
 });
+
+
+describe('Task 7 text-only TTS cascade', () => {
+  it('does not fall back to local speech when the configured TTS request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 503 })));
+    vi.stubGlobal('speechSynthesis', { getVoices: () => [], speak: vi.fn(), cancel: vi.fn() });
+    vi.stubGlobal('SpeechSynthesisUtterance', class { onend: (() => void) | null = null; onerror: (() => void) | null = null; });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const queue = new TtsQueue('elevenlabs');
+    const speak = vi.mocked(speechSynthesis.speak);
+    try {
+      queue.push('Bonjour !');
+      queue.end();
+      await vi.waitFor(() => expect(queue.busy).toBe(false));
+      expect(speak).not.toHaveBeenCalled();
+    } finally {
+      queue.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('supports an explicit text-only engine without invoking browser speech or the TTS endpoint', async () => {
+    const fetchMock = vi.fn();
+    const speak = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('speechSynthesis', { getVoices: () => [], speak, cancel: vi.fn() });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const queue = new TtsQueue('text' as never);
+    try {
+      queue.push('J’explique en ouzbek.');
+      queue.end();
+      await vi.waitFor(() => expect(queue.busy).toBe(false));
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(speak).not.toHaveBeenCalled();
+    } finally {
+      queue.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+
+describe('Task 7 TTS fallback must remain text-only', () => {
+  const installBrowserVoice = () => {
+    const speak = vi.fn((utterance: { onend?: (() => void) | null }) => {
+      queueMicrotask(() => utterance.onend?.());
+    });
+    vi.stubGlobal('speechSynthesis', {
+      getVoices: () => [{ lang: 'uz-UZ', name: 'Natural' }],
+      speak,
+      cancel: vi.fn(),
+    });
+    vi.stubGlobal('SpeechSynthesisUtterance', class {
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onboundary: (() => void) | null = null;
+      lang = '';
+      voice: unknown;
+      rate = 1;
+      constructor(readonly text: string) {}
+    });
+    return speak;
+  };
+
+  it('does not speak locally after a failed configured TTS request', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 503 })));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const speak = installBrowserVoice();
+    const queue = new TtsQueue('elevenlabs');
+    try {
+      queue.push('Bonjour !');
+      queue.end();
+      await vi.waitFor(() => expect(queue.busy).toBe(false));
+      expect(speak).not.toHaveBeenCalled();
+    } finally {
+      queue.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps an unverified text-only engine silent and does not request audio', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const speak = installBrowserVoice();
+    const queue = new TtsQueue('text' as never);
+    try {
+      queue.push('J’explique en ouzbek.');
+      queue.end();
+      await vi.waitFor(() => expect(queue.busy).toBe(false));
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(speak).not.toHaveBeenCalled();
+    } finally {
+      queue.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+});

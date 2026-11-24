@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
+import { initialState } from '../src/engine/game.ts';
 import { AI_CONSENT_POLICY_VERSION, AI_ROUTE_REQUIREMENTS, grantAiConsent, sanitizeTutorBodyForMemoryConsent, type AiGrant, type AiSubject } from './ai-consent.ts';
 import { createAiConsentRoutes, createAiRoutes, deriveTrustedExternalOrigin, effectiveAiRouteReady, enabledAiRoutes, strictRequestOriginAllowed, type AiRouteKey, type AiRouteOperation } from './ai-routes.ts';
 import type { AiQuotaReservation, AiQuotaReservationResult, AiQuotaSettlementResult, AiUsage } from './ai-quota.ts';
@@ -26,7 +27,8 @@ function makeResponse() {
     writableEnded: false,
     writeHead(this: { headersSent: boolean }, status: number, headers: Record<string, string> = {}) { state.status = status; state.headers = headers; this.headersSent = true; return this; },
     setHeader(name: string, value: string) { state.headers[name] = value; return this; },
-    end(this: { writableEnded: boolean }, body = '') { state.body = String(body); this.writableEnded = true; return this; },
+    write(body = '') { state.body += String(body); return true; },
+    end(this: { writableEnded: boolean }, body = '') { if (body) state.body += String(body); this.writableEnded = true; return this; },
     on: vi.fn(),
     removeListener: vi.fn(),
   } as unknown as ServerResponse;
@@ -228,6 +230,46 @@ describe('AI route consent/quota middleware', () => {
     expect(harness.abort).not.toHaveBeenCalled();
   });
 
+  it('emits sanitized tutor text and a validated cue as separate SSE events', async () => {
+    const harness = createRouteHarness({
+      operations: createAiRouteOperations(),
+      providerCallOverride: async () => ({
+        text: '[fr]Oui[/fr] [[do:hop]]',
+        cue: { state: 'speaking', face: 'angry', action: 'slap', soundEffect: 'punch' },
+      }),
+    });
+    const { state } = await invoke('POST /api/tutor', harness, { scenario: 'free', message: 'Est-ce correct ?', context: {} });
+    const events = state.body.split(/\r?\n\r?\n/).filter(Boolean).map((frame) => JSON.parse(frame.replace(/^data:\s*/, '')));
+
+    expect(state.status).toBe(200);
+    expect(state.headers['content-type']).toContain('text/event-stream');
+    expect(events).toEqual([
+      { t: '[fr]Oui[/fr]' },
+      { cue: { state: 'idle', face: 'neutral' } },
+      { done: true },
+    ]);
+    expect(harness.providerCalls).toHaveLength(1);
+  });
+
+  it.each([
+    { label: 'missing text', output: {} },
+    { label: 'empty text', output: { text: '' } },
+    { label: 'whitespace-only text', output: { text: ' \n\t ' } },
+  ])('rejects tutor output with $label instead of emitting done', async ({ output }) => {
+    const harness = createRouteHarness({
+      operations: createAiRouteOperations(),
+      providerCallOverride: async () => output,
+    });
+    const { state } = await invoke('POST /api/tutor', harness, { scenario: 'free', message: 'Bonjour', context: {} });
+
+    expect(state.status).toBe(502);
+    expect(state.headers['content-type']).toContain('application/json');
+    expect(JSON.parse(state.body)).toMatchObject({ code: 'empty_tutor_reply' });
+    expect(state.body).not.toContain('"done"');
+    expect(harness.providerCalls).toHaveLength(1);
+    expect(harness.settle).toHaveBeenCalledOnce();
+  });
+
   it('isolates the minimized upstream snapshot from later operation mutation', async () => {
     const operations = routeOperations(async (_input, context) => {
       (context.providerInput as Record<string, unknown>).private = 'must not reach provider';
@@ -247,6 +289,7 @@ describe('AI route consent/quota middleware', () => {
     const operations = createAiRouteOperations();
     const harness = createRouteHarness({
       operations,
+      providerCallOverride: async () => ({ text: 'Bonjour, je suis Vivi.', cue: { state: 'speaking', face: 'neutral' } }),
       sanitizeBody: (route, _subject, body) => {
         if (route !== 'POST /api/tutor' || typeof body !== 'object' || body === null) return body;
         const input = body as Record<string, unknown>;
@@ -288,6 +331,7 @@ describe('AI route consent/quota middleware', () => {
     const operations = createAiRouteOperations();
     const harness = createRouteHarness({
       operations,
+      providerCallOverride: async () => ({ text: 'Bonjour, je suis Vivi.', cue: { state: 'speaking', face: 'neutral' } }),
       sanitizeBody: (route, subject, body) => route === 'POST /api/tutor'
         ? sanitizeTutorBodyForMemoryConsent(subject, body)
         : body,
@@ -554,6 +598,7 @@ describe('AI route consent/quota middleware', () => {
   it('keeps runtime and privacy disclosures aligned and excludes legacy provider fallbacks from main', () => {
     const main = readFileSync(new URL('./main.ts', import.meta.url), 'utf8');
     const config = readFileSync(new URL('./ai-config.ts', import.meta.url), 'utf8');
+    const tutor = readFileSync(new URL('../src/screens/Tutor.tsx', import.meta.url), 'utf8');
     const privacy = readFileSync(new URL('../public/privacy.html', import.meta.url), 'utf8');
     expect(main).toContain('AI_QUOTA_RESERVATION_MIDDLEWARE_READY = false');
     expect(main).toContain('AI_ROUTE_OPERATIONS_READY = false');
@@ -563,11 +608,17 @@ describe('AI route consent/quota middleware', () => {
     expect(main).toContain('ai: aiReady');
     expect(main).toContain("requestOriginAllowed: aiRequestOriginAllowed");
     expect(main).toContain('stt: false');
-    expect(main).toContain("tts: 'browser'");
+    expect(main).toContain("tts: 'text'");
     expect(main).toContain('live: false');
+    expect(initialState(0).settings.tutorVoice).toBe(true);
+    expect(tutor).toContain('if (state.settings.tutorVoice) speakQueue(frenchParts(reply.text), state.settings.ttsRate);');
+    expect(tutor).toContain('tutorVoice: !s.settings.tutorVoice');
     expect(privacy).toContain('server AI va STT o‘chiq');
-    expect(privacy).toContain('TTS qurilma/brauzer ovozidan foydalanadi');
-    expect(privacy).toContain('Live esa o‘chiq');
+    expect(privacy).toContain('server TTS inson tomonidan tekshirilmagan va runtime’da faqat matn rejimida');
+    expect(privacy).toContain('Matnli tutor javobidagi fransuzcha qismlarni avtomatik o‘qish sozlamasi yangi profil uchun sukut bo‘yicha yoqilgan');
+    expect(privacy).toContain('Matn tanlangan brauzer/qurilma SpeechSynthesis dvigateliga berilib');
+    expect(privacy).toContain('Server TTS o‘chiq, sozlanmagan yoki xatoga uchraganida, server oqimida brauzer SpeechSynthesis’ga yashirin fallback qilinmaydi');
+    expect(privacy).toContain('Live ham o‘chiq');
     for (const legacy of ['GEMINI_API_KEY', 'FALLBACK_LLM', 'azureTts(', 'elevenLabsTts(', 'auth_tokens']) {
       expect(main).not.toContain(legacy);
     }

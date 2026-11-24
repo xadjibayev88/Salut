@@ -1,29 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { parseTutorRequest, systemInstruction, type TutorRequest } from './tutor.ts';
+import { parseTutorRequest, systemInstruction, tutorBehaviorContract, type TutorRequest } from './tutor.ts';
 import { azureSsml, cleanFeedback, cleanMemory, feedbackBody, memoryBody, parseMemoryRequest, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 import { createAiRouteOperations } from './ai-route-operations.ts';
 
 const base = { scenario: 'free', message: 'Salom', history: [], context: {} };
 
 describe('voice-mode prompt', () => {
-  it('adds character, language, voice rules and body markers', () => {
+  it('adds character, language, concise voice rules and a separate cue contract', () => {
     const r = parseTutorRequest({ ...base, mode: 'voice', character: 'witty', lang: 'ru', audioTags: true }) as TutorRequest;
     const s = systemInstruction(r);
-    expect(s).toContain('Hazilkash Vivi');
+    expect(s).toContain('Uslub — hozirjavob');
     expect(s).toContain('rus tilida');
-    expect(s).toContain('OVOZLI SUHBAT');
-    expect(s).toContain('[[shape:');
-    expect(s).toContain('[laughs]');
+    expect(s).toContain("OG'ZAKI USLUB");
+    expect(s).toContain('VIVI CUE');
+    expect(s).toContain('state=idle|listening|thinking|speaking');
+    expect(s).not.toContain('[[shape:');
+    expect(s).not.toContain('[laughs]');
   });
-  it('omits audio tags when TTS does not support them and defaults unknown values', () => {
+  it('does not request audio tags and defaults unknown values', () => {
     const r = parseTutorRequest({ ...base, mode: 'voice', character: 'evil', lang: 'xx' }) as TutorRequest;
     expect(r.character).toBe('classic');
     expect(r.lang).toBe('uz');
-    expect(systemInstruction(r)).toContain('ovoz teglarini ishlatma');
+    expect(systemInstruction(r)).toContain('[[do:...]]');
+    expect(systemInstruction(r)).toContain('JSON qaytar');
   });
   it('strict character never allows insults', () => {
     const r = parseTutorRequest({ ...base, character: 'strict' }) as TutorRequest;
-    expect(systemInstruction(r)).toMatch(/HECH QACHON haqorat/);
+    expect(systemInstruction(r)).toMatch(/haqorat, uyaltirish, qo'rqitish/);
+  });
+  it('uses the same teaching behavior contract as text mode', () => {
+    const voice = systemInstruction(parseTutorRequest({ ...base, mode: 'voice', lang: 'uz' }) as TutorRequest);
+    expect(voice).toContain(tutorBehaviorContract('uz'));
   });
   it('validates custom roles', () => {
     expect(typeof parseTutorRequest({ ...base, scenario: 'custom', customRole: 'qisqa' })).toBe('string');

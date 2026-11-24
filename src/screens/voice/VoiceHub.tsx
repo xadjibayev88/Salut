@@ -16,7 +16,7 @@ import { VoiceCallScreen } from './VoiceCall';
 import { FeedbackView } from './FeedbackView';
 import { MemoryReviewDialog, type MemoryReviewTurn } from '../../components/MemoryReviewDialog';
 
-const FALLBACK_CONFIG: VoiceConfig = { ai: false, stt: false, tts: 'browser', audioTags: false, voices: [], sessionMinutes: 10, cooldownMinutes: 20 };
+const FALLBACK_CONFIG: VoiceConfig = { ai: false, stt: false, tts: 'text', ttsTier: 'text', audioTags: false, voices: [], sessionMinutes: 10, cooldownMinutes: 20 };
 
 function useVoiceConfig(refresh = 0): VoiceConfig | null {
   const [cfg, setCfg] = useState<VoiceConfig | null>(null);

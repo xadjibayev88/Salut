@@ -44,6 +44,36 @@ afterEach(() => {
 });
 
 describe('VoiceCall speech review', () => {
+  it('keeps the memory greeting local and makes no tutor or TTS request at startup', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const base = options();
+    const call = new VoiceCall({
+      ...base,
+      context: () => ({ memory: 'The learner is practicing greetings.' }),
+      config: { ...base.config, tts: 'elevenlabs' },
+    });
+    const internal = call as unknown as {
+      mic: { open: () => Promise<void> };
+      setupStt: (preference: string) => void;
+      stt: { abort: () => void } | null;
+      tts: { unlock: () => void; push: (text: string) => void };
+    };
+    vi.spyOn(internal.mic, 'open').mockResolvedValue();
+    vi.spyOn(internal, 'setupStt').mockImplementation(() => { internal.stt = { abort: vi.fn() }; });
+    vi.spyOn(internal.tts, 'unlock').mockImplementation(() => undefined);
+    const push = vi.spyOn(internal.tts, 'push');
+
+    await call.start();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(call.snap.phase).toBe('ready');
+    expect(call.snap.turns).toHaveLength(1);
+    expect(call.snap.turns[0]).toMatchObject({ role: 'tutor' });
+    call.dispose();
+  });
+
   it('keeps recognized speech editable instead of sending it immediately', async () => {
     const call = new VoiceCall(options());
     call.snap = { ...call.snap, phase: 'user' };
@@ -148,16 +178,19 @@ describe('VoiceCall speech review', () => {
     call.dispose();
   });
 
-  it('does not restart a delayed retry after the user begins a newer turn', async () => {
+  it('does not retry a failed tutor POST after the learner begins a newer turn', async () => {
     vi.useFakeTimers();
-    const fetchMock = vi.fn(async () => { throw new TypeError('network'); });
+    const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+      if (signal?.aborted) abort();
+      else signal?.addEventListener('abort', abort, { once: true });
+    }));
     vi.stubGlobal('fetch', fetchMock);
     const call = new VoiceCall(options());
     call.snap = { ...call.snap, phase: 'review', draft: 'Birinchi matn' };
 
     call.submitDraft();
-    await Promise.resolve();
-    await Promise.resolve();
     call.pressStart();
     await vi.advanceTimersByTimeAsync(700);
 
@@ -166,23 +199,177 @@ describe('VoiceCall speech review', () => {
     call.dispose();
   });
 
-  it('leaves thinking and preserves a retry after both request attempts time out', async () => {
+  it('sends at most one POST after a first-token stall and retries only after the learner asks', async () => {
     vi.useFakeTimers();
-    vi.stubGlobal('fetch', vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+    const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
       const signal = init?.signal;
       const abort = () => reject(new DOMException('Aborted', 'AbortError'));
       if (signal?.aborted) abort();
       else signal?.addEventListener('abort', abort, { once: true });
-    })));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
     const call = new VoiceCall(options());
     call.snap = { ...call.snap, phase: 'review', draft: 'Qayta tekshiriladigan matn' };
 
     call.submitDraft();
-    await vi.advanceTimersByTimeAsync(18_000);
+    await vi.advanceTimersByTimeAsync(9_000);
 
     expect(call.snap.phase).toBe('review');
     expect(call.snap.retryAvailable).toBe(true);
     expect(call.snap.draft).toBe('Qayta tekshiriladigan matn');
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    call.submitDraft();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    call.dispose();
+  });
+
+  it('does not automatically repeat an ambiguous network failure before the first token', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => { throw new TypeError('network'); });
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'review', draft: 'Tasdiqlangan matn' };
+
+    call.submitDraft();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(call.snap.phase).toBe('review');
+    expect(call.snap.retryAvailable).toBe(true);
+    expect(call.snap.draft).toBe('Tasdiqlangan matn');
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    call.dispose();
+  });
+});
+
+
+describe('Task 7 sequential text and cue handling', () => {
+  it('waits for complete tutor text before queuing speech and stores cue separately', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(encoder.encode('data: {"t":"[fr]Bonjour ![/fr] Salom."}\n\n'));
+        await held;
+        controller.enqueue(encoder.encode('data: {"cue":{"state":"speaking","face":"happy","action":"hop"}}\n\n'));
+        controller.enqueue(encoder.encode('data: {"done":true}\n\n'));
+        controller.close();
+      },
+    }), { headers: { 'content-type': 'text/event-stream' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'review', draft: 'Je voudrais un café.' };
+    const queue = (call as unknown as { tts: { push: (text: string) => void } }).tts;
+    const push = vi.spyOn(queue, 'push');
+
+    call.submitDraft();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(push).not.toHaveBeenCalled();
+
+    release();
+    await vi.waitFor(() => expect(push).toHaveBeenCalled());
+    expect(call.snap.cue).toEqual({ state: 'speaking', face: 'happy', action: 'hop' });
+    call.dispose();
+  });
+
+  it('does not persist or speak a partial tutor response when the completion event is missing', async () => {
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"t":"[fr]Bonjour ![/fr] Salom."}\n\n'));
+        controller.enqueue(encoder.encode('data: {"cue":{"state":"speaking","face":"happy","action":"hop"}}\n\n'));
+        controller.close();
+      },
+    }), { headers: { 'content-type': 'text/event-stream' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'review', draft: 'Je voudrais un café.' };
+    const queue = (call as unknown as { tts: { push: (text: string) => void } }).tts;
+    const push = vi.spyOn(queue, 'push');
+
+    call.submitDraft();
+    await vi.waitFor(() => expect(call.snap.phase).toBe('review'));
+
+    expect(call.snap.retryAvailable).toBe(true);
+    expect(call.snap.draft).toBe('Je voudrais un café.');
+    expect(call.snap.turns.map((turn) => turn.role)).toEqual(['user']);
+    expect(call.snap.live).toBe('');
+    expect(call.snap.cue).toEqual({ state: 'idle', face: 'neutral' });
+    expect(push).not.toHaveBeenCalled();
+    call.dispose();
+  });
+
+  it('preserves the confirmed draft and creates no assistant turn or TTS for blank completed replies', async () => {
+    const cases: unknown[][] = [
+      [{ done: true }],
+      [{ t: '' }, { done: true }],
+      [{ t: ' \n\t ' }, { done: true }],
+    ];
+    const fetchMock = vi.fn(async () => {
+      const events = cases.shift()!;
+      return new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (let i = 0; i < 3; i++) {
+      const call = new VoiceCall(options());
+      call.snap = { ...call.snap, phase: 'review', draft: 'Je voudrais un café.' };
+      const queue = (call as unknown as { tts: { push: (text: string) => void } }).tts;
+      const push = vi.spyOn(queue, 'push');
+
+      call.submitDraft();
+      await vi.waitFor(() => expect(call.snap.phase).toBe('review'));
+
+      expect(call.snap.draft).toBe('Je voudrais un café.');
+      expect(call.snap.retryAvailable).toBe(true);
+      expect(call.snap.turns.map((turn) => turn.role)).toEqual(['user']);
+      expect(call.snap.live).toBe('');
+      expect(call.snap.cue).toEqual({ state: 'idle', face: 'neutral' });
+      expect(push).not.toHaveBeenCalled();
+      call.dispose();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('discards an in-flight partial tutor response when the learner interrupts', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(encoder.encode('data: {"t":"[fr]Bonjour ![/fr]"}\n\n'));
+        controller.enqueue(encoder.encode('data: {"cue":{"state":"speaking","face":"happy","action":"hop"}}\n\n'));
+        await held;
+        controller.close();
+      },
+    }), { headers: { 'content-type': 'text/event-stream' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'review', draft: 'Je voudrais un café.' };
+    const queue = (call as unknown as { tts: { push: (text: string) => void } }).tts;
+    const push = vi.spyOn(queue, 'push');
+
+    call.submitDraft();
+    await vi.waitFor(() => {
+      expect(call.snap.live).toContain('Bonjour !');
+      expect(call.snap.cue).toEqual({ state: 'speaking', face: 'happy', action: 'hop' });
+    });
+    call.interrupt();
+
+    expect(call.snap.live).toBe('');
+    expect(call.snap.cue).toEqual({ state: 'idle', face: 'neutral' });
+    expect(call.snap.turns.map((turn) => turn.role)).toEqual(['user']);
+    expect(call.snap.turns.some((turn) => turn.text.includes('Bonjour'))).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     call.dispose();
   });
 });
