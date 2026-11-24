@@ -1,35 +1,26 @@
-// Voilà! serveri: dist/ ni tarqatadi va Vivi ustozni (matn + ovoz) Gemini / ElevenLabs bilan ulaydi.
-// Ishga tushirish: GEMINI_API_KEY=... [ELEVENLABS_API_KEY=... ELEVENLABS_VOICES="Vivi:id"] node server/main.ts
+// Voilà! serves dist/ and keeps AI routes disabled until provider and shared-quota readiness are verified.
+// AI credentials are server-only; no legacy provider fallback routes are registered.
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Readable } from 'node:stream';
-import { configureRotation, friendlyError, generateJson, isExhausted, markExhausted, parseTutorRequest, rotationStatus, streamTutorWithFallback, liveInstruction } from './tutor.ts';
 import { clearCookie, createSessionToken, currentAiSubject, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
 import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases, stats, submitReview } from './social.ts';
-import { parseTranslateRequest, translateBody } from './voice.ts';
-import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 import { loadAiRuntimeConfig } from './ai-config.ts';
-import { AI_CONSENT_POLICY_VERSION, AI_ROUTE_REQUIREMENTS, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, sanitizeTutorBodyForMemoryConsent, type AiGrant } from './ai-consent.ts';
-import { enabledAiRoutes } from './ai-routes.ts';
-import { isAiQuotaKillSwitchActive, isAiQuotaStorageReady } from './ai-quota.ts';
+import { AI_CONSENT_POLICY_VERSION, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, sanitizeTutorBodyForMemoryConsent } from './ai-consent.ts';
+import { createAiConsentRoutes, createAiRoutes, deriveTrustedExternalOrigin, effectiveAiRouteReady, enabledAiRoutes, strictRequestOriginAllowed } from './ai-routes.ts';
+import { abortAiUsage, isAiQuotaKillSwitchActive, isAiQuotaStorageReady, reserveAiUsage, settleAiUsage } from './ai-quota.ts';
+import { createAiRouteOperations } from './ai-route-operations.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
 const AI_RUNTIME_CONFIG = loadAiRuntimeConfig(env);
 const num = (k: string, d: number) => (Number(env[k]) > 0 ? Number(env[k]) : d);
 const PORT = num('PORT', 8787);
-// gemini-3.5-flash-lite: sinovda birinchi so'z ~0,55 s (3.1-flash-lite: ~3,4 s) — ovozli suhbat uchun eng tezi.
-const MODEL = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const TRUST_PROXY = env.TRUST_PROXY === '1';
-const VOICES = parseVoices(env.ELEVENLABS_VOICES);
-// eleven_v4: o'zbek tilini qo'llaydi (eleven_v3 — yo'q) va [laughs] kabi hissiyot teglarini tushunadi.
-const TTS_MODEL = env.ELEVENLABS_MODEL_ID || 'eleven_v4';
-const TTS_LANG = env.ELEVENLABS_LANGUAGE_CODE || '';
 const SESSION_MIN = num('VOICE_SESSION_MINUTES', 10);
 const COOLDOWN_MIN = num('VOICE_COOLDOWN_MINUTES', 20);
 
@@ -51,22 +42,13 @@ interface Bucket {
   perDay: number;
 }
 const BUCKETS: Record<string, Bucket> = {
-  tutor: { perMinute: num('TUTOR_PER_MINUTE', 12), perDay: num('TUTOR_PER_DAY', 300) },
-  stt: { perMinute: num('STT_PER_MINUTE', 20), perDay: num('STT_PER_DAY', 400) },
-  'tts-free-el': { perMinute: 1_000_000, perDay: 1_000_000 },
-  tts: { perMinute: num('TTS_PER_MINUTE', 60), perDay: num('TTS_PER_DAY', 1200) },
   feedback: { perMinute: 4, perDay: num('FEEDBACK_PER_DAY', 40) },
-  live: { perMinute: 4, perDay: num('LIVE_TOKENS_PER_DAY', 40) },
   reward: { perMinute: 6, perDay: 40 },
-  translate: { perMinute: 20, perDay: num('TRANSLATE_PER_DAY', 300) },
   auth: { perMinute: 10, perDay: 200 },
   billing: { perMinute: 10, perDay: 100 },
 };
-const TTS_CHARS_PER_DAY = num('TTS_CHARS_PER_DAY', 12000);
 const hits = new Map<string, number[]>();
 const daily = new Map<string, { day: string; n: number }>();
-let active = 0;
-const CONCURRENCY = num('TUTOR_CONCURRENCY', 12);
 
 function clientIp(req: IncomingMessage): string {
   // Proksi (Railway) haqiqiy IP'ni ro'yxat OXIRIGA qo'shadi; birinchi qiymatni mijoz o'zi yozishi mumkin (soxtalashtirish).
@@ -126,21 +108,13 @@ function originOk(req: IncomingMessage): boolean {
   }
 }
 
-/** Consent writes require an explicit allowed Origin; Fetch Metadata rejects cross-site writes too. */
-function consentMutationOriginOk(req: IncomingMessage): boolean {
-  return !!req.headers.origin && originOk(req) && req.headers['sec-fetch-site'] !== 'cross-site';
-}
-
-function aiConsentFailure(req: IncomingMessage): { status: number; body: unknown } | null {
-  const routeKey = `${req.method} ${(req.url ?? '/').split('?')[0]}`;
-  const requirement = AI_ROUTE_REQUIREMENTS[routeKey];
-  if (!requirement) return null;
-  const subject = currentAiSubject(req);
-  if (!subject) return { status: 401, body: { code: 'auth', message: 'AI ustoz uchun hisobga kiring.' } };
-  if (!hasAiConsent(subject, requirement.scope, requirement.provider))
-    return { status: 403, body: { code: 'ai_consent_required', scope: requirement.scope, message: 'Bu AI vazifasi uchun rozilik berilmagan yoki eskirgan.' } };
-  return null;
-}
+const AI_ALLOWED_ORIGINS = (env.ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean);
+const aiTrustedOrigin = (req: IncomingMessage) => deriveTrustedExternalOrigin(req, {
+  publicOrigin: env.PUBLIC_ORIGIN,
+  trustProxy: TRUST_PROXY,
+});
+const aiRequestOriginAllowed = (req: IncomingMessage) =>
+  strictRequestOriginAllowed(req, AI_ALLOWED_ORIGINS, aiTrustedOrigin(req));
 
 const SECURITY: Record<string, string> = {
   'x-content-type-options': 'nosniff',
@@ -163,7 +137,7 @@ const CSP_BASE = [
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-  "connect-src 'self' wss://generativelanguage.googleapis.com https://*.wikipedia.org https://*.wikimedia.org https://accounts.google.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://telegram.org https://oauth.telegram.org",
+  "connect-src 'self' https://*.wikipedia.org https://*.wikimedia.org https://accounts.google.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://telegram.org https://oauth.telegram.org",
   "frame-src 'self' https://accounts.google.com https://oauth.telegram.org https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://www.facebook.com https://appleid.apple.com",
   "worker-src 'self'",
   "manifest-src 'self'",
@@ -180,96 +154,6 @@ function cspFor(html: string): string {
   return csp;
 }
 
-/** Umumiy himoya: kalit, manba, tana, limit, parallel so'rovlar. */
-async function guarded<T>(
-  req: IncomingMessage,
-  res: ServerResponse,
-  opts: { bucket: string; maxBody?: number; needKey: string | undefined; keyName: string; parse: (b: unknown) => T | string },
-  run: (data: T, signal: AbortSignal) => Promise<void>,
-) {
-  if (!opts.needKey) return json(res, 503, { code: 'config', message: `Server sozlanmagan (${opts.keyName} yo'q).` });
-  if (!originOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
-  let body: unknown;
-  try {
-    body = await readBody(req, opts.maxBody);
-  } catch (e) {
-    return json(res, (e as { code?: string }).code === 'too_large' ? 413 : 400, { code: 'bad_request', message: "So'rov noto'g'ri yoki juda katta" });
-  }
-  const parsed = opts.parse(body);
-  if (typeof parsed === 'string') return json(res, 400, { code: 'bad_request', message: parsed });
-  const limited = take(opts.bucket, clientIp(req));
-  if (limited) return json(res, 429, { code: 'rate_limited', message: limited });
-  if (active >= CONCURRENCY) return json(res, 429, { code: 'busy', message: "Vivi hozir boshqa o'quvchilar bilan gaplashyapti. Bir necha soniyadan keyin urinib ko'ring." });
-  const consentFailure = aiConsentFailure(req);
-  if (consentFailure) return json(res, consentFailure.status, consentFailure.body);
-  active++;
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(Object.assign(new Error('timeout'), { name: 'TimeoutError' })), 30_000);
-  res.on('close', () => ac.abort());
-  try {
-    await run(parsed, ac.signal);
-  } catch (e) {
-    const f = friendlyError(e);
-    if (!res.headersSent) json(res, f.status, { code: f.code, message: f.message });
-    else if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ error: f.code, message: f.message })}\n\n`);
-      res.end();
-    }
-    if (f.code !== 'timeout') console.error(JSON.stringify({ type: 'api_error', bucket: opts.bucket, code: f.code, err: String((e as Error)?.message ?? e) }));
-  } finally {
-    clearTimeout(timer);
-    active--;
-  }
-}
-
-const FALLBACK_MODEL = env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite';
-// Nutqni aniqlash uchun aniqroq model (o'zbekcha+fransuzcha); xato bo'lsa asosiy modelga o'tadi.
-const STT_MODEL = env.GEMINI_STT_MODEL || 'gemini-3.5-flash';
-const STT_HEDGE_MS = num('GEMINI_STT_HEDGE_MS', 1500);
-
-/**
- * Nutqni aniqlash «poygasi»: aniq model (STT_MODEL) darhol, u STT_HEDGE_MS ichida javob bermasa
- * tez model (MODEL) ham parallel ishga tushadi — birinchi kelgan javob olinadi, qolgani bekor qilinadi.
- * Aniq model ba'zan 15–20 soniya kutib qoladi yoki 429 qaytaradi; bu foydalanuvchiga sezilmaydi.
- */
-async function raceStt(data: Parameters<typeof sttBody>[0], signal: AbortSignal): Promise<unknown> {
-  if (STT_MODEL === MODEL || isExhausted(STT_MODEL)) return generateJson(sttBody(data, MODEL), gem(signal));
-  const acs = [new AbortController(), new AbortController()];
-  const onAbort = () => acs.forEach((a) => a.abort());
-  signal.addEventListener('abort', onAbort, { once: true });
-  const run = (i: number, model: string) =>
-    generateJson(sttBody(data, model), { ...gem(AbortSignal.any([signal, acs[i].signal])), model, fallbackModel: undefined, hedgeMs: 0 }).then((v) => {
-      acs[1 - i].abort();
-      return v;
-    });
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const accurate = run(0, STT_MODEL);
-  const fast = new Promise<unknown>((resolve, reject) => {
-    let started = false;
-    const go = () => {
-      if (started) return;
-      started = true;
-      run(1, MODEL).then(resolve, reject);
-    };
-    timer = setTimeout(go, STT_HEDGE_MS);
-    // Aniq model xato bersa (429/5xx) — kutmasdan tez modelga o'tamiz.
-    accurate.catch(() => {
-      if (timer) clearTimeout(timer);
-      if (!signal.aborted) go();
-    });
-  });
-  try {
-    return await Promise.any([accurate, fast]);
-  } catch (e) {
-    throw (e as AggregateError).errors?.[1] ?? (e as AggregateError).errors?.[0] ?? e;
-  } finally {
-    if (timer) clearTimeout(timer);
-    signal.removeEventListener('abort', onAbort);
-  }
-}
-
-// Bepul limitlar tugaganda navbatdagi modellar (har birining kunlik limiti alohida).
-configureRotation((env.GEMINI_ROTATION ?? 'gemini-flash-lite-latest,gemini-3.1-flash-lite-preview,gemini-3-flash-preview,gemini-flash-latest').split(','));
 // ---------- Bepul foydalanuvchilar uchun kunlik limit ----------
 // Super obunachilarda cheklov yo'q. Hisob bo'lsa — foydalanuvchi bo'yicha, mehmonlarda — IP bo'yicha.
 const FREE_MSGS = num('FREE_MESSAGES_PER_DAY', 30);
@@ -306,71 +190,6 @@ function bonusClaimsLeft(req: IncomingMessage): number {
   return Math.max(0, REWARD_VIVI_PER_DAY - (r && r.day === tashkentDay() ? r.claims : 0));
 }
 
-// Bepul ovozli suhbat: kuniga bitta, FREE_VOICE_MIN daqiqa (birinchi ovozli so'rovdan boshlab hisoblanadi).
-const voiceUse = new Map<string, { day: string; start: number }>();
-function voiceLimited(req: IncomingMessage): boolean {
-  if (isPremium(req)) return false;
-  const k = quotaKey(req);
-  const day = tashkentDay();
-  const r = voiceUse.get(k);
-  if (!r || r.day !== day) {
-    voiceUse.set(k, { day, start: Date.now() });
-    return false;
-  }
-  // 1 daqiqa zaxira: tarmoq kechikishi va oxirgi javob uchun.
-  return Date.now() - r.start > (FREE_VOICE_MIN + bonusMin(req) + 1) * 60_000;
-}
-
-// Jonli rejim (Gemini Live) uchun alohida kunlik bepul vaqt.
-const FREE_LIVE_MIN = num('FREE_LIVE_MINUTES', 10);
-const liveUse = new Map<string, { day: string; start: number }>();
-function liveLimited(req: IncomingMessage): boolean {
-  if (isPremium(req)) return false;
-  const k = quotaKey(req);
-  const day = tashkentDay();
-  const r = liveUse.get(k);
-  if (!r || r.day !== day) {
-    liveUse.set(k, { day, start: Date.now() });
-    return false;
-  }
-  return Date.now() - r.start > (FREE_LIVE_MIN + bonusMin(req) + 1) * 60_000;
-}
-/** Bugun jonli rejimda qolgan bepul daqiqalar. */
-function liveMinutesLeft(req: IncomingMessage): number {
-  const r = liveUse.get(quotaKey(req));
-  if (!r || r.day !== tashkentDay()) return FREE_LIVE_MIN + bonusMin(req);
-  return Math.max(0, Math.floor(FREE_LIVE_MIN + bonusMin(req) - (Date.now() - r.start) / 60_000));
-}
-
-function useFree(req: IncomingMessage) {
-  if (isPremium(req)) return;
-  const k = quotaKey(req);
-  const day = tashkentDay();
-  const r = dailyUse.get(k);
-  dailyUse.set(k, { day, n: r && r.day === day ? r.n + 1 : 1 });
-  if (dailyUse.size > 50_000) for (const [key, v] of dailyUse) if (v.day !== day) dailyUse.delete(key);
-}
-
-const GEMINI_TTS_MODELS = (env.GEMINI_TTS_MODELS ?? 'gemini-3.8-flash-lite-tts,gemini-3.8-flash-tts').split(',').map((m) => m.trim()).filter(Boolean);
-const GEMINI_TTS_VOICE = env.GEMINI_TTS_VOICE || 'Leda';
-const LIVE_MODEL = env.GEMINI_LIVE_MODEL || 'gemini-3.8-live';
-// Jonli rejimda Vivining mimikasi: model gapirayotib shu funksiyani chaqiradi (javob kutmaydi).
-const LIVE_REACT_TOOL = {
-  name: 'vivi',
-  description: "Ekrandagi Vivi maskotining yuzi, imo-ishorasi va ovoz effektini o'zgartiradi. Har javobda gapirishdan oldin chaqir.",
-  behavior: 'NON_BLOCKING',
-  parameters: {
-    type: 'OBJECT',
-    properties: {
-      face: { type: 'STRING', enum: ['happy', 'angry', 'love', 'star', 'sad', 'shocked', 'confused'] },
-      gesture: { type: 'STRING', enum: ['none', 'flip', 'hop', 'giggle', 'squish', 'wave', 'point'] },
-      sfx: { type: 'STRING', enum: ['none', 'sneeze', 'spit', 'punch', 'slap', 'drama', 'laugh', 'fart', 'burp', 'kiss'] },
-    },
-    required: ['face'],
-  },
-};
-// Zaxira AI (ixtiyoriy): masalan Groq — FALLBACK_LLM_URL=https://api.groq.com/openai/v1
-const FALLBACK_LLM = env.FALLBACK_LLM_URL && env.FALLBACK_LLM_KEY && env.FALLBACK_LLM_MODEL ? { url: env.FALLBACK_LLM_URL, key: env.FALLBACK_LLM_KEY, model: env.FALLBACK_LLM_MODEL } : undefined;
 /** Yangi chek haqida admin Telegram'iga xabar (TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID bo'lsa). */
 async function notifyAdmin(text: string) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_TELEGRAM_CHAT_ID) return;
@@ -385,9 +204,6 @@ async function notifyAdmin(text: string) {
     /* xabar yetmasa ham to'lov qabul qilinadi */
   }
 }
-
-const HEDGE_MS = env.GEMINI_HEDGE_MS !== undefined ? Number(env.GEMINI_HEDGE_MS) : 1500;
-const gem = (signal: AbortSignal) => ({ apiKey: env.GEMINI_API_KEY!, model: MODEL, fallbackModel: FALLBACK_MODEL || undefined, hedgeMs: HEDGE_MS, base: env.GEMINI_API_BASE, signal });
 
 // ---------- Yo'nalishlar ----------
 const googleClientIds = () => (env.GOOGLE_CLIENT_ID ?? '').split(',').map((v) => v.trim()).filter(Boolean);
@@ -431,14 +247,11 @@ async function clickRoute(req: IncomingMessage, res: ServerResponse, action: 0 |
 }
 
 const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void> = Object.freeze({
-  // Ilovadan texnik hisobot (masalan Live suhbat tugaganda): faqat raqamlar va xato matni, loglarga yoziladi.
+  // Discard client telemetry rather than logging free-form values that could contain prompts or transcripts.
   'POST /api/client-log': async (req, res) => {
     const limited = take('feedback', clientIp(req));
     if (limited) return json(res, 429, { ok: false });
-    const b = (await readBody(req, 4096).catch(() => ({}))) as Record<string, unknown>;
-    const safe: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(b).slice(0, 24)) if (['string', 'number', 'boolean'].includes(typeof v) || Array.isArray(v)) safe[k.slice(0, 20)] = typeof v === 'string' ? v.slice(0, 160) : Array.isArray(v) ? v.slice(0, 5).map((x) => String(x).slice(0, 80)) : v;
-    console.log('client-log', JSON.stringify(safe));
+    await readBody(req, 4096).catch(() => null);
     json(res, 200, { ok: true });
   },
 
@@ -468,11 +281,6 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
     const day = tashkentDay();
     const r = adBonus.get(k);
     adBonus.set(k, { day, claims: (r && r.day === day ? r.claims : 0) + 1 });
-    // Bepul vaqti tugab dam olayotgan bo'lsa ham — qo'shimcha daqiqa hozirdan hisoblanadi.
-    const v = voiceUse.get(k);
-    if (v && v.day === day && Date.now() - v.start > (FREE_VOICE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000) voiceUse.set(k, { day, start: Date.now() - (FREE_VOICE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000 });
-    const l = liveUse.get(k);
-    if (l && l.day === day && Date.now() - l.start > (FREE_LIVE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000) liveUse.set(k, { day, start: Date.now() - (FREE_LIVE_MIN + bonusMin(req) - REWARD_VIVI_MIN) * 60_000 });
     json(res, 200, { ok: true, minutes: REWARD_VIVI_MIN, left: bonusClaimsLeft(req) });
   },
 
@@ -520,77 +328,36 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
 
   'GET /api/health': (_q, res) => json(res, 200, {
     ok: true,
-    ai: AI_RUNTIME_CONFIG.providerEnabled,
-    model: AI_RUNTIME_CONFIG.providerEnabled ? AI_RUNTIME_CONFIG.model : null,
-    exhausted: AI_RUNTIME_CONFIG.providerEnabled ? rotationStatus().map((r) => r.model) : [],
+    ai: aiRoutesEffectivelyReady(),
+    model: aiRoutesEffectivelyReady() ? AI_RUNTIME_CONFIG.model : null,
+    exhausted: [],
   }),
 
   'GET /api/voice/config': (req, res) => {
     const premium = isPremium(req);
+    const aiReady = aiRoutesEffectivelyReady();
     json(res, 200, {
-      ai: AI_RUNTIME_CONFIG.providerEnabled,
-      stt: AI_RUNTIME_CONFIG.providerEnabled,
-      // Server ovozi: Super — ElevenLabs (Dilzoda), bepul — Gemini ovozi. Ikkalasi ham bo'lmasa — brauzer.
-      tts: !AI_RUNTIME_CONFIG.providerEnabled ? 'browser' : premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : 'gemini',
-      ttsTier: !AI_RUNTIME_CONFIG.providerEnabled ? 'browser' : premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length ? 'elevenlabs' : 'gemini',
-      audioTags: !!(AI_RUNTIME_CONFIG.providerEnabled && premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY && VOICES.length && /v[34]/.test(TTS_MODEL)),
-      voices: AI_RUNTIME_CONFIG.providerEnabled && premium && env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY ? VOICES.map((v) => ({ id: v.id, name: v.name })) : [],
-      // Super obunachilari: uzunroq sessiya, dam olish talab qilinmaydi.
-      // Bepul: kuniga bitta qisqa sessiya (keyingisi — ertaga), Super: uzun sessiyalar, tanaffussiz.
+      ai: aiReady,
+      aiProvider: aiReady ? AI_RUNTIME_CONFIG.provider : null,
+      stt: false,
+      sttProvider: null,
+      tts: 'browser',
+      ttsTier: 'browser',
+      ttsProvider: 'browser',
+      audioTags: false,
+      voices: [],
       sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN) + bonusMin(req),
       rewardMinutes: REWARD_VIVI_MIN,
       rewardsLeft: premium ? 0 : bonusClaimsLeft(req),
       cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
       messagesLeft: freeLeft(req),
-      live: AI_RUNTIME_CONFIG.liveEnabled,
-      liveMinutes: AI_RUNTIME_CONFIG.liveEnabled ? premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : liveMinutesLeft(req) : 0,
+      live: false,
+      liveMinutes: 0,
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
   },
 
-  'GET /api/ai/consent': (req, res) => {
-    const subject = currentAiSubject(req);
-    if (!subject) return json(res, 401, { code: 'auth', message: 'Rozilik sozlamalari uchun hisobga kiring.' });
-    json(res, 200, { policyVersion: AI_CONSENT_POLICY_VERSION, consent: getAiConsent(subject) });
-  },
-
-  'PUT /api/ai/consent': async (req, res) => {
-    if (!consentMutationOriginOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
-    const subject = currentAiSubject(req);
-    if (!subject) return json(res, 401, { code: 'auth', message: 'Rozilik berish uchun hisobga kiring.' });
-    let body: unknown;
-    try {
-      body = await readBody(req, 8 * 1024);
-    } catch (e) {
-      return json(res, (e as { code?: string }).code === 'too_large' ? 413 : 400, { code: 'bad_request', message: 'So‘rov noto‘g‘ri.' });
-    }
-    const input = (body ?? {}) as { policyVersion?: unknown; grants?: unknown };
-    if (input.policyVersion !== AI_CONSENT_POLICY_VERSION) return json(res, 409, { code: 'policy_version', policyVersion: AI_CONSENT_POLICY_VERSION });
-    if (!Array.isArray(input.grants)) return json(res, 400, { code: 'bad_request', message: 'Rozilik doiralari noto‘g‘ri.' });
-    try {
-      const consent = grantAiConsent(subject, input.grants as AiGrant[], AI_CONSENT_POLICY_VERSION);
-      json(res, 200, { policyVersion: AI_CONSENT_POLICY_VERSION, consent });
-    } catch {
-      json(res, 400, { code: 'bad_request', message: 'Tanlangan scope yoki provayder ruxsat etilmagan.' });
-    }
-  },
-
-  'DELETE /api/ai/consent': (req, res) => {
-    if (!consentMutationOriginOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
-    const subject = currentAiSubject(req);
-    if (!subject) return json(res, 401, { code: 'auth', message: 'Rozilikni bekor qilish uchun hisobga kiring.' });
-    json(res, 200, { consent: revokeAiConsent(subject) });
-  },
-
-  'DELETE /api/ai/memory': (req, res) => {
-    if (!consentMutationOriginOk(req)) return json(res, 403, { code: 'origin', message: 'Ruxsat etilmagan manba' });
-    const subject = currentAiSubject(req);
-    if (!subject) return json(res, 401, { code: 'auth', message: 'Vivi xotirasini o‘chirish uchun hisobga kiring.' });
-    json(res, 200, { deleted: deleteAiMemory(subject) });
-  },
-
-  // ---------- Hisob ----------
   'GET /api/me': (req, res) => {
     const uid = currentUserId(req);
     const user = uid ? getUser(uid) : null;
@@ -793,176 +560,58 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
   'POST /api/billing/click/prepare': (req, res) => clickRoute(req, res, 0),
   'POST /api/billing/click/complete': (req, res) => clickRoute(req, res, 1),
 
-  'POST /api/tutor': (req, res) => {
-    if (freeLeft(req) === 0)
-      return json(res, 429, {
-        code: 'daily_limit',
-        message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Ertaga yana gaplashamiz — yoki Super bilan cheklovsiz davom eting 💜`,
-      });
-    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (body) => parseTutorRequest(sanitizeTutorBodyForMemoryConsent(currentAiSubject(req), body)) }, async (data, signal) => {
-      if (data.mode === 'voice' && voiceLimited(req))
-        return json(res, 429, {
-          code: 'voice_limit',
-          message: `Bugungi ${FREE_VOICE_MIN} daqiqalik bepul ovozli suhbat tugadi, asalim. Ertaga yana gaplashamiz — yoki Super bilan cheklovsiz 💜`,
-        });
-      useFree(req);
-      let started = false;
-      const send = (o: unknown) => res.write(`data: ${JSON.stringify(o)}\n\n`);
-      for await (const text of streamTutorWithFallback(data, gem(signal), FALLBACK_LLM)) {
-        if (!started) {
-          started = true;
-          res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' });
-        }
-        send({ t: text });
-      }
-      send({ done: true });
-      res.end();
-    });
-  },
-
-  'POST /api/tutor/feedback': (req, res) =>
-    guarded(req, res, { bucket: 'feedback', maxBody: 160 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseFeedbackRequest }, async (data, signal) => {
-      const raw = await generateJson(feedbackBody(data, MODEL), gem(signal));
-      json(res, 200, cleanFeedback(raw));
-    }),
-
-  // Gemini Live: brauzer kalitni ko'rmaydi — server bir martalik token va sessiya sozlamasini beradi.
-  'POST /api/live/token': (req, res) => {
-    // Bir martalik tokenlar soni ham cheklangan (IP bo'yicha).
-    const tooMany = originOk(req) ? take('live', clientIp(req)) : null;
-    if (tooMany) return json(res, 429, { code: 'rate', message: tooMany });
-    if (!env.GEMINI_API_KEY || env.LIVE_DISABLED === '1') return json(res, 503, { code: 'config', message: 'Jonli rejim hozircha yoqilmagan.' });
-    if (freeLeft(req) === 0) return json(res, 429, { code: 'daily_limit', message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Super bilan cheklovsiz davom eting 💜` });
-    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => {
-      const r = parseTutorRequest(sanitizeTutorBodyForMemoryConsent(currentAiSubject(req), { ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' }));
-      // Mimika funksiyasi faqat uni qo'llaydigan (yangi) ilovaga beriladi — eski versiya javob bermasa, Vivi jim qolardi.
-      return typeof r === 'string' ? r : { ...r, react: (b as { react?: unknown })?.react === true, manualVad: (b as { vad?: unknown })?.vad === 'manual' };
-    } }, async (data, signal) => {
-      const premium = isPremium(req);
-      const left = premium ? 0 : liveMinutesLeft(req);
-      if (!premium && (left < 1 || liveLimited(req)))
-        return json(res, 429, { code: 'voice_limit', message: `Bugungi ${FREE_LIVE_MIN} daqiqalik bepul jonli suhbat tugadi, asalim. Super bilan cheklovsiz gaplashing 💜` });
-      useFree(req);
-      const minutes = premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.max(1, left);
-      const r = await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY! },
-        body: JSON.stringify({ uses: 1, expireTime: new Date(Date.now() + (minutes + 1) * 60_000).toISOString(), newSessionExpireTime: new Date(Date.now() + 90_000).toISOString() }),
-        signal,
-      });
-      const t = (await r.json().catch(() => ({}))) as { name?: string };
-      if (!r.ok || !t.name) return json(res, 503, { code: 'upstream', message: "Jonli rejimga ulanib bo'lmadi — oddiy rejimda davom eting." });
-      json(res, 200, {
-        token: t.name,
-        minutes,
-        setup: {
-          model: `models/${LIVE_MODEL}`,
-          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: GEMINI_TTS_VOICE } } } },
-          systemInstruction: { parts: [{ text: liveInstruction(data) }] },
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          ...((data as { react?: boolean }).react ? { tools: [{ functionDeclarations: [LIVE_REACT_TOOL] }] } : {}),
-          // Gapni ilovaning o'zi aniqlaydi (activityStart/End) — ba'zi telefonlarda Gemini'ning avtomatik aniqlagichi nutqni sezmaydi.
-          ...((data as { manualVad?: boolean }).manualVad ? { realtimeInputConfig: { automaticActivityDetection: { disabled: true } } } : {}),
-        },
-      });
-    });
-  },
-
-  // Chatdagi yashil fransuzcha iboraga bosilganda — o'zbekcha tarjima.
-  'POST /api/translate': (req, res) =>
-    guarded(req, res, { bucket: 'translate', maxBody: 4 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseTranslateRequest }, async (data, signal) => {
-      const raw = (await generateJson(translateBody(data, MODEL), gem(signal))) as { uz?: unknown; say?: unknown };
-      json(res, 200, { uz: typeof raw?.uz === 'string' ? raw.uz.slice(0, 200) : '', say: typeof raw?.say === 'string' ? raw.say.slice(0, 100) : '' });
-    }),
-
-  'POST /api/tutor/memory': (req, res) =>
-    guarded(req, res, { bucket: 'feedback', maxBody: 120 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseMemoryRequest }, async (data, signal) => {
-      const raw = await generateJson(memoryBody(data, MODEL), gem(signal));
-      json(res, 200, { memory: cleanMemory(raw) });
-    }),
-
-  'POST /api/stt': (req, res) =>
-    guarded(req, res, { bucket: 'stt', maxBody: 3 * 1024 * 1024, needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseSttRequest }, async (data, signal) => {
-      const raw = (await raceStt(data, signal)) as { text?: unknown };
-      json(res, 200, { text: typeof raw?.text === 'string' ? raw.text.trim().slice(0, 1200) : '' });
-    }),
-
-  'POST /api/tts': (req, res) => {
-    // Super + ElevenLabs — Dilzoda ovozi; qolganlar — Gemini'ning bepul ovozi.
-    // Hammaga Gemini ovozi (tiniq va arzon). ElevenLabs faqat zaxira; TTS_PROVIDER=elevenlabs bo'lsa — Super uchun asosiy.
-    const premiumVoice = env.TTS_PROVIDER === 'elevenlabs' && isPremium(req) && !!(env.ELEVENLABS_API_KEY && VOICES.length);
-    return guarded(
-      req,
-      res,
-      {
-        bucket: 'tts',
-        maxBody: 8 * 1024,
-        needKey: premiumVoice ? env.ELEVENLABS_API_KEY : env.GEMINI_API_KEY,
-        keyName: premiumVoice ? 'ELEVENLABS_API_KEY' : 'GEMINI_API_KEY',
-        parse: (b) => {
-          const o = (b ?? {}) as Record<string, unknown>;
-          const text = ttsText(o.text);
-          if (!text) return "Matn bo'sh";
-          const voice = VOICES.find((v) => v.id === o.voice) ?? VOICES[0];
-          return { text, raw: typeof o.raw === 'string' ? o.raw.slice(0, 900) : text, voice: voice?.id ?? '' };
-        },
-      },
-      async (data, signal) => {
-        const limited = take('tts', `${clientIp(req)}`, data.text.length, TTS_CHARS_PER_DAY);
-        if (limited) return json(res, 429, { code: 'tts_quota', message: 'Bugungi ovoz limiti tugadi — Vivi matn bilan davom etadi.' });
-        if (!premiumVoice) {
-          try {
-            const { audio, mime } = await geminiTts(data.text, {
-              apiKey: env.GEMINI_API_KEY!,
-              models: GEMINI_TTS_MODELS,
-              voiceName: GEMINI_TTS_VOICE,
-              base: env.GEMINI_API_BASE,
-              signal,
-              skip: (m) => isExhausted(m),
-              onQuota: (m, perDay) => markExhausted(m, perDay),
-            });
-            res.writeHead(200, { 'content-type': mime, 'cache-control': 'no-store', 'content-length': audio.length });
-            return void res.end(audio);
-          } catch (e) {
-            if ((e as Error).name === 'AbortError') throw e;
-          }
-          // Gemini limiti tugadi — tiniq zaxira ovozlar: Azure (bepul 500k belgi/oy), so'ng ElevenLabs.
-          if (env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION) {
-            try {
-              const { audio, mime } = await azureTts(data.raw, { key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION, voice: env.AZURE_VOICE || 'uz-UZ-MadinaNeural', frVoice: env.AZURE_VOICE_FR || 'fr-FR-DeniseNeural', signal });
-              res.writeHead(200, { 'content-type': mime, 'cache-control': 'no-store', 'content-length': audio.length });
-              return void res.end(audio);
-            } catch (e) {
-              if ((e as Error).name === 'AbortError') throw e;
-            }
-          }
-          // ElevenLabs zaxirasi bepul foydalanuvchilar uchun kunlik umumiy chegarada (kreditlar tugab qolmasin).
-          const elCapHit = take('tts-free-el', 'all', data.text.length, num('FREE_ELEVENLABS_CHARS_PER_DAY', 20000)) !== null;
-          if (!(env.ELEVENLABS_API_KEY && VOICES.length) || env.FREE_TTS_ELEVENLABS === '0' || elCapHit)
-            // Hech bir server ovozi ishlamasa — mijoz qurilmaning o'z ovoziga o'tadi.
-            return json(res, 503, { code: 'tts_quota', message: 'Ovoz vaqtincha mavjud emas — Vivi qurilma ovozida davom etadi.' });
-        }
-        const upstream = await elevenLabsTts(data.text, data.voice || VOICES[0].id, { apiKey: env.ELEVENLABS_API_KEY!, model: TTS_MODEL, languageCode: TTS_LANG, signal, base: env.ELEVENLABS_API_BASE });
-        res.writeHead(200, { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' });
-        await new Promise<void>((ok, fail) => {
-          const s = Readable.fromWeb(upstream.body as never);
-          s.on('error', fail);
-          s.on('end', () => ok());
-          s.pipe(res);
-        });
-      },
-    );
-  },
 });
 
-// Task 3 supplies the atomic store; Task 5 must reserve/settle usage in every handler before this gate is enabled.
+// Production AI handlers remain unreachable: the Google transport, quota middleware, shared durable store,
+// and operation rollout are not verified. The route payload minimizers are installed for regression tests only.
 const AI_QUOTA_RESERVATION_MIDDLEWARE_READY = false;
-const routes = enabledAiRoutes(routeHandlers, {
-  providerEnabled: AI_RUNTIME_CONFIG.providerEnabled && isAiQuotaStorageReady() && !isAiQuotaKillSwitchActive(),
-  liveEnabled: AI_RUNTIME_CONFIG.liveEnabled,
+const AI_ROUTE_OPERATIONS_READY = false;
+function aiRoutesEffectivelyReady(): boolean {
+  return effectiveAiRouteReady({
+    providerReady: AI_RUNTIME_CONFIG.providerEnabled,
+    quotaMiddlewareReady: AI_QUOTA_RESERVATION_MIDDLEWARE_READY,
+    sharedDurableStoreReady: isAiQuotaStorageReady(),
+    operationsReady: AI_ROUTE_OPERATIONS_READY,
+    killSwitchActive: isAiQuotaKillSwitchActive(),
+  });
+}
+const aiRouteOperations = createAiRouteOperations();
+const aiRouteHandlers = createAiRoutes({
+  policyVersion: AI_CONSENT_POLICY_VERSION,
+  subject: currentAiSubject,
+  hasConsent: (subject, requirement) => hasAiConsent(subject, requirement.scope, requirement.provider),
+  configReady: () => AI_RUNTIME_CONFIG.providerEnabled,
+  killSwitchActive: isAiQuotaKillSwitchActive,
+  requestOriginAllowed: aiRequestOriginAllowed,
+  sanitizeBody: (route, subject, body) => route === 'POST /api/tutor'
+    ? sanitizeTutorBodyForMemoryConsent(subject, body)
+    : body,
+  deadlineMs: num('VIVI_AI_ROUTE_DEADLINE_MS', 20_000),
+  cancellationGraceMs: num('VIVI_AI_CANCEL_GRACE_MS', 1_000),
+  readBody,
+  respond: json,
+  quota: { reserveAiUsage, settleAiUsage, abortAiUsage },
+  requestId: () => randomBytes(18).toString('base64url'),
+  operations: aiRouteOperations,
+  providerCall: async () => { throw new Error('provider transport is not installed'); },
+});
+const consentRouteHandlers = createAiConsentRoutes({
+  policyVersion: AI_CONSENT_POLICY_VERSION,
+  subject: currentAiSubject,
+  getConsent: getAiConsent,
+  grantConsent: grantAiConsent,
+  revokeConsent: revokeAiConsent,
+  deleteMemory: deleteAiMemory,
+  readBody,
+  respond: json,
+  allowedOrigins: AI_ALLOWED_ORIGINS,
+  trustedOrigin: aiTrustedOrigin,
+});
+const gatedAiRoutes = enabledAiRoutes(aiRouteHandlers, {
+  providerEnabled: aiRoutesEffectivelyReady(),
   quotaReservationReady: AI_QUOTA_RESERVATION_MIDDLEWARE_READY,
 });
+const routes = Object.freeze({ ...routeHandlers, ...consentRouteHandlers, ...gatedAiRoutes });
 
 // ---------- Statik fayllar ----------
 async function serveStatic(req: IncomingMessage, res: ServerResponse) {
@@ -992,16 +641,11 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse) {
 const server = createServer((req, res) => {
   const path = (req.url ?? '/').split('?')[0];
   const routeKey = `${req.method} ${path}`;
+  // Preserve an explicit disabled response without registering Live in the production route table.
+  if (routeKey === 'POST /api/live/token') return void aiRouteHandlers['POST /api/live/token'](req, res);
   const route = routes[routeKey];
   if (route) {
-    const consentFailure = aiConsentFailure(req);
-    if (consentFailure) return json(res, consentFailure.status, consentFailure.body);
-    if (AI_ROUTE_REQUIREMENTS[routeKey] && !isAiQuotaStorageReady())
-      return json(res, 503, { code: 'ai_quota_unavailable', message: 'AI quota storage is unavailable or not verified.' });
-    if (AI_ROUTE_REQUIREMENTS[routeKey] && isAiQuotaKillSwitchActive())
-      return json(res, 503, { code: 'ai_kill_switch', message: 'AI provider requests are temporarily disabled.' });
-    return void Promise.resolve(route(req, res)).catch((e) => {
-      console.error(e);
+    return void Promise.resolve(route(req, res)).catch(() => {
       if (!res.headersSent) json(res, 500, { message: 'Server xatosi' });
     });
   }
@@ -1013,5 +657,5 @@ server.keepAliveTimeout = 65_000;
 
 startBot();
 server.listen(PORT, () =>
-  console.log(`Voilà! server: http://localhost:${PORT} · AI: ${AI_RUNTIME_CONFIG.providerEnabled ? AI_RUNTIME_CONFIG.model : "o'chiq"} · ovoz: ${AI_RUNTIME_CONFIG.providerEnabled && env.ELEVENLABS_API_KEY && VOICES.length ? `ElevenLabs (${TTS_MODEL})` : 'brauzer'}`),
+  console.log(`Voilà! server: http://localhost:${PORT} · AI: o'chiq · ovoz: brauzer`),
 );

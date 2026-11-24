@@ -1,4 +1,5 @@
-export const AI_PROVIDER_NAMES = ['google-agent-platform'] as const;
+/** Consent/disclosure identities are distinct even when one adapter implements both Google APIs. */
+export const AI_PROVIDER_NAMES = ['google-agent-platform', 'google-cloud-speech-to-text'] as const;
 export type AiProviderName = (typeof AI_PROVIDER_NAMES)[number];
 
 export type AiProviderErrorCode =
@@ -79,9 +80,10 @@ export interface SynthesisResult {
   readonly mimeType: 'audio/wav';
 }
 
-/** Server-side provider abstraction; intentionally contains only the named Google provider. */
+/** Server-side Google adapter with explicit consent/disclosure identities for its supported services. */
 export interface AiProvider {
   readonly name: AiProviderName;
+  readonly serviceNames: readonly AiProviderName[];
   streamTutor(prompt: AiPrompt, signal?: AbortSignal): AsyncIterable<string>;
   generateJson(prompt: AiPrompt, signal?: AbortSignal): Promise<unknown>;
   transcribe(request: TranscriptionRequest, signal?: AbortSignal): Promise<TranscriptionResult>;
@@ -101,8 +103,19 @@ export function createAiProviderRegistry(providers: readonly AiProvider[]): AiPr
   for (const provider of providers) {
     const name: unknown = provider?.name;
     if (typeof name !== 'string' || !supported.has(name)) throw new AiProviderError('unsupported_provider');
-    if (registered.has(name as AiProviderName)) throw new AiProviderError('duplicate_provider');
-    registered.set(name as AiProviderName, provider);
+    const serviceNames: unknown = provider?.serviceNames;
+    if (
+      !Array.isArray(serviceNames) ||
+      serviceNames.length === 0 ||
+      !serviceNames.includes(name) ||
+      serviceNames.some((serviceName) => typeof serviceName !== 'string' || !supported.has(serviceName))
+    ) {
+      throw new AiProviderError('unsupported_provider');
+    }
+    for (const serviceName of serviceNames as AiProviderName[]) {
+      if (registered.has(serviceName)) throw new AiProviderError('duplicate_provider');
+      registered.set(serviceName, provider);
+    }
   }
 
   return Object.freeze({

@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
+import { AI_ROUTE_REQUIREMENTS } from './ai-consent.ts';
 import { createAiProviderRegistry, type AiProvider } from './ai-provider.ts';
 
-const createFakeProvider = (name = 'google-agent-platform'): AiProvider => ({
+const createFakeProvider = (
+  name = 'google-agent-platform',
+  serviceNames: readonly string[] = [name],
+): AiProvider => ({
   name: name as AiProvider['name'],
+  serviceNames: serviceNames as AiProvider['serviceNames'],
   async *streamTutor() {
     yield 'bonjour';
   },
@@ -24,6 +29,22 @@ describe('AI provider registry', () => {
 
     expect(registry.get('google-agent-platform')).toBe(google);
     expect(registry.names()).toEqual(['google-agent-platform']);
+  });
+
+  it('resolves the STT consent identity only through the explicitly declared Google adapter', async () => {
+    const google = createFakeProvider('google-agent-platform', [
+      'google-agent-platform',
+      'google-cloud-speech-to-text',
+    ]);
+    const registry = createAiProviderRegistry([google]);
+    const sttIdentity = AI_ROUTE_REQUIREMENTS['POST /api/stt'].provider;
+    const transcribe = vi.spyOn(google, 'transcribe');
+
+    expect(registry.get(sttIdentity)).toBe(google);
+    await expect(registry.get(sttIdentity).transcribe({ audio: new Uint8Array([1]), languageCode: 'uz-UZ' }))
+      .resolves.toEqual({ segments: [] });
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(registry.names()).toEqual(['google-agent-platform', 'google-cloud-speech-to-text']);
   });
 
   it('fails closed for an unknown provider without calling any provider method', async () => {

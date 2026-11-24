@@ -219,6 +219,28 @@ async function readJson(response: Response, signal?: AbortSignal): Promise<unkno
   }
 }
 
+function awaitWithAbort<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return value;
+  if (signal.aborted) return Promise.reject(new AiProviderError('request_aborted'));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener('abort', onAbort);
+      reject(new AiProviderError('request_aborted'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    value.then(
+      (result) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(result);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
 function isValidRiffWave(audio: Buffer): boolean {
   if (
     audio.length < 12 ||
@@ -284,8 +306,9 @@ export function createGoogleCloudProvider(
 
     let token: string;
     try {
-      token = await dependencies.auth.getAccessToken(GOOGLE_CLOUD_PLATFORM_SCOPE);
+      token = await awaitWithAbort(dependencies.auth.getAccessToken(GOOGLE_CLOUD_PLATFORM_SCOPE), signal);
     } catch {
+      if (signal?.aborted) throw new AiProviderError('request_aborted');
       throw new AiProviderError('auth_unavailable');
     }
     if (typeof token !== 'string' || token.length === 0 || /[\r\n]/.test(token)) {
@@ -319,6 +342,8 @@ export function createGoogleCloudProvider(
 
   return Object.freeze({
     name: 'google-agent-platform' as const,
+    // Consent keeps Cloud Speech separate from Agent Platform although this adapter owns both transports.
+    serviceNames: ['google-agent-platform', 'google-cloud-speech-to-text'] as const,
 
     /**
      * The documented stream REST method returns a stream of GenerateContentResponse instances, but the

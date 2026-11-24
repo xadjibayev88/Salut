@@ -138,39 +138,28 @@ export class TtsQueue {
   private async fetchAudio(raw: string, signal: AbortSignal): Promise<Blob | null> {
     const text = speechText(raw, this.audioTags);
     if (!/[\p{L}\p{N}]/u.test(text)) return null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const res = await fetch('./api/tts', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text, raw: raw.slice(0, 900), voice: this.voiceId }),
-          signal,
-        });
-        if (res.status === 429 || res.status === 503) {
-          const b = (await res.json().catch(() => ({}))) as { code?: string };
-          if (b.code === 'tts_quota') {
-            this.onFail?.('tts_quota');
-            return null;
-          }
-          // Bir vaqtdagi so'rovlar limiti — qisqa kutib, qayta urinamiz.
-          if (attempt === 0) {
-            await new Promise((r) => setTimeout(r, 350));
-            continue;
-          }
-          this.onFail?.('tts_failed');
+    try {
+      const res = await fetch('./api/tts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text, raw: raw.slice(0, 900), voice: this.voiceId }),
+        signal,
+      });
+      if (res.status === 429 || res.status === 503) {
+        const b = (await res.json().catch(() => ({}))) as { code?: string };
+        if (b.code === 'tts_quota' || b.code === 'ai_quota_exhausted') {
+          this.onFail?.('tts_quota');
           return null;
         }
-        if (!res.ok) throw new Error(`tts ${res.status}`);
-        return await res.blob();
-      } catch (e) {
-        if ((e as Error).name === 'AbortError') return null;
-        if (attempt === 1) {
-          this.onFail?.('tts_failed');
-          return null;
-        }
+        this.onFail?.('tts_failed');
+        return null;
       }
+      if (!res.ok) throw new Error(`tts ${res.status}`);
+      return await res.blob();
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') this.onFail?.('tts_failed');
+      return null;
     }
-    return null;
   }
 
   private async next() {

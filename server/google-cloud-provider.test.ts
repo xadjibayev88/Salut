@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { AI_ROUTE_REQUIREMENTS } from './ai-consent.ts';
+import { createAiProviderRegistry } from './ai-provider.ts';
 import {
   GOOGLE_CLOUD_PLATFORM_SCOPE,
   createGoogleCloudProvider,
@@ -174,6 +176,20 @@ describe('Google Cloud provider fake transport', () => {
       config: { model: 'chirp_2', languageCodes: ['uz-UZ'], autoDecodingConfig: {} },
       content: Buffer.from([1, 2, 3]).toString('base64'),
     });
+  });
+
+  it('resolves the STT route consent identity to the Google adapter and dispatches to Cloud Speech', async () => {
+    const { provider, fetchImpl } = setup(jsonResponse({ results: [] }));
+    const registry = createAiProviderRegistry([provider]);
+    const sttIdentity = AI_ROUTE_REQUIREMENTS['POST /api/stt'].provider;
+
+    expect(provider.name).toBe('google-agent-platform');
+    expect(provider.serviceNames).toEqual(['google-agent-platform', 'google-cloud-speech-to-text']);
+    await expect(registry.get(sttIdentity).transcribe({ audio: new Uint8Array([1]), languageCode: 'uz-UZ' }))
+      .resolves.toEqual({ segments: [] });
+    expect(String(fetchImpl.mock.calls[0][0])).toBe(
+      'https://speech.googleapis.com/v2/projects/voila-ai-project/locations/asia-southeast1/recognizers/_:recognize',
+    );
   });
 
   it('fails closed on a documented-language/location mismatch before auth or fetch', async () => {

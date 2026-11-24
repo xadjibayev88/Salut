@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { displayText, extractCues, langSegments, SentenceSplitter, speechText, talkStats } from './markers';
 import { compareStats, type SessionRecord } from './prefs';
+import { TtsQueue } from './tts';
 
 describe('markers', () => {
   it('extracts shape and actions and hides them from text', () => {
@@ -44,6 +45,31 @@ describe('records', () => {
     const c = compareStats({ stats: { words: 30, sentences: 1, unique: 10 }, speakingMs: 5000 }, [rec('b', 20, 9000), rec('a', 25, 1000)]);
     expect(c.words).toEqual({ record: true, up: true });
     expect(c.speaking).toEqual({ record: false, up: false });
+  });
+});
+
+describe('TTS request retry policy', () => {
+  it.each([
+    ['retryable 503 response', async () => new Response('{}', { status: 503 }), 'tts_failed'],
+    ['quota 429 response', async () => new Response('{"code":"ai_quota_exhausted"}', { status: 429 }), 'tts_quota'],
+    ['ambiguous network failure', async () => { throw new TypeError('connection reset'); }, 'tts_failed'],
+  ])('does not retry after %s', async (_label, response, expectedFailure) => {
+    const fetchMock = vi.fn(response);
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const queue = new TtsQueue('elevenlabs');
+    const onFail = vi.fn();
+    queue.onFail = onFail;
+    try {
+      const fetchAudio = (queue as unknown as { fetchAudio(raw: string, signal: AbortSignal): Promise<Blob | null> }).fetchAudio.bind(queue);
+      const result = await fetchAudio('Bonjour', new AbortController().signal);
+      expect(result).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(onFail).toHaveBeenCalledWith(expectedFailure);
+    } finally {
+      queue.dispose();
+      vi.unstubAllGlobals();
+    }
   });
 });
 
