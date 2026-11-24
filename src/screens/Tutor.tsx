@@ -11,6 +11,7 @@ import { answerLang, extractCues } from '../engine/voice/markers';
 import { KruaLive } from '../components/KruaLive';
 import { InlineImage } from '../components/ImagePop';
 import { CloudStt, cloudSttSupported } from '../engine/voice/stt';
+import { MemoryReviewDialog, type MemoryReviewTurn } from '../components/MemoryReviewDialog';
 
 const CHAT_KEY = 'salut.chat.v1';
 type Chats = Partial<Record<Scenario, ChatMessage[]>>;
@@ -73,6 +74,8 @@ function TextChat() {
   const [streamText, setStreamText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [memoryReview, setMemoryReview] = useState<{ memory: string; turns: MemoryReviewTurn[]; name: string } | null>(null);
+  const [memoryUpdating, setMemoryUpdating] = useState(false);
   const [micLang, setMicLang] = useState<'uz-UZ' | 'fr-FR'>('uz-UZ');
   // AI aniqlash (Gemini): o'zbekcha, fransuzcha va aralash gapni tilni tanlamasdan to'g'ri yozadi.
   const cloudMic = useMemo(() => cloudSttSupported() && !!navigator.mediaDevices?.getUserMedia, []);
@@ -107,7 +110,7 @@ function TextChat() {
 
   async function send(textRaw: string) {
     const text = textRaw.trim();
-    if (!text || busy) return;
+    if (!text || busy || memoryReview) return;
     recRef.current?.stop();
     stopSpeaking();
     const userMsg: ChatMessage = { id: uid(), role: 'user', text, ts: Date.now() };
@@ -132,7 +135,7 @@ function TextChat() {
       const userCount = messages.filter((m) => m.role === 'user').length + 1;
       if (userCount % 6 === 0) {
         const recent = [...messages, userMsg, reply].filter((m) => !m.error).slice(-20).map((m) => ({ role: m.role, text: m.text }));
-        void updateMemory(state.memory ?? '', recent, state.name).then((mem) => mem && update((s) => ({ ...s, memory: mem })));
+        setMemoryReview({ memory: state.memory ?? '', turns: recent, name: state.name });
       }
       // Mikrofon tili avtomatik: Vivi fransuzcha javob kutsa — FR, aks holda UZ.
       const want = answerLang(reply.text);
@@ -156,6 +159,19 @@ function TextChat() {
       setBusy(false);
       setStreamText(null);
       abortRef.current = null;
+    }
+  }
+
+  async function confirmMemoryUpdate() {
+    const review = memoryReview;
+    if (!review || memoryUpdating) return;
+    setMemoryUpdating(true);
+    try {
+      const memory = await updateMemory(review.memory, review.turns, review.name, true);
+      if (memory) update((s) => ({ ...s, memory }));
+    } finally {
+      setMemoryReview(null);
+      setMemoryUpdating(false);
     }
   }
 
@@ -391,6 +407,14 @@ function TextChat() {
         </p>
       )}
       <p className="tutor-note">Vivi — sun'iy intellekt. Ba'zan xato qilishi mumkin; muhim narsalarni darslar bilan tekshiring.</p>
+      {memoryReview && (
+        <MemoryReviewDialog
+          turns={memoryReview.turns}
+          busy={memoryUpdating}
+          onConfirm={() => void confirmMemoryUpdate()}
+          onCancel={() => setMemoryReview(null)}
+        />
+      )}
     </div>
   );
 }

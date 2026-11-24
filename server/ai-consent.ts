@@ -179,3 +179,15 @@ export function hasAiConsent(
     && policyVersion === AI_CONSENT_POLICY_VERSION
     && consent.grants.some((grant) => grant.scope === scope && grant.provider === provider && grant.policyVersion === policyVersion && grant.revokedAt === null);
 }
+
+/** Remove client-supplied saved memory before any tutor prompt is parsed unless its own scope is active. */
+export function sanitizeTutorBodyForMemoryConsent(subject: AiSubject | null, body: unknown): unknown {
+  if (subject && hasAiConsent(subject, 'memory', 'google-agent-platform')) return body;
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return body;
+  const request = body as Record<string, unknown>;
+  const rawContext = request.context;
+  if (typeof rawContext !== 'object' || rawContext === null || Array.isArray(rawContext)) return body;
+  const context = { ...(rawContext as Record<string, unknown>) };
+  delete context.memory;
+  return { ...request, context };
+}

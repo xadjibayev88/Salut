@@ -993,6 +993,15 @@ html.lite .vivi * { animation: none !important; }
 .memory-card .memory-head .btn { padding: 4px 8px; font-size: 13px; }
 .memory-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
 .memory-card .small { font-size: 13px; margin: 0; }
+.memory-review-back { z-index: 130; }
+.memory-review { max-width: 640px; align-items: stretch; text-align: left; max-height: 92dvh; overflow: hidden; }
+.memory-review h3 { text-align: center; margin: 0; }
+.memory-review > .small { margin: 0; line-height: 1.45; }
+.memory-review-turns { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; padding: 4px 2px; overscroll-behavior: contain; }
+.memory-review-turn { padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.memory-review-turn p { margin: 4px 0 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memory-review .btn { width: 100%; }
+.memory-review .btn-text { margin-top: -8px; }
 /* Super taklifi */
 .super-banner { display: flex; align-items: center; gap: 10px; width: calc(100% - 8px); margin: 4px 4px 12px; padding: 12px 14px; border-radius: 18px; border: 1px solid rgba(253, 224, 71, .35); background: linear-gradient(135deg, rgba(245, 158, 11, .22), rgba(236, 72, 153, .2)); color: var(--text); text-align: left; cursor: pointer; }
 .super-banner .sb-badge { font-weight: 900; font-size: 11px; letter-spacing: 1px; padding: 5px 8px; border-radius: 8px; color: #1f1300; background: linear-gradient(135deg, #fde047, #f59e0b); }

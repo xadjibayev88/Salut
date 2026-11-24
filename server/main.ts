@@ -14,7 +14,8 @@ import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases,
 import { parseTranslateRequest, translateBody } from './voice.ts';
 import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, geminiTts, memoryBody, parseFeedbackRequest, parseMemoryRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
 import { loadAiRuntimeConfig } from './ai-config.ts';
-import { AI_CONSENT_POLICY_VERSION, AI_ROUTE_REQUIREMENTS, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, type AiGrant } from './ai-consent.ts';
+import { AI_CONSENT_POLICY_VERSION, AI_ROUTE_REQUIREMENTS, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, sanitizeTutorBodyForMemoryConsent, type AiGrant } from './ai-consent.ts';
+import { enabledAiRoutes } from './ai-routes.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -797,7 +798,7 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
         code: 'daily_limit',
         message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Ertaga yana gaplashamiz — yoki Super bilan cheklovsiz davom eting 💜`,
       });
-    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: parseTutorRequest }, async (data, signal) => {
+    return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (body) => parseTutorRequest(sanitizeTutorBodyForMemoryConsent(currentAiSubject(req), body)) }, async (data, signal) => {
       if (data.mode === 'voice' && voiceLimited(req))
         return json(res, 429, {
           code: 'voice_limit',
@@ -832,7 +833,7 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
     if (!env.GEMINI_API_KEY || env.LIVE_DISABLED === '1') return json(res, 503, { code: 'config', message: 'Jonli rejim hozircha yoqilmagan.' });
     if (freeLeft(req) === 0) return json(res, 429, { code: 'daily_limit', message: `Bugungi ${FREE_MSGS} ta bepul xabar tugadi, jonim. Super bilan cheklovsiz davom eting 💜` });
     return guarded(req, res, { bucket: 'tutor', needKey: env.GEMINI_API_KEY, keyName: 'GEMINI_API_KEY', parse: (b) => {
-      const r = parseTutorRequest({ ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' });
+      const r = parseTutorRequest(sanitizeTutorBodyForMemoryConsent(currentAiSubject(req), { ...(b as object), message: (b as { message?: string })?.message || 'jonli suhbat', mode: 'voice' }));
       // Mimika funksiyasi faqat uni qo'llaydigan (yangi) ilovaga beriladi — eski versiya javob bermasa, Vivi jim qolardi.
       return typeof r === 'string' ? r : { ...r, react: (b as { react?: unknown })?.react === true, manualVad: (b as { vad?: unknown })?.vad === 'manual' };
     } }, async (data, signal) => {
@@ -954,22 +955,7 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
   },
 });
 
-const AI_ROUTE_KEYS = Object.freeze([
-  'POST /api/tutor',
-  'POST /api/tutor/feedback',
-  'POST /api/live/token',
-  'POST /api/translate',
-  'POST /api/tutor/memory',
-  'POST /api/stt',
-  'POST /api/tts',
-] as const);
-const routes = Object.freeze(
-  Object.fromEntries(
-    Object.entries(routeHandlers).filter(([key]) =>
-      !AI_ROUTE_KEYS.includes(key as (typeof AI_ROUTE_KEYS)[number]) || AI_RUNTIME_CONFIG.providerEnabled,
-    ),
-  ),
-) as Readonly<Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void>>;
+const routes = enabledAiRoutes(routeHandlers, AI_RUNTIME_CONFIG);
 
 // ---------- Statik fayllar ----------
 async function serveStatic(req: IncomingMessage, res: ServerResponse) {

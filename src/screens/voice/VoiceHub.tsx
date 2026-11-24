@@ -14,6 +14,7 @@ import { RewardedButton } from '../../components/RewardedButton';
 import { LiveCallScreen } from './LiveCall';
 import { VoiceCallScreen } from './VoiceCall';
 import { FeedbackView } from './FeedbackView';
+import { MemoryReviewDialog, type MemoryReviewTurn } from '../../components/MemoryReviewDialog';
 
 const FALLBACK_CONFIG: VoiceConfig = { ai: false, stt: false, tts: 'browser', audioTags: false, voices: [], sessionMinutes: 10, cooldownMinutes: 20 };
 
@@ -46,6 +47,8 @@ export function VoiceHub() {
   const [prefs, setPrefsState] = useState<VoicePrefs>(loadPrefs);
   const [view, setView] = useState<View>({ kind: 'hub' });
   const [history, setHistory] = useState<SessionRecord[]>(loadHistory);
+  const [memoryReview, setMemoryReview] = useState<{ memory: string; turns: MemoryReviewTurn[]; name: string } | null>(null);
+  const [memoryUpdating, setMemoryUpdating] = useState(false);
   const [consentFor, setConsentFor] = useState<string | null>(null);
   // Super taklifi: bepul foydalanuvchilarga kuniga bir marta kirganda, va bepul suhbat tugaganda.
   const [offer, setOffer] = useState<null | 'enter' | 'limit'>(null);
@@ -126,17 +129,29 @@ export function VoiceHub() {
       if (!wasLive && config && config.cooldownMinutes > 0 && (c.snap.endReason === 'limit' || (talked && !config.premium))) setRestUntil(Date.now() + config.cooldownMinutes * 60_000);
       if (wasLive) setCfgRefresh((n) => n + 1);
       if (config && !config.premium && (c.snap.endReason === 'limit' || talked)) setTimeout(() => setOffer('limit'), 900);
-      // Xotirani yangilash (fon rejimida).
-      if (talked)
-        void updateMemory(state.memory ?? '', rec.turns.map((t) => ({ role: t.role, text: t.text })), state.name).then((m) => m && update((s) => ({ ...s, memory: m })));
+      // Xotiraga yuborishdan oldin foydalanuvchi aynan shu turnlarni ko'rib tasdiqlaydi.
+      if (talked) setMemoryReview({ memory: state.memory ?? '', turns: rec.turns.map((t) => ({ role: t.role, text: t.text })).slice(-40), name: state.name });
       if (c.snap.error || rec.turns.filter((t) => t.role === 'user').length === 0) {
         setView({ kind: 'hub' });
         return;
       }
       setView({ kind: 'feedback', record: rec });
     },
-    [config, state.memory, state.name, update],
+    [config, state.memory, state.name],
   );
+
+  async function confirmMemoryUpdate() {
+    const review = memoryReview;
+    if (!review || memoryUpdating) return;
+    setMemoryUpdating(true);
+    try {
+      const memory = await updateMemory(review.memory, review.turns, review.name, true);
+      if (memory) update((s) => ({ ...s, memory }));
+    } finally {
+      setMemoryReview(null);
+      setMemoryUpdating(false);
+    }
+  }
 
   const sample = (text: string) => {
     if (!config) return;
@@ -180,7 +195,7 @@ export function VoiceHub() {
   if (view.kind === 'feedback') {
     return (
       <>
-      {offer && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
+      {offer && !memoryReview && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
       <FeedbackView
         record={view.record}
         lang={prefs.lang}
@@ -198,6 +213,14 @@ export function VoiceHub() {
           setView({ kind: 'hub' });
         }}
       />
+      {memoryReview && (
+        <MemoryReviewDialog
+          turns={memoryReview.turns}
+          busy={memoryUpdating}
+          onConfirm={() => void confirmMemoryUpdate()}
+          onCancel={() => setMemoryReview(null)}
+        />
+      )}
       </>
     );
   }
@@ -232,7 +255,7 @@ export function VoiceHub() {
   // ---------- Bosh sahifa ----------
   return (
     <div className="voice-hub">
-      {offer && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
+      {offer && !memoryReview && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
       <div className="vh-head">
         <div>
           <h1 className="page-title">Vivi AI</h1>
@@ -627,6 +650,14 @@ export function VoiceHub() {
             </button>
           </div>
         </div>
+      )}
+      {memoryReview && (
+        <MemoryReviewDialog
+          turns={memoryReview.turns}
+          busy={memoryUpdating}
+          onConfirm={() => void confirmMemoryUpdate()}
+          onCancel={() => setMemoryReview(null)}
+        />
       )}
     </div>
   );

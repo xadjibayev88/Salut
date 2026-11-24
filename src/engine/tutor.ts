@@ -87,9 +87,14 @@ export function learnerContext(s: GameState) {
   return { name: s.name, lessons: lessons.map((l) => l.title), words, mistakes, streak: s.streak, memory: s.memory ?? '' };
 }
 
-/** Suhbatdan keyin Vivi xotirasini yangilaydi (o'quvchi haqidagi uzoq muddatli faktlar). */
-export async function updateMemory(memory: string, turns: { role: 'user' | 'tutor'; text: string }[], name: string): Promise<string | null> {
-  if (!turns.some((t) => t.role === 'user')) return null;
+/** Suhbatdan keyin faqat foydalanuvchi ko'rib, aniq tasdiqlagan turnlar bilan Vivi xotirasini yangilaydi. */
+export async function updateMemory(
+  memory: string,
+  turns: { role: 'user' | 'tutor'; text: string }[],
+  name: string,
+  confirmed: boolean,
+): Promise<string | null> {
+  if (confirmed !== true || !turns.some((t) => t.role === 'user')) return null;
   try {
     const res = await fetch('./api/tutor/memory', {
       method: 'POST',

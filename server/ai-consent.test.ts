@@ -9,6 +9,7 @@ import {
   grantAiConsent,
   hasAiConsent,
   revokeAiConsent,
+  sanitizeTutorBodyForMemoryConsent,
   type AiGrant,
   type AiSubject,
 } from './ai-consent.ts';
@@ -16,6 +17,7 @@ import {
 const first: AiSubject = { kind: 'account', userId: 'user-one' };
 const second: AiSubject = { kind: 'account', userId: 'user-two' };
 const tutorGrant: AiGrant = { scope: 'text_tutor', provider: 'google-agent-platform' };
+const memoryGrant: AiGrant = { scope: 'memory', provider: 'google-agent-platform' };
 
 function addUser(id: string) {
   db().prepare('INSERT INTO users (id, email, name, created_at) VALUES (?, ?, ?, ?)').run(id, `${id}@example.test`, id, 1);
@@ -62,6 +64,26 @@ describe('signed-account AI consent', () => {
     grantAiConsent(first, [tutorGrant], AI_CONSENT_POLICY_VERSION);
     expect(hasAiConsent(second, 'text_tutor', 'google-agent-platform')).toBe(false);
     expect(getAiConsent(second)).toBeNull();
+  });
+
+  it('removes saved memory from tutor requests unless the separate memory scope is active', () => {
+    const body = { message: 'Bonjour', context: { name: 'Learner', memory: 'Private saved fact', words: ['bonjour'] } };
+    grantAiConsent(first, [tutorGrant], AI_CONSENT_POLICY_VERSION, 1000);
+
+    const withoutMemoryConsent = sanitizeTutorBodyForMemoryConsent(first, body) as typeof body;
+    expect(withoutMemoryConsent.context).not.toHaveProperty('memory');
+    expect(withoutMemoryConsent.context.words).toEqual(['bonjour']);
+
+    grantAiConsent(first, [tutorGrant, memoryGrant], AI_CONSENT_POLICY_VERSION, 2000);
+    expect(sanitizeTutorBodyForMemoryConsent(first, body)).toEqual(body);
+  });
+
+  it('stops including saved memory immediately after the memory scope is revoked', () => {
+    const body = { context: { memory: 'Private saved fact' } };
+    grantAiConsent(first, [tutorGrant, memoryGrant], AI_CONSENT_POLICY_VERSION, 1000);
+    grantAiConsent(first, [tutorGrant], AI_CONSENT_POLICY_VERSION, 2000);
+    const sanitized = sanitizeTutorBodyForMemoryConsent(first, body) as typeof body;
+    expect(sanitized.context).not.toHaveProperty('memory');
   });
 
   it('rejects a consent version submitted by a stale client', () => {
