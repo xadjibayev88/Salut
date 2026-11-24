@@ -254,3 +254,38 @@ After the final clean independent re-review, the owner explicitly authorized a l
 - `GOOGLE_PROVIDER_TRANSPORT_READY`, `AI_QUOTA_RESERVATION_MIDDLEWARE_READY`, `AI_ROUTE_OPERATIONS_READY`, runtime `live`, and config `liveEnabled` remain false. The actual Google STT → tutor → TTS cascade is not active because provider/STT readiness is intentionally false; ordinary lessons/text practice remains the available safe fallback. No Google API/auth call, billing change, paid provider call, Live POC, or deployment occurred.
 - Updated Task 9 plan checkboxes and `task-9-report.md`. The complete-diff independent review returned **ACCEPT** with no actionable findings; artifact: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-9-review.md`. The plan-authorized scoped commit is now permitted; no code was changed after review acceptance.
 - Task 9 commit completed after review acceptance: `chore(live): keep Vertex Live disabled before POC`.
+
+
+## Task 10 implementation — verification complete, independent review pending
+- Extended route regressions across every non-Live provider route for stale, revoked, wrong-scope, wrong-provider, and cross-account grants; each denied case asserts no body read, quota reservation, or provider call. Added a telemetry source regression to preserve discard-without-log behavior.
+- Extended fake Google transport regressions for 429 and 500/502/503/504 (single attempt, no fallback/retry), sanitized errors, and cancellation during a pending fetch. Existing quota-exhaustion, route-timeout, no-second-call, STT review, TTS cascade, correction-limit, cue/reduced-motion, and Live-disabled tests remain in the full suite.
+- The new focused regressions passed on first run: `npm test -- server/ai-routes.test.ts server/google-cloud-provider.test.ts` PASS (2 files / 114 tests). No application behavior failure was reproduced, so no artificial failing test or implementation change was introduced.
+- Final sequential verification: `npm test` PASS (23 files / 444 tests), `npm run typecheck` PASS, `npm run build` PASS, and `git diff --check` PASS. Build warnings remain for the classic `ads-config.js`/`site-config.js` tags and the 531.5 kB main JS chunk. Built asset scan found no legacy Live endpoint, access-token URL, API-key/fallback marker, or browser `WebSocket(` transport.
+- Rollout remains **NOT CLEARED**: synthetic STT evidence is 38 metadata cases, not recorded audio; the 24-item Uzbek/mixed TTS list is text-only, no audio was generated, and owner human TTS listening remains outstanding. Production shared durable quota, ADC/project/model/location/voice/quota readiness and operation readiness are unverified. `GOOGLE_PROVIDER_TRANSPORT_READY`, `AI_QUOTA_RESERVATION_MIDDLEWARE_READY`, `AI_ROUTE_OPERATIONS_READY`, and Live remain false/disabled.
+- No API enablement/auth/request, billing change, positive quota, paid request, real audio, Live POC, staging, or deployment occurred. Local lessons/materials remain available; AI-backed provider operations remain unavailable.
+- Report: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-10-report.md`; brief: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-10-brief.md`. The complete Task 10 diff awaits independent review; nothing is staged or committed until ACCEPT.
+
+
+## Task 10 independent-review fix — fresh review pending
+- The first independent review raised one P2: the telemetry non-logging assertion was source-only and could miss alternate logger paths or route wiring changes.
+- Reproduced the missing test seam with a red run of `npm test -- server/client-log.test.ts` (handler module absent). Added `server/client-log.ts` as a behavior-preserving route factory and wired production `/api/client-log` through it; added behavioral tests for body consumption, generic responses on parse failure, rate-limit short-circuit, no console logging, and production wiring. Existing bucket, 4096-byte limit, and 200/429 responses are preserved. Focused verification: `npm test -- server/client-log.test.ts server/ai-routes.test.ts` PASS (2 files / 96 tests).
+- This supersedes the preceding Task 10 full-suite count: after the review fix, sequential `npm test` PASS (24 files / 447 tests), `npm run typecheck` PASS, `npm run build` PASS, and `git diff --check` PASS. Build retains the classic script-tag and 531.5 kB chunk warnings. Built asset scan still finds no Live endpoint/token, access-token, API-key/fallback, or browser WebSocket transport markers.
+- Provider/consent/quota/operation and Live flags remain false/disabled. Production shared-durable quota, ADC/project/model/location/voice/quota readiness and owner human TTS listening remain outstanding. The rollout gate is **NOT CLEARED**. No external provider/auth request, billing/API change, paid traffic, audio generation, Live POC, staging, or deployment occurred.
+- Updated report: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-10-report.md`. Fresh independent review of the complete updated diff is pending; no files have been staged or committed.
+
+
+## Task 10 shared route-registration review fix — fresh review pending
+
+The second independent review found that the initial behavioral tests invoked the extracted handler directly while production wiring was only checked by a source-text assertion. With the owner's approval, added `registerClientLogRoute`; production and tests now use this shared helper, and behavioral tests invoke the handler registered under `POST /api/client-log`. Tests assert the 4096-byte limit, rate-limit-before-read, generic success after parse failure, generic 429 without reading, consumption without returning private body content, and no console logs. `server/main.ts` still supplies its existing limiter, body reader, and JSON responder; endpoint behavior and all readiness flags are unchanged.
+
+After this fix, focused verification passed (`server/client-log.test.ts` and `server/ai-routes.test.ts`: 2 files / 96 tests; typecheck PASS). Full sequential verification passed: `npm test` 24 files / 447 tests; `npm run typecheck`; `npm run build`; `git diff --check`. Existing Vite non-module script-tag and >500 kB chunk warnings remain. The full built-asset scan and current status/readiness inspection are next; a fresh independent review of the complete final diff is pending. Rollout remains NOT CLEARED; no provider, external auth/API, paid request, audio, Live POC, staging, or deployment occurred. Nothing is staged or committed.
+
+
+## Task 10 final independent review — ACCEPT
+
+A fresh independent review of the complete final diff returned **ACCEPT** with no actionable findings. It confirmed the behavioral registered-route client-log tests, production use of the shared registration helper, unchanged endpoint semantics and false readiness flags, accurate rollout caveats, and no unrelated/secrets files. The scoped Task 10 commit is now permitted by the plan. Review artifact: `.superpowers/sdd/2026-11-24-voila-preppy-vertex-vivi/task-10-review.md`. The review does not authorize provider/API/auth requests, billing/quota changes, audio generation, Live POC, staging, or deployment.
+
+
+## Task 10 scoped commit — complete
+
+After the fresh independent **ACCEPT**, staged only the approved Task 10 test/source files, plan, and progress ledger; `git diff --cached --check` passed. Created the plan-specified commit `test(ai): add rollout gates for consent quota voice and vivi`. Rollout remains **NOT CLEARED**; all provider/route/Live readiness gates remain false/disabled, with no external provider/auth/API, paid, audio, Live POC, staging, or deployment actions.

@@ -180,21 +180,20 @@
 
 ## Task 10: Regression, rollout gate va yakuniy review
 
-**Fayllar:** barcha yuqoridagi testlar; kerak bo‘lsa yangi `server/ai-regression.test.ts`, `src/shared/vivi-cue.test.ts`; `README.md` yoki ichki hujjatda rollout checklisti, lekin privacy va runtime provider ro‘yxati nomuvofiq qolmasin.
+**Fayllar:** barcha yuqoridagi testlar; final regressiya uchun `server/ai-routes.test.ts`, `server/google-cloud-provider.test.ts`, hamda client-log discard’ini xatti-harakat bo‘yicha tekshirish uchun `server/client-log.ts`, `server/client-log.test.ts` va uning `server/main.ts` wiring’i; ichki rollout checklisti/report.
 
 **Yakuniy test matritsasi:** yetti route uchun consent mavjud/yo‘q/revoke/old version/boshqa account; atomic quota concurrency va restart; fake provider transport; no-fallback; PII-free logging; Uzbek/French/mixed STT review; TTS cascade; correction limit; cue validator; reduced-motion; Live disabled.
 
-- [ ] Failing end-to-end-ish testlarni fake provider bilan yozing; har bir gate yiqilganda provider call count `0` ekanini assert qiling.
-- [ ] Failing suite’ni ishga tushiring: `npm test`.
-- [ ] Test failuresni minimal implementatsiya bilan tuzating; haqiqiy Google credential, model request yoki pulli audio/text request qo‘shmang.
-- [ ] Kamida 30 STT case va kamida 20 Uzbek/mixed TTS case uchun fixture/review checklist bajarilganini tekshiring; insoniy TTS bahosi release gate bo‘lib qoladi.
-- [ ] Fake transportda timeout, 429, 5xx, auth failure va quota exhaustion’da duplicate parallel request yo‘qligini tekshiring; faqat bitta sequential retry mumkin.
-- [ ] Privacy/logging testida raw audio, transcript, prompt, memory summary, generated audio, token/API key logga tushmasin; provider va data field disclosure runtime bilan bir xil bo‘lsin.
-- [ ] `npm test`, `npm run typecheck`, `npm run build` ketma-ket PASS bo‘lsin.
-- [ ] Yakuniy rollout gate: consent/version/revoke PASS; shared atomic quota va kill switch PASS; Google-only boundary PASS; STT review PASS; TTS sifati owner tomonidan ko‘rilgan; Vivi whitelist/reduced-motion PASS; Live flag `false`.
-- [ ] Gate yiqilsa AI provider flag o‘chiq qoladi, text-only/local course ishlaydi va rollout to‘xtaydi.
-- [ ] Staging yoki production deploy, Google API enablement, billing, positive quota, haqiqiy model/audio request, external Live POC va har qanday paid traffic faqat alohida owner approvaldan keyin bajariladi.
-- [ ] Commitdan oldin `git status --short` va `git diff --cached` bilan tekshirib, faqat shu ish uchun ataylab o‘zgartirilgan fayllarni alohida stage qiling; boshqa yoki maxfiy sozlamalar fayllarini qo‘shmang. So‘ng `git diff --cached --check` bajaring va commit qiling: `git commit -m "test(ai): add rollout gates for consent quota voice and vivi"`.
+- [x] Route-wide stale/revoked/wrong-scope/provider/cross-account regressions and fake-provider failure/cancel cases were added; every denied route asserts zero provider calls. The telemetry behavior test first failed because the testable handler did not exist. After independent review found a source-only production-wiring assertion, production and tests were changed to use a shared `registerClientLogRoute` helper, and tests now invoke the handler registered under the production route key.
+- [x] Final full suite run after the shared registration-helper change: `npm test` PASS (24 files / 447 tests). `npm run typecheck` and `npm run build` PASS; no real Google credential, model request, or paid audio/text request was used.
+- [x] Fixture/review evidence checked: 38 synthetic STT metadata cases and a 24-item Uzbek/mixed TTS text checklist exist. These are not recorded-audio fixtures or human TTS quality results; owner listening remains a release gate.
+- [x] Fake transport/status, abort, auth, quota, and duplicate-attempt checks are covered; Task 4’s no-retry ruling remains because no provider idempotency contract is documented.
+- [x] Privacy/logging regressions invoke the handler registered by the shared production helper and cover generic responses, rate-limit-before-read, the 4096-byte limit, body discard and console spies; sanitized upstream errors, route payload minimization, and runtime/privacy disclosure alignment are also covered.
+- [x] `npm test`, `npm run typecheck`, `npm run build` ran sequentially and PASSed; `git diff --check` PASS.
+- [ ] **Rollout gate NOT CLEARED:** automated consent/version/revoke, mocked quota/kill-switch, Google-only fake boundary, STT review, cue whitelist/reduced-motion tests PASS; however production shared-durable quota, actual Google/ADC/model/location/quota readiness are unverified, human TTS quality review is outstanding, and Live remains disabled. Provider and route readiness flags must remain `false`.
+- [x] Failed release gates leave provider routes unavailable; local course/lesson materials remain available. AI provider operation and rollout remain stopped.
+- [x] No staging/production deploy, Google API enablement, billing change, positive quota, real model/audio request, external Live POC, or paid traffic was performed; each remains subject to separate owner approval.
+- [x] After independent ACCEPT, inspected `git status --short` and `git diff --cached`, staged only the Task 10 tests and approved plan/progress files, ran `git diff --cached --check`, and committed as `test(ai): add rollout gates for consent quota voice and vivi`. No secrets or unrelated files were staged.
 
 ## Rolloutdan oldingi qat’iy taqiqlar va tasdiq nuqtalari
 

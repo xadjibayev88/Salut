@@ -264,18 +264,38 @@ describe('Google Cloud provider fake transport', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('does not retry or fall back after an upstream failure and keeps its error free of secrets', async () => {
-    const { provider, getAccessToken, fetchImpl } = setup(new Response('do-not-leak-upstream-body', { status: 503 }));
-
+  it.each([429, 500, 502, 503, 504])('does not retry or fall back after HTTP %s and keeps its error free of secrets', async (status) => {
+    const { provider, getAccessToken, fetchImpl } = setup(new Response('do-not-leak-upstream-body', { status }));
     const error = await provider.generateJson(textPrompt).then(
       () => {
         throw new Error('Expected provider failure.');
       },
       (value: unknown) => value as Error & { code?: string },
     );
-    expect(error).toMatchObject({ code: 'upstream_error', status: 503 });
+    expect(error).toMatchObject({ code: 'upstream_error', status });
     expect(error.message).not.toContain('unit-test-access-token');
     expect(error.message).not.toContain('do-not-leak-upstream-body');
+    expect(getAccessToken).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates cancellation during a pending fake fetch without issuing another request', async () => {
+    const controller = new AbortController();
+    let signalFetchStarted!: () => void;
+    const fetchStarted = new Promise<void>((resolve) => { signalFetchStarted = resolve; });
+    const getAccessToken = vi.fn(async (_scope: string) => 'unit-test-access-token');
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      signalFetchStarted();
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+      });
+    });
+    const provider = createGoogleCloudProvider(validConfig(), { auth: { getAccessToken }, fetchImpl });
+
+    const pending = provider.generateJson(textPrompt, controller.signal);
+    await fetchStarted;
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ code: 'request_aborted' });
     expect(getAccessToken).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });

@@ -190,6 +190,41 @@ describe('AI route consent/quota middleware', () => {
     expect(harness.readBody).not.toHaveBeenCalled();
   });
 
+  it('rejects stale, revoked, wrong-scope/provider, and cross-account consent for every provider route', async () => {
+    for (const routeKey of ROUTES.filter((route) => route !== LIVE)) {
+      const requirement = AI_ROUTE_REQUIREMENTS[routeKey];
+      const wrongProvider = requirement.provider === 'google-agent-platform'
+        ? 'google-cloud-speech-to-text'
+        : 'google-agent-platform';
+      const wrongScope = requirement.scope === 'text_tutor' ? 'translation' : 'text_tutor';
+      const mismatches: Array<[string, Record<string, unknown>]> = [
+        ['stale policy', { policyVersion: '2025-01-01-v1' }],
+        ['revoked', { revoked: true }],
+        ['wrong provider', { provider: wrongProvider }],
+        ['wrong scope', { scope: wrongScope }],
+        ['another account', { owner: 'signed-user-2' }],
+      ];
+
+      for (const [label, change] of mismatches) {
+        const consentGrant = {
+          owner: SUBJECT.userId,
+          scope: requirement.scope,
+          provider: requirement.provider,
+          policyVersion: AI_CONSENT_POLICY_VERSION,
+          revoked: false,
+          ...change,
+        };
+        const harness = createRouteHarness({ consentGrant });
+        const { state } = await invoke(routeKey, harness);
+
+        expect(state.status, `${routeKey} / ${label}`).toBe(403);
+        expect(harness.readBody, `${routeKey} / ${label}`).not.toHaveBeenCalled();
+        expect(harness.reserve, `${routeKey} / ${label}`).not.toHaveBeenCalled();
+        expect(harness.providerCalls, `${routeKey} / ${label}`).toHaveLength(0);
+      }
+    }
+  });
+
   it.each(ROUTES)('blocks %s when provider configuration is unready', async (routeKey) => {
     const harness = createRouteHarness({ configReady: false });
     const { state } = await invoke(routeKey, harness);
@@ -640,6 +675,7 @@ describe('AI route consent/quota middleware', () => {
       expect(main).not.toContain(legacy);
     }
   });
+
 });
 
 describe('AI consent HTTP route protections', () => {

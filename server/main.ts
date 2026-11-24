@@ -14,6 +14,7 @@ import { AI_CONSENT_POLICY_VERSION, deleteAiMemory, getAiConsent, grantAiConsent
 import { createAiConsentRoutes, createAiRoutes, deriveTrustedExternalOrigin, effectiveAiRouteReady, enabledAiRoutes, strictRequestOriginAllowed } from './ai-routes.ts';
 import { abortAiUsage, isAiQuotaKillSwitchActive, isAiQuotaStorageReady, reserveAiUsage, settleAiUsage } from './ai-quota.ts';
 import { createAiRouteOperations } from './ai-route-operations.ts';
+import { registerClientLogRoute, type RouteTable } from './client-log.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -246,15 +247,7 @@ async function clickRoute(req: IncomingMessage, res: ServerResponse, action: 0 |
   }
 }
 
-const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) => Promise<void> | void> = Object.freeze({
-  // Discard client telemetry rather than logging free-form values that could contain prompts or transcripts.
-  'POST /api/client-log': async (req, res) => {
-    const limited = take('feedback', clientIp(req));
-    if (limited) return json(res, 429, { ok: false });
-    await readBody(req, 4096).catch(() => null);
-    json(res, 200, { ok: true });
-  },
-
+const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
   // Reklama boshlanishidan oldin: bir martalik chipta (kamida 15 s o'tgach, faqat shu foydalanuvchi ishlatadi).
   'POST /api/reward/start': (req, res) => {
     if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
@@ -559,8 +552,11 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
   },
   'POST /api/billing/click/prepare': (req, res) => clickRoute(req, res, 0),
   'POST /api/billing/click/complete': (req, res) => clickRoute(req, res, 1),
-
-});
+}, {
+  isRateLimited: (req) => Boolean(take('feedback', clientIp(req))),
+  readBody,
+  respond: json,
+}));
 
 // Production AI handlers remain unreachable: the Google transport, quota middleware, shared durable store,
 // and operation rollout are not verified. The route payload minimizers are installed for regression tests only.
