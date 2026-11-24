@@ -200,8 +200,9 @@ function TextChat() {
       setListening(false);
       setTranscribing(false);
     };
-    stt.onFinal = (t) => {
+    stt.onFinal = (result) => {
       done();
+      const t = result.text;
       if (t.trim()) {
         setInput(base + t.trim());
         inputRef.current?.focus();

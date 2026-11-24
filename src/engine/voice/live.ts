@@ -5,6 +5,7 @@ import type { CharacterId, ExplainLang, RoleId } from '../../data/characters';
 import type { InputMode, SessionRecord } from './prefs';
 import { talkStats, type Action, type Shape } from './markers';
 import { playSfx, type Sfx } from '../audio';
+import type { SttResult, SttReviewReason } from './stt-result';
 
 /** Vivining jonli mimikasi (model `vivi` funksiyasini chaqirganda). */
 export interface LiveCue {
@@ -39,6 +40,12 @@ export interface LiveSnap {
   userTalking: boolean;
 }
 
+export interface ReviewedLiveTranscript {
+  readonly sttResult: SttResult;
+  readonly confirmedText: string;
+  readonly userConfirmed: boolean;
+}
+
 export interface LiveOptions {
   character: CharacterId;
   role: RoleId;
@@ -47,9 +54,37 @@ export interface LiveOptions {
   lang: ExplainLang;
   inputMode: InputMode;
   context: () => unknown;
+  /** Must be created only after the learner explicitly reviews and confirms a Cloud STT result. */
+  reviewedTranscript?: ReviewedLiveTranscript;
 }
 
 const WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained';
+const LIVE_REVIEW_REASONS = new Set<SttReviewReason>([
+  'confidence_missing',
+  'alternatives_conflict',
+  'language_unknown',
+  'code_switch',
+  'language_mismatch',
+  'possible_noise',
+  'target_phrase_mismatch',
+  'empty_transcript',
+]);
+
+function isSttReviewReason(reason: unknown): reason is SttReviewReason {
+  return typeof reason === 'string' && LIVE_REVIEW_REASONS.has(reason as SttReviewReason);
+}
+
+function canEnterLiveFromReviewedTranscript(review: ReviewedLiveTranscript | undefined): boolean {
+  if (!review || review.userConfirmed !== true || typeof review.confirmedText !== 'string') return false;
+  const result = review.sttResult;
+  if (!result || result.detectedLanguage !== 'fr-FR' || typeof result.text !== 'string' || !Array.isArray(result.reviewReasons)) return false;
+  const reviewReasons: readonly unknown[] = result.reviewReasons;
+  if (reviewReasons.some((reason) => !isSttReviewReason(reason)) || reviewReasons.length !== 0) return false;
+  const detectedText = result.text.trim();
+  const confirmedText = review.confirmedText.trim();
+  if (!detectedText || !confirmedText || detectedText !== confirmedText) return false;
+  return true;
+}
 
 function toBase64(bytes: Uint8Array): string {
   let s = '';
@@ -110,6 +145,9 @@ export class LiveSession {
   }
 
   async start() {
+    if (!canEnterLiveFromReviewedTranscript(this.o.reviewedTranscript)) {
+      return this.fail('Jonli rejim uchun foydalanuvchi tasdiqlagan, tekshirilgan fransuzcha transkript kerak.');
+    }
     let tok: { token?: string; minutes?: number; setup?: unknown; code?: string; message?: string };
     try {
       const r = await fetch('./api/live/token', {

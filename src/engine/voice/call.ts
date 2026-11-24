@@ -5,7 +5,7 @@
 import { ROLES, type CharacterId, type ExplainLang, type RoleId } from '../../data/characters';
 import { answerLang, displayText, extractCues, SentenceSplitter, talkStats, type Action, type Shape } from './markers';
 import { Mic, type MicError } from './mic';
-import { browserSttSupported, cloudSttSupported, CloudStt, HybridStt, WebSpeechStt, type Stt, type SttError } from './stt';
+import { cloudSttSupported, CloudStt, type ReviewedStt, type SttError, type SttResult } from './stt';
 import { TtsQueue } from './tts';
 import { playSfx } from '../audio';
 import type { InputMode, SessionRecord, SttEngine } from './prefs';
@@ -85,6 +85,8 @@ export interface Snapshot {
   partial: string;
   /** STT natijasi: Vivi'ga yuborishdan oldin tahrirlash uchun. */
   draft: string;
+  /** Metadata-only result remains available through retry; it is never a submitted user turn. */
+  sttResult: SttResult | null;
   retryAvailable: boolean;
   live: string;
   turns: Turn[];
@@ -94,7 +96,7 @@ export interface Snapshot {
   elapsedMs: number;
   limitMs: number;
   tired: boolean;
-  sttKind: 'browser' | 'cloud' | null;
+  sttKind: 'cloud' | null;
   micLang: string;
   endReason: 'user' | 'limit' | 'error' | null;
 }
@@ -104,7 +106,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 export class VoiceCall {
   snap: Snapshot;
   private mic = new Mic();
-  private stt: Stt | null = null;
+  private stt: ReviewedStt | null = null;
   private tts: TtsQueue;
   private ac: AbortController | null = null;
   private turnStart = 0;
@@ -114,7 +116,6 @@ export class VoiceCall {
   private timer = 0;
   private turnTimer = 0;
   private noticeTimer = 0;
-  private silentFails = 0;
   private bargeIns: number[] = [];
   private finishing = false;
   private lastLevelEmit = 0;
@@ -145,6 +146,7 @@ export class VoiceCall {
       level: 0,
       partial: '',
       draft: '',
+      sttResult: null,
       retryAvailable: false,
       live: '',
       turns: [],
@@ -239,34 +241,21 @@ export class VoiceCall {
     this.tts.end();
   }
 
-  private setupStt(pref: SttEngine) {
-    const canBrowser = browserSttSupported();
+  private setupStt(_pref: SttEngine) {
     const canCloud = this.o.config.stt && cloudSttSupported();
-    // «Avto»: Gemini aniqlash (o'zbekcha+fransuzcha, aralash ham) — brauzer aniqlagichi o'zbek tilini yomon taniydi.
-    const kind = pref === 'browser' ? (canBrowser ? 'browser' : canCloud ? 'cloud' : null) : canCloud ? 'cloud' : canBrowser ? 'browser' : null;
     this.stt?.abort();
-    if (!kind) {
+    if (!canCloud) {
       this.stt = null;
+      this.set({ sttKind: null });
       return;
     }
-    let stt: Stt;
-    if (kind === 'browser' && canCloud && pref === 'auto') {
-      const h = new HybridStt(() => this.mic.stream);
-      // Nutq bo'lgan: mikrofon darajasi ko'tarilgan yoki tugma 1,2 s dan ko'p bosib turilgan.
-      h.spokeHint = () => this.turnPeak > 0.35 || Date.now() - this.turnStart > 1200;
-      h.onDegrade = () => this.set({ sttKind: 'cloud' });
-      stt = h;
-    } else if (kind === 'browser') stt = new WebSpeechStt();
-    else {
-      const c = new CloudStt(() => this.mic.stream);
-      c.context = () => [...this.snap.turns].reverse().find((t) => t.role === 'tutor')?.text ?? '';
-      stt = c;
-    }
+    const stt = new CloudStt(() => this.mic.stream);
+    stt.context = () => [...this.snap.turns].reverse().find((t) => t.role === 'tutor')?.text ?? '';
     stt.onPartial = (t) => this.set({ partial: t === '…' ? '' : t });
-    stt.onFinal = (t) => void this.onFinal(t);
+    stt.onFinal = (result) => void this.onFinal(result);
     stt.onError = (e, m) => this.onSttError(e, m);
     this.stt = stt;
-    this.set({ sttKind: kind });
+    this.set({ sttKind: 'cloud' });
   }
 
   private tick() {
@@ -330,18 +319,12 @@ export class VoiceCall {
     this.stt?.stop();
   }
 
-  private async onFinal(text: string) {
-    const t = text.trim();
+  private async onFinal(result: SttResult) {
+    const t = result.text.trim();
     if (this.snap.phase !== 'thinking' && this.snap.phase !== 'user') return;
-    if (!t) {
-      this.silentFails++;
-      this.notice(this.o.inputMode === 'handsfree' && this.silentFails >= 2 ? 'nudgeSilence' : 'turnFailed');
-      return this.toReady();
-    }
-    this.silentFails = 0;
     this.draftSubmitted = false;
     this.draftTurnId = null;
-    this.set({ phase: 'review', draft: t, retryAvailable: false, partial: '', live: '', level: 0 });
+    this.set({ phase: 'review', draft: t, sttResult: result, retryAvailable: false, partial: '', live: '', level: 0 });
   }
 
   /** STT matnini tahrirlash oynasida saqlash. */
@@ -374,24 +357,21 @@ export class VoiceCall {
     this.draftSubmitted = false;
     this.draftTurnId = null;
     this.notice(null);
-    this.set({ draft: '', retryAvailable: false, live: '', level: 0 });
+    this.set({ draft: '', sttResult: null, retryAvailable: false, live: '', level: 0 });
     this.toReady();
+  }
+
+  /** Cancel a pending transcript and close the call without creating a user turn. */
+  cancelDraft() {
+    if (this.snap.phase !== 'review') return;
+    this.draftSubmitted = false;
+    this.draftTurnId = null;
+    this.set({ draft: '', sttResult: null, retryAvailable: false });
+    this.end('user');
   }
 
   private onSttError(e: SttError, message?: string) {
     if (this.snap.phase === 'ended') return;
-    if (e !== 'too-long' && this.stt instanceof WebSpeechStt && this.o.config.stt && cloudSttSupported()) {
-      // Brauzer nutq xizmati ishlamasa (tarmoq, ruxsat, xizmat yo'q) — AI aniqlashga o'tamiz.
-      // Mikrofon allaqachon ochiq, shuning uchun o'quvchi gapirayotgan replika yo'qolmaydi:
-      // yozish shu zahoti AI dvigatelida davom etadi.
-      this.setupStt('cloud');
-      if (this.snap.phase === 'user') {
-        this.stt?.start(this.snap.micLang);
-        return;
-      }
-      this.notice('sttFailed', "Brauzer nutqni aniqlay olmadi — AI aniqlashga o'tdik. Qayta gapiring.");
-      return this.toReady();
-    }
     if (e === 'denied') return this.set({ error: 'denied', phase: 'ended', endReason: 'error' });
     if (e === 'too-long') return this.notice('tooLong');
     this.notice(e === 'quota' ? 'rateLimited' : 'sttFailed', message ?? '');
@@ -482,7 +462,7 @@ export class VoiceCall {
       this.autoMic(acc);
       this.draftSubmitted = false;
       this.draftTurnId = null;
-      this.set({ draft: '', retryAvailable: false });
+      this.set({ draft: '', sttResult: null, retryAvailable: false });
       this.responseWaitingForDrain = true;
       this.tts.end();
     } catch (e) {

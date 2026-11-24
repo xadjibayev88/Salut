@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHARACTERS } from '../../data/characters';
 import { VoiceCall as Controller, type CallOptions, type Snapshot } from '../../engine/voice/call';
 import { displayText } from '../../engine/voice/markers';
+import type { SttReviewReason } from '../../engine/voice/stt';
 import { KruaLive, type LiveState } from '../../components/KruaLive';
 import { ImagePop } from '../../components/ImagePop';
 import { RevengeHud, RevengeOverlay, useRevenge } from '../../components/RevengeGame';
@@ -20,7 +21,7 @@ const MIC_ERRORS: Record<string, string> = {
   busy: "Mikrofon boshqa ilova tomonidan band. Qo'ng'iroq yoki yozuvni yoping va qayta urinib ko'ring.",
   unsupported: "Bu brauzer mikrofon yoki audio bilan ishlashni qo'llamaydi. Chrome, Edge yoki Safari'ning yangi versiyasini sinab ko'ring.",
   ai: 'AI ustoz serveri sozlanmagan — administratorga yozing. Darslar ishlayveradi.',
-  stt: "Bu brauzerda nutqni aniqlab bo'lmaydi. Chrome yoki Edge'da oching.",
+  stt: 'Cloud nutqni aniqlash hozir mavjud emas. Matnli ustozdan foydalaning yoki keyinroq qayta urinib ko‘ring.',
 };
 
 const NOTICES: Record<string, string> = {
@@ -34,6 +35,17 @@ const NOTICES: Record<string, string> = {
   sttFailed: "Nutqni aniqlab bo'lmadi — qayta urinib ko'ring.",
   upstream: "Vivi vaqtincha javob bera olmadi. Birozdan so'ng qayta urinib ko'ring.",
   rateLimited: "Juda ko'p so'rov — bir daqiqadan keyin urinib ko'ring.",
+};
+
+const STT_REVIEW_TEXT: Record<SttReviewReason, string> = {
+  confidence_missing: 'Nutq aniqligi haqida ishonch ko‘rsatkichi kelmadi — matnni o‘zingiz tekshiring.',
+  alternatives_conflict: 'Nutqni aniqlashda boshqa matn varianti ham bor — matnni solishtiring.',
+  language_unknown: 'Gapirilgan til aniq aniqlanmadi.',
+  code_switch: 'Til metadata’sida bir nechta kod ko‘rsatildi — aralash nutq bo‘lishi mumkin.',
+  language_mismatch: 'Aniqlangan til tanlangan nutq tilidan farq qiladi.',
+  possible_noise: 'Ovozda shovqin bo‘lishi mumkin — transcriptni tekshiring.',
+  target_phrase_mismatch: 'Matn kutilgan iboradan farq qilishi mumkin; to‘g‘ri bo‘lsa, o‘zgartirmang.',
+  empty_transcript: 'Matn aniqlanmadi — qayta gapirib ko‘ring.',
 };
 
 export function VoiceCallScreen({
@@ -144,7 +156,7 @@ export function VoiceCallScreen({
             ? 'Gapirish uchun Vivini yoki Space\'ni bosib turing'
             : 'Shunchaki gapiring — Vivi tinglayapti'
           : s.phase === 'review'
-            ? 'Matnni tahrirlang yoki qayta yuboring'
+            ? 'Matnni tekshiring, tasdiqlang yoki qayta gapiring'
           : s.phase === 'user' && ptt
           ? "Gapirib bo'lgach, qo'yib yuboring"
           : '';
@@ -238,12 +250,20 @@ export function VoiceCallScreen({
           <div className="call-review" role="group" aria-label="Yuborishdan oldin matnni tekshirish">
             <label htmlFor="voice-draft">Siz aytgan matn</label>
             <textarea id="voice-draft" value={s.draft} onChange={(e) => ctrl.setDraft(e.target.value)} rows={4} autoFocus />
+            {!!s.sttResult?.reviewReasons.length && (
+              <ul className="call-review-reasons" aria-label="Matnni tekshirish sabablari">
+                {s.sttResult.reviewReasons.map((reason) => <li key={reason}>{STT_REVIEW_TEXT[reason]}</li>)}
+              </ul>
+            )}
             <div className="call-review-actions">
               <button type="button" className="btn btn-primary" disabled={!s.draft.trim()} onClick={() => ctrl.submitDraft()}>
-                {s.retryAvailable ? 'Qayta yuborish' : 'Yuborish'}
+                {s.retryAvailable ? 'Qayta yuborish' : 'Tasdiqlash va yuborish'}
               </button>
               <button type="button" className="btn btn-text" onClick={() => ctrl.discardDraft()}>
                 Qayta gapirish
+              </button>
+              <button type="button" className="btn btn-text" onClick={() => ctrl.cancelDraft()}>
+                Bekor qilish
               </button>
             </div>
           </div>
@@ -299,16 +319,6 @@ export function VoiceCallScreen({
           </button>
         </div>
         <div className="call-actions">
-          {s.sttKind === 'browser' && (
-            <button
-              type="button"
-              className="mic-lang-pill"
-              onClick={() => ctrl.setMicLang(s.micLang.startsWith('fr') ? options.micLang.startsWith('fr') ? 'uz-UZ' : options.micLang : 'fr-FR')}
-              title="Qaysi tilda gapiryapsiz"
-            >
-              🎤 {s.micLang.startsWith('fr') ? 'Français' : s.micLang.startsWith('ru') ? 'Русский' : s.micLang.startsWith('en') ? 'English' : "O'zbekcha"}
-            </button>
-          )}
           {voices.length > 1 && (
             <button
               type="button"

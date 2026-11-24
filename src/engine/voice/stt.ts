@@ -1,6 +1,10 @@
 // Nutqni aniqlash (STT): ikki dvigatel, bitta interfeys.
 //  1) WebSpeechStt — brauzerning o'zi (Chrome/Edge/Safari): eng tez, oraliq subtitr bilan.
 //  2) CloudStt — MediaRecorder + /api/stt (Gemini audio): har qanday brauzer, aralash tillar.
+import { reviewSttResult, type SttResult } from './stt-result';
+
+export type { DetectedSpeechLanguage, SttResult, SttReviewMetadata, SttReviewReason } from './stt-result';
+export { reviewSttResult } from './stt-result';
 
 export type SttError = 'no-speech' | 'network' | 'denied' | 'quota' | 'failed' | 'too-long';
 
@@ -13,6 +17,16 @@ export interface Stt {
   abort(): void;
   onPartial?: (text: string) => void;
   onFinal?: (text: string) => void;
+  onError?: (e: SttError, message?: string) => void;
+}
+
+export interface ReviewedStt {
+  readonly kind: 'cloud';
+  start(lang: string): void;
+  stop(): void;
+  abort(): void;
+  onPartial?: (text: string) => void;
+  onFinal?: (result: SttResult) => void;
   onError?: (e: SttError, message?: string) => void;
 }
 
@@ -138,7 +152,7 @@ async function blobToBase64(b: Blob): Promise<string> {
   return btoa(s);
 }
 
-export class CloudStt implements Stt {
+export class CloudStt implements ReviewedStt {
   readonly kind = 'cloud' as const;
   private rec: MediaRecorder | null = null;
   private chunks: Blob[] = [];
@@ -147,7 +161,7 @@ export class CloudStt implements Stt {
   private ac: AbortController | null = null;
   private limitTimer = 0;
   onPartial?: (text: string) => void;
-  onFinal?: (text: string) => void;
+  onFinal?: (result: SttResult) => void;
   onError?: (e: SttError, message?: string) => void;
   /** Ustozning oxirgi gapi — server aniqroq tanishi uchun kontekst. */
   context: () => string = () => '';
@@ -178,7 +192,10 @@ export class CloudStt implements Stt {
     clearTimeout(this.limitTimer);
     if (this.cancelled) return;
     const blob = new Blob(this.chunks, { type: mime });
-    if (Date.now() - this.startedAt < 350 || blob.size < 1200) return this.onFinal?.('');
+    if (Date.now() - this.startedAt < 350 || blob.size < 1200) {
+      const languageCodes = lang.startsWith('fr') ? ['fr-FR'] : lang.startsWith('uz') ? ['uz-UZ'] : [];
+      return this.onFinal?.(reviewSttResult({ text: '', languageCodes }));
+    }
     this.ac = new AbortController();
     try {
       const res = await fetch('./api/stt', {
@@ -187,10 +204,30 @@ export class CloudStt implements Stt {
         body: JSON.stringify({ audio: await blobToBase64(blob), mime: mime.split(';')[0], hint: lang === 'auto' ? 'auto' : lang.startsWith('fr') ? 'fr' : lang.startsWith('uz') ? 'uz' : 'auto', context: this.context().slice(-600) }),
         signal: this.ac.signal,
       });
-      const body = (await res.json().catch(() => ({}))) as { text?: string; code?: string; message?: string };
+      const body = (await res.json().catch(() => ({}))) as { text?: unknown; detectedLanguage?: unknown; confidence?: unknown; alternatives?: unknown; reviewReasons?: unknown; code?: string; message?: string };
       if (this.cancelled) return;
       if (!res.ok) return this.onError?.(res.status === 429 ? 'quota' : 'failed', body.message);
-      this.onFinal?.(body.text ?? '');
+      const detectedLanguage = body.detectedLanguage === 'uz-UZ' || body.detectedLanguage === 'fr-FR' || body.detectedLanguage === 'unknown'
+        ? body.detectedLanguage
+        : null;
+      const alternatives = Array.isArray(body.alternatives) && body.alternatives.every((value) => typeof value === 'string')
+        ? body.alternatives as string[]
+        : null;
+      const allowedReasons = new Set(['confidence_missing', 'alternatives_conflict', 'language_unknown', 'code_switch', 'language_mismatch', 'possible_noise', 'target_phrase_mismatch', 'empty_transcript']);
+      const reviewReasons = Array.isArray(body.reviewReasons) && body.reviewReasons.every((value) => typeof value === 'string' && allowedReasons.has(value))
+        ? body.reviewReasons as SttResult['reviewReasons']
+        : null;
+      const confidenceValid = body.confidence === undefined || (typeof body.confidence === 'number' && Number.isFinite(body.confidence) && body.confidence >= 0 && body.confidence <= 1);
+      if (typeof body.text !== 'string' || !detectedLanguage || !alternatives || !reviewReasons || !confidenceValid) {
+        return this.onError?.('failed', 'STT natijasi notoʻgʻri formatda');
+      }
+      this.onFinal?.({
+        text: body.text,
+        detectedLanguage,
+        ...(typeof body.confidence === 'number' ? { confidence: body.confidence } : {}),
+        alternatives,
+        reviewReasons,
+      });
     } catch (e) {
       if (!this.cancelled && (e as Error).name !== 'AbortError') this.onError?.('network');
     }
@@ -247,7 +284,7 @@ export class HybridStt implements Stt {
     this.cloud.onFinal = (t) => {
       if (this.settled) return;
       this.settled = true;
-      this.onFinal?.(t);
+      this.onFinal?.(t.text);
     };
     this.cloud.onError = (e, m) => {
       if (this.settled) return;

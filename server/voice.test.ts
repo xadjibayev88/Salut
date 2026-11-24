@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseTutorRequest, systemInstruction, type TutorRequest } from './tutor.ts';
 import { azureSsml, cleanFeedback, cleanMemory, feedbackBody, memoryBody, parseMemoryRequest, geminiTts, parseFeedbackRequest, parseSttRequest, parseVoices, sttBody, ttsText } from './voice.ts';
+import { createAiRouteOperations } from './ai-route-operations.ts';
 
 const base = { scenario: 'free', message: 'Salom', history: [], context: {} };
 
@@ -68,6 +69,57 @@ describe('STT kontekst', () => {
     const req = r as Exclude<typeof r, string>;
     expect(req.context).toBe("Qani: Comment tu t'appelles ?");
     expect(JSON.stringify(sttBody(req, 'gemini-3.5-flash'))).toContain("Comment tu t'appelles");
+  });
+});
+
+describe('STT result review boundary', () => {
+  it('preserves detected language, confidence, alternatives, and review reasons without applying a numeric cutoff', async () => {
+    const operation = createAiRouteOperations()['POST /api/stt'];
+    const prepared = operation.prepare({ audio: Buffer.from('synthetic metadata only').toString('base64'), mime: 'audio/webm', hint: 'uz' });
+    expect(typeof prepared).not.toBe('string');
+    if (typeof prepared === 'string') throw new Error(prepared);
+
+    const result = await operation.run(prepared.input, {
+      providerInput: operation.minimize(prepared.input),
+      signal: new AbortController().signal,
+      providerCall: async () => ({
+        segments: [{ languageCode: 'fr-FR', alternatives: [
+          { transcript: 'Je veux un café', confidence: 0.12 },
+          { transcript: 'Je veux un gâteau', confidence: 0.08 },
+        ] }],
+      }),
+    });
+
+    expect(result.body).toEqual({
+      text: 'Je veux un café',
+      detectedLanguage: 'fr-FR',
+      confidence: 0.12,
+      alternatives: ['Je veux un gâteau'],
+      reviewReasons: ['alternatives_conflict', 'language_mismatch'],
+    });
+  });
+
+  it('marks mixed Uzbek–French segments for review and does not label them as one language', async () => {
+    const operation = createAiRouteOperations()['POST /api/stt'];
+    const prepared = operation.prepare({ audio: Buffer.from('metadata').toString('base64'), mime: 'audio/webm', hint: 'auto' });
+    expect(typeof prepared).not.toBe('string');
+    if (typeof prepared === 'string') throw new Error(prepared);
+
+    const result = await operation.run(prepared.input, {
+      providerInput: operation.minimize(prepared.input),
+      signal: new AbortController().signal,
+      providerCall: async () => ({ segments: [
+        { languageCode: 'uz-UZ', alternatives: [{ transcript: 'Men' }] },
+        { languageCode: 'fr-FR', alternatives: [{ transcript: 'vais au marché' }] },
+      ] }),
+    });
+
+    expect(result.body).toEqual({
+      text: 'Men vais au marché',
+      detectedLanguage: 'unknown',
+      alternatives: [],
+      reviewReasons: ['confidence_missing', 'code_switch'],
+    });
   });
 });
 

@@ -18,6 +18,7 @@ import {
   type TranslateRequest,
 } from './voice.ts';
 import type { AiUsage } from './ai-quota.ts';
+import { reviewSttResult } from '../src/engine/voice/stt-result.ts';
 
 const TEXT_MODEL_FOR_PROMPT_SHAPING = '';
 const ZERO_USAGE = Object.freeze({ requests: 1, tokens: 0, sttAudioSeconds: 0, ttsCharacters: 0, ttsAudioSeconds: 0 });
@@ -74,7 +75,7 @@ function operation<T>(options: {
   readonly parse: (body: unknown) => T | string;
   readonly minimize: (input: T) => unknown;
   readonly estimateUsage: (input: T) => AiUsage;
-  readonly sanitizeResult?: (result: unknown) => unknown;
+  readonly sanitizeResult?: (result: unknown, input: T) => unknown;
 }): AiRouteOperation {
   return Object.freeze({
     maxBodyBytes: options.maxBodyBytes,
@@ -88,7 +89,7 @@ function operation<T>(options: {
     },
     async run(_input: unknown, context: AiRouteExecutionContext) {
       const providerResult = await context.providerCall();
-      return { status: 200, body: options.sanitizeResult ? options.sanitizeResult(providerResult) : providerResult };
+      return { status: 200, body: options.sanitizeResult ? options.sanitizeResult(providerResult, _input as T) : providerResult };
     },
   });
 }
@@ -152,12 +153,41 @@ export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOp
     estimateUsage: (input) => withUsage(0, {
       sttAudioSeconds: Math.min(60, Math.max(1, Math.ceil((input.audio.length * 3 / 4) / 32_000))),
     }),
-    sanitizeResult: (result) => {
-      const raw = (result ?? {}) as { segments?: Array<{ alternatives?: Array<{ transcript?: unknown }> }> };
-      const text = (raw.segments ?? []).flatMap((segment) => segment.alternatives ?? [])
-        .map((alternative) => typeof alternative.transcript === 'string' ? alternative.transcript : '')
-        .filter(Boolean).join(' ').slice(0, 4000);
-      return { text };
+    sanitizeResult: (result, input) => {
+      const raw = (result ?? {}) as { segments?: Array<{ languageCode?: unknown; alternatives?: Array<{ transcript?: unknown; confidence?: unknown }> }> };
+      const segments = Array.isArray(raw.segments) ? raw.segments : [];
+      const primaryTexts = segments.map((segment) => {
+        const best = Array.isArray(segment.alternatives) ? segment.alternatives[0]?.transcript : undefined;
+        return typeof best === 'string' ? best.trim() : '';
+      });
+      const text = primaryTexts.filter(Boolean).join(' ').slice(0, 4000);
+      const alternatives: string[] = [];
+      segments.forEach((segment, segmentIndex) => {
+        const segmentAlternatives = Array.isArray(segment.alternatives) ? segment.alternatives.slice(1) : [];
+        for (const alternative of segmentAlternatives) {
+          if (typeof alternative.transcript !== 'string' || !alternative.transcript.trim()) continue;
+          const variant = [...primaryTexts];
+          variant[segmentIndex] = alternative.transcript.trim();
+          const fullVariant = variant.filter(Boolean).join(' ').slice(0, 4000);
+          if (fullVariant && fullVariant !== text && !alternatives.includes(fullVariant)) alternatives.push(fullVariant);
+          if (alternatives.length === 8) break;
+        }
+      });
+      const confidenceValues = segments.flatMap((segment) => {
+        const best = Array.isArray(segment.alternatives) ? segment.alternatives[0]?.confidence : undefined;
+        return typeof best === 'number' && Number.isFinite(best) ? [best] : [];
+      });
+      const confidence = confidenceValues.length === 1 ? confidenceValues[0] : undefined;
+      const languageCodes = segments
+        .map((segment) => typeof segment.languageCode === 'string' ? segment.languageCode.trim().slice(0, 32) : '')
+        .filter(Boolean);
+      return reviewSttResult({
+        text,
+        languageCodes,
+        alternatives,
+        ...(confidence !== undefined ? { confidence } : {}),
+        ...(input.hint === 'uz' ? { expectedLanguage: 'uz-UZ' as const } : input.hint === 'fr' ? { expectedLanguage: 'fr-FR' as const } : {}),
+      });
     },
   });
   const tts = operation<{ text: string }>({

@@ -6,7 +6,7 @@ import { applyChatTurn } from '../../engine/game';
 import { learnerContext, updateMemory } from '../../engine/tutor';
 import type { CallOptions, VoiceCall, VoiceConfig } from '../../engine/voice/call';
 import { loadHistory, loadPrefs, restUntil, savePrefs, setRestUntil, type SessionRecord, type VoicePrefs } from '../../engine/voice/prefs';
-import { browserSttSupported, cloudSttSupported } from '../../engine/voice/stt';
+import { cloudSttSupported } from '../../engine/voice/stt';
 import { TtsQueue, browserVoiceAvailable } from '../../engine/voice/tts';
 import { useStore } from '../../state/store';
 import { KruaLive } from '../../components/KruaLive';
@@ -92,7 +92,7 @@ export function VoiceHub() {
   // Jonli rejimda dam olish taymeri emas, jonli daqiqalar qoldig'i hal qiladi.
   const resting = rest > now && !config?.premium && !liveMode;
   const liveOut = liveMode && !config?.premium && (config?.liveMinutes ?? 0) < 1;
-  const canTalk = !!config?.ai && (browserSttSupported() || (config.stt && cloudSttSupported()));
+  const canTalk = !!config?.ai && !!config.stt && cloudSttSupported();
 
   const options: CallOptions | null = useMemo(
     () =>
@@ -374,18 +374,6 @@ export function VoiceHub() {
       {showAdvanced && (
         <section className="vh-section two">
           <label className="vh-field">
-            <span>Nutqni aniqlash</span>
-            <select value={prefs.stt} onChange={(e) => setPrefs({ stt: e.target.value as VoicePrefs['stt'] })}>
-              <option value="auto">AI — eng aniq (tavsiya)</option>
-              <option value="browser" disabled={!browserSttSupported()}>
-                Brauzer (tez, lekin o'zbekchada xato ko'p)
-              </option>
-              <option value="cloud" disabled={!config?.stt || !cloudSttSupported()}>
-                AI (o'zbekcha + fransuzcha)
-              </option>
-            </select>
-          </label>
-          <label className="vh-field">
             <span>Men gapiradigan til</span>
             <select value={prefs.micLang} onChange={(e) => setPrefs({ micLang: e.target.value as VoicePrefs['micLang'] })}>
               <option value="auto">Avtomatik (Vivi javobiga qarab)</option>
@@ -522,7 +510,7 @@ export function VoiceHub() {
             Ulanmoqda…
           </button>
         ) : !canTalk ? (
-          <p className="vh-note warn">{!config.ai ? "Ovozli suhbat hozir mavjud emas — AI server sozlanmagan." : "Bu brauzerda ovozli suhbat ishlamaydi. Chrome yoki Edge'da oching yoki «Matn» bo'limidan foydalaning."}</p>
+          <p className="vh-note warn">{!config.ai ? "Ovozli suhbat hozir mavjud emas — AI server sozlanmagan." : "Cloud nutqni aniqlash hozir mavjud emas yoki brauzer audio yozishni qo'llamaydi — «Matn» bo'limidan foydalaning."}</p>
         ) : (
           <button
             type="button"
