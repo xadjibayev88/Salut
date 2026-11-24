@@ -12,6 +12,8 @@ WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
+COPY --from=build /app/src/engine/voice/stt-result.ts ./src/engine/voice/stt-result.ts
+COPY --from=build /app/src/shared/vivi-cue.ts ./src/shared/vivi-cue.ts
 RUN mkdir -p /data
 EXPOSE 8787
 CMD ["node", "server/main.ts"]
