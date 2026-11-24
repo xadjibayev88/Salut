@@ -14,6 +14,12 @@ const completeEnv: NodeJS.ProcessEnv = {
   VIVI_AI_MAX_TOKENS_PER_DAY: '100000',
   VIVI_AI_MAX_STT_AUDIO_SECONDS_PER_DAY: '3600',
   VIVI_AI_MAX_TTS_CHARACTERS_PER_DAY: '50000',
+  VIVI_AI_MAX_TTS_AUDIO_SECONDS_PER_DAY: '3600',
+  VIVI_AI_MAX_SUBJECT_REQUESTS_PER_DAY: '100',
+  VIVI_AI_MAX_SUBJECT_TOKENS_PER_DAY: '10000',
+  VIVI_AI_MAX_SUBJECT_STT_AUDIO_SECONDS_PER_DAY: '600',
+  VIVI_AI_MAX_SUBJECT_TTS_CHARACTERS_PER_DAY: '5000',
+  VIVI_AI_MAX_SUBJECT_TTS_AUDIO_SECONDS_PER_DAY: '600',
   VIVI_AI_MAX_SPEND_USD_PER_DAY: '1.25',
 };
 
@@ -28,6 +34,8 @@ describe('loadAiRuntimeConfig', () => {
   expectDisabled({ VIVI_AI_ENABLED: undefined }, 'the provider flag is missing');
   expectDisabled({ VIVI_AI_ADC_OPERATOR_ATTESTED: undefined }, 'ADC has not been operator-attested');
   expectDisabled({ VIVI_AI_MAX_REQUESTS_PER_DAY: undefined }, 'a quota is missing');
+  expectDisabled({ VIVI_AI_MAX_SUBJECT_REQUESTS_PER_DAY: undefined }, 'a per-subject quota is missing');
+  expectDisabled({ VIVI_AI_MAX_TTS_AUDIO_SECONDS_PER_DAY: undefined }, 'a TTS duration quota is missing');
   expectDisabled({ VIVI_AI_MODEL: 'unverified-model' }, 'the model is not verified');
   expectDisabled({ GOOGLE_CLOUD_LOCATION: 'moon-1' }, 'the location is not verified');
   expectDisabled({ VIVI_AI_PROJECT_CONFIG_VERIFIED: 'false' }, 'project/model/location access has not been verified');

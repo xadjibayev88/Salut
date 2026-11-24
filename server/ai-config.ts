@@ -7,6 +7,12 @@ export interface AiQuotaConfig {
   readonly tokensPerDay: number | null;
   readonly sttAudioSecondsPerDay: number | null;
   readonly ttsCharactersPerDay: number | null;
+  readonly ttsAudioSecondsPerDay: number | null;
+  readonly subjectRequestsPerDay: number | null;
+  readonly subjectTokensPerDay: number | null;
+  readonly subjectSttAudioSecondsPerDay: number | null;
+  readonly subjectTtsCharactersPerDay: number | null;
+  readonly subjectTtsAudioSecondsPerDay: number | null;
   readonly spendUsdPerDay: number | null;
 }
 
@@ -64,6 +70,12 @@ function parseQuota(env: NodeJS.ProcessEnv): Readonly<AiQuotaConfig> {
     tokensPerDay: positiveInteger(env.VIVI_AI_MAX_TOKENS_PER_DAY),
     sttAudioSecondsPerDay: positiveInteger(env.VIVI_AI_MAX_STT_AUDIO_SECONDS_PER_DAY),
     ttsCharactersPerDay: positiveInteger(env.VIVI_AI_MAX_TTS_CHARACTERS_PER_DAY),
+    ttsAudioSecondsPerDay: positiveInteger(env.VIVI_AI_MAX_TTS_AUDIO_SECONDS_PER_DAY),
+    subjectRequestsPerDay: positiveInteger(env.VIVI_AI_MAX_SUBJECT_REQUESTS_PER_DAY),
+    subjectTokensPerDay: positiveInteger(env.VIVI_AI_MAX_SUBJECT_TOKENS_PER_DAY),
+    subjectSttAudioSecondsPerDay: positiveInteger(env.VIVI_AI_MAX_SUBJECT_STT_AUDIO_SECONDS_PER_DAY),
+    subjectTtsCharactersPerDay: positiveInteger(env.VIVI_AI_MAX_SUBJECT_TTS_CHARACTERS_PER_DAY),
+    subjectTtsAudioSecondsPerDay: positiveInteger(env.VIVI_AI_MAX_SUBJECT_TTS_AUDIO_SECONDS_PER_DAY),
     spendUsdPerDay: positiveDecimal(env.VIVI_AI_MAX_SPEND_USD_PER_DAY),
   });
 }

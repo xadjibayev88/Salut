@@ -78,15 +78,15 @@
 
 **Interfeys/kontrakt:** `reserveAiUsage(subject, usage, requestId)` va `settleAiUsage(reservation, actualUsage)` shared durable store’da `BEGIN IMMEDIATE` bilan ishlaydi. Subject/day va global/day request, token, STT audio seconds, TTS character/seconds limitlari hamda global kill switch saqlanadi.
 
-- [ ] Usage counter, idempotency/request ID va reservation holatlarini belgilang; restartdan keyin counter nolga tushmasin.
-- [ ] Failing concurrency test yozing: ikki server instance bir vaqtda limitning oxirgi birligini reserve qilsa, faqat bittasi o‘tsin; store xatosida providerga chiqish bo‘lmasin.
-- [ ] Failing testni ishga tushiring: `npm test -- server/ai-quota.test.ts`.
-- [ ] SQLite umumiy durable instance ekanligi tasdiqlanmagan holatda quota’ni production hard limit deb qabul qilmaydigan fail-closed gate yozing; mavjud `BEGIN IMMEDIATE` uslubiga moslang.
-- [ ] Reserve oldidan consent va config gate’dan keyin atomic check/increment qiling; provider call boshlanishidan oldin reservation majburiy bo‘lsin.
-- [ ] Bitta transient retry uchun reservation/request ID qayta ishlatilsin; parallel hedge, duplicate STT race va streamingdan keyingi dublikat bo‘lmasin.
-- [ ] Global emergency kill switch quota’dan alohida tekshirilsin; Cloud Budget alert uni almashtirmasin.
-- [ ] Fokuslangan concurrency/failure/restart testlarini va typecheckni bajaring.
-- [ ] Commit: `git add server/ai-quota.ts server/ai-quota.test.ts server/db.ts server/main.ts && git commit -m "feat(ai): enforce atomic shared usage quota"`.
+- [x] Usage counter, idempotency/request ID va reservation holatlarini belgilang; restartdan keyin counter nolga tushmasin.
+- [x] Failing concurrency test yozing: ikki server instance bir vaqtda limitning oxirgi birligini reserve qilsa, faqat bittasi o‘tsin; store xatosida providerga chiqish bo‘lmasin.
+- [x] Failing testni ishga tushiring: `npm test -- server/ai-quota.test.ts`.
+- [x] SQLite umumiy durable instance ekanligi tasdiqlanmagan holatda quota’ni production hard limit deb qabul qilmaydigan fail-closed gate yozing; mavjud `BEGIN IMMEDIATE` uslubiga moslang.
+- [ ] Reserve oldidan consent va config gate’dan keyin atomic check/increment qiling; provider call boshlanishidan oldin reservation majburiy bo‘lsin. **Task 5 gacha kechiktirildi:** barcha handler/fallback integratsiyasi kutilmoqda; Task 3 route-readiness gate `false` qoladi.
+- [ ] Bitta transient retry uchun reservation/request ID qayta ishlatilsin; parallel hedge, duplicate STT race va streamingdan keyingi dublikat bo‘lmasin. **Task 5 gacha kechiktirildi:** handler middleware ulanmaguncha provider retry yo‘li faollashtirilmaydi.
+- [x] Global emergency kill switch quota’dan alohida tekshirilsin; Cloud Budget alert uni almashtirmasin.
+- [x] Fokuslangan concurrency/failure/restart testlarini, typecheckni va buildni bajaring.
+- [x] Commit: `git add server/ai-quota.ts server/ai-quota.test.ts server/db.ts server/main.ts && git commit -m "feat(ai): enforce atomic shared usage quota"`.
 
 ## Task 4: Google-only provider boundary va ADC transport
 

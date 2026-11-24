@@ -72,3 +72,15 @@ Task 1: complete (commits `c2ac47b`..`848794f`, review clean).
 - TDD evidence: the first focused run reproduced missing memory sanitization, an unconfirmed memory fetch, and the absent Live gate; after fixes, focused tests pass (3 files / 16 tests).
 - Final verification: `npm test` PASS (13 files / 130 tests); `npm run build` PASS; `git diff --check` PASS. Local-only smoke test returned HTTP 404 for `POST /api/live/token` with the provider disabled; no Google/provider request was made.
 - Commit: `470b5267dfc1c69b55fd0c914a78a142dc1fb3d1` (`fix(ai): require consent for memory and gate Live route`). Provider, billing, and deployment remain disabled.
+
+## Task 3 independent review and fix rounds
+- The independent reviewer confirmed that quota reservation/settlement is not yet on provider-handler paths. This is deliberate under the Task 3 brief: the route registry readiness gate remains `false` until Task 5 wires reservation-before-call and settlement/abort into every handler/fallback. Do not flip it earlier.
+- Added idempotent `abortAiUsage` for reservations known not to have reached an upstream provider; it releases only that reservation's held counters. There is intentionally no automatic expiry for ambiguous/in-flight reservations. A process crash may leave a hold that requires operator reconciliation; clearing it automatically could allow a concurrent billable call to exceed the cap.
+- Overrun settlement now checks that the kill-switch row update changed exactly one row inside the same SQLite transaction; a missing row causes rollback and a fail-closed `store_error`. Reservation state transitions also verify their update count.
+- Added the required `task-3-report.md`. Production shared durable SQLite remains unproven, and provider/Live/billing/deployment gates remain closed.
+- Second independent review caught an incomplete legacy schema migration and test coverage gaps. Initialization now adds missing `overrun`/`aborted` flags with safe defaults and validates every required reservation column; an old-schema DB regression test verifies migration and normal reservation after upgrade.
+- Route-gate tests now enumerate all seven provider route keys. Tests also cover abort after settlement and a two-independent-connection abort/settle race; exactly one transition succeeds and counters are not released twice.
+- Focused quota/config/route-gate tests: 3 files / 43 tests PASS. Final `npm test`: 14 files / 156 tests PASS, including concurrent last-unit reservation, abort/settle race, legacy migration, and persistence-after-restart cases.
+- Final `npm run typecheck`, `npm run build`, and `git diff --check` PASS. Build retains Vite warnings for non-module `ads-config.js` / `site-config.js` tags and the existing >500 kB chunk.
+- Final independent re-review found no actionable findings and cleared the scoped Task 3 changes for commit.
+- No Google/provider request, billing change, paid request, Live POC, or deployment was performed.

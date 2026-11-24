@@ -16,6 +16,7 @@ import { cleanFeedback, elevenLabsTts, azureTts, cleanMemory, feedbackBody, gemi
 import { loadAiRuntimeConfig } from './ai-config.ts';
 import { AI_CONSENT_POLICY_VERSION, AI_ROUTE_REQUIREMENTS, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, sanitizeTutorBodyForMemoryConsent, type AiGrant } from './ai-consent.ts';
 import { enabledAiRoutes } from './ai-routes.ts';
+import { isAiQuotaKillSwitchActive, isAiQuotaStorageReady } from './ai-quota.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -955,7 +956,13 @@ const routeHandlers: Record<string, (req: IncomingMessage, res: ServerResponse) 
   },
 });
 
-const routes = enabledAiRoutes(routeHandlers, AI_RUNTIME_CONFIG);
+// Task 3 supplies the atomic store; Task 5 must reserve/settle usage in every handler before this gate is enabled.
+const AI_QUOTA_RESERVATION_MIDDLEWARE_READY = false;
+const routes = enabledAiRoutes(routeHandlers, {
+  providerEnabled: AI_RUNTIME_CONFIG.providerEnabled && isAiQuotaStorageReady() && !isAiQuotaKillSwitchActive(),
+  liveEnabled: AI_RUNTIME_CONFIG.liveEnabled,
+  quotaReservationReady: AI_QUOTA_RESERVATION_MIDDLEWARE_READY,
+});
 
 // ---------- Statik fayllar ----------
 async function serveStatic(req: IncomingMessage, res: ServerResponse) {
@@ -989,6 +996,10 @@ const server = createServer((req, res) => {
   if (route) {
     const consentFailure = aiConsentFailure(req);
     if (consentFailure) return json(res, consentFailure.status, consentFailure.body);
+    if (AI_ROUTE_REQUIREMENTS[routeKey] && !isAiQuotaStorageReady())
+      return json(res, 503, { code: 'ai_quota_unavailable', message: 'AI quota storage is unavailable or not verified.' });
+    if (AI_ROUTE_REQUIREMENTS[routeKey] && isAiQuotaKillSwitchActive())
+      return json(res, 503, { code: 'ai_kill_switch', message: 'AI provider requests are temporarily disabled.' });
     return void Promise.resolve(route(req, res)).catch((e) => {
       console.error(e);
       if (!res.headersSent) json(res, 500, { message: 'Server xatosi' });
