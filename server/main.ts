@@ -619,7 +619,7 @@ const aiRouteHandlers = createAiRoutes({
   sanitizeBody: (route, subject, body) => route === 'POST /api/tutor'
     ? sanitizeTutorBodyForMemoryConsent(subject, body)
     : body,
-  deadlineMs: num('VIVI_AI_ROUTE_DEADLINE_MS', 20_000),
+  deadlineMs: num('VIVI_AI_ROUTE_DEADLINE_MS', 30_000),
   cancellationGraceMs: num('VIVI_AI_CANCEL_GRACE_MS', 1_000),
   readBody,
   respond: json,

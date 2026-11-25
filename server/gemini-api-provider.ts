@@ -13,7 +13,9 @@ import { pcmToWav } from './google-cloud-provider.ts';
 import type { AiKeyProblemDetail } from './ai-alerts.ts';
 
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-export const GEMINI_API_TEXT_MODELS = new Set(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
+export const GEMINI_API_TEXT_MODELS = new Set(['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']);
+const TEXT_ATTEMPT_MS = 8_000;
+const TTS_ATTEMPT_MS = 25_000;
 export const GEMINI_API_TTS_MODELS = new Set(['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']);
 
 export interface GeminiApiProviderConfig {
@@ -23,6 +25,11 @@ export interface GeminiApiProviderConfig {
   readonly ttsModels: readonly string[];
   readonly voice: string;
   readonly style?: string;
+  /** Per-attempt time limits (defaults 8 s text, 25 s speech). */
+  readonly textAttemptMs?: number;
+  readonly ttsAttemptMs?: number;
+  /** Pause before repeating an overloaded primary model (tests pass 0). */
+  readonly retryDelayMs?: number;
   /** Called when Google refuses the key (limit reached or key invalid) so the operator can be alerted. */
   readonly onKeyProblem?: (problem: AiKeyProblemDetail) => void;
 }
@@ -65,6 +72,10 @@ function parseJsonText(text: string): unknown {
 function promptBody(prompt: AiPrompt): Record<string, unknown> {
   if (!prompt || !Array.isArray(prompt.contents) || prompt.contents.length === 0) throw new AiProviderError('provider_unavailable');
   const generationConfig: Record<string, unknown> = { ...(prompt.generationConfig ?? {}), responseMimeType: 'application/json' };
+  // Gemini 3 "thinking" models otherwise spend the whole output budget on thoughts and cut the reply
+  // (seen live: gemini-3.6-flash → finishReason MAX_TOKENS after 27 characters). Minimal thinking keeps
+  // replies complete and fast; flash-lite accepts the same setting.
+  if (!generationConfig.thinkingConfig) generationConfig.thinkingConfig = { thinkingLevel: 'minimal' };
   return {
     ...(prompt.systemInstruction ? { systemInstruction: { parts: [{ text: prompt.systemInstruction }] } } : {}),
     contents: prompt.contents.map((c) => ({ role: c.role, parts: c.parts.map((part: { readonly text: string }) => ({ text: part.text })) })),
@@ -76,37 +87,62 @@ function promptBody(prompt: AiPrompt): Record<string, unknown> {
 const AUDIO_MIME = /^audio\/(webm|ogg|mp4|mpeg|wav|x-wav|aac|flac|mp3)$/;
 
 export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchImpl: typeof fetch): AiProvider {
-  const post = async (models: readonly string[], allowed: Set<string>, body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> => {
+  /**
+   * Attempt plan for the free tier: primary model; if it was only overloaded (503) or too slow, the primary
+   * once more after a short pause; then each fallback. Every attempt has its own time limit so one hung call
+   * cannot eat the whole route deadline. 429 (limit) moves straight on — repeating the same model won't help.
+   */
+  const post = async (
+    models: readonly string[],
+    allowed: Set<string>,
+    body: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+    attemptMs: number,
+  ): Promise<unknown> => {
     const key = config.apiKey?.trim();
     if (!key || /[\r\n\s]/.test(key)) throw new AiProviderError('auth_unavailable');
-    const usable = models.filter((m) => allowed.has(m));
+    const usable = [...new Set(models.filter((m) => allowed.has(m)))];
     if (!usable.length) throw new AiProviderError('provider_unavailable');
     let lastStatus = 0;
-    let quotaRefusals = 0;
+    const quotaRefused = new Set<string>();
     let daily = false;
     const report = (problem: AiKeyProblemDetail) => {
       try { config.onKeyProblem?.(problem); } catch { /* alerts never break a request */ }
     };
-    for (const model of usable) {
+    const plan: { model: string; retryOf?: string }[] = [{ model: usable[0] }, { model: usable[0], retryOf: usable[0] }, ...usable.slice(1).map((model) => ({ model }))];
+    let lastTransient = false;
+    for (const step of plan) {
       if (signal?.aborted) throw new AiProviderError('request_aborted');
+      if (step.retryOf) {
+        if (!lastTransient) continue; // only repeat after an overload/timeout, never after a limit refusal
+        await new Promise((resolve) => setTimeout(resolve, config.retryDelayMs ?? 400));
+        if (signal?.aborted) throw new AiProviderError('request_aborted');
+      }
+      const model = step.model;
+      // The last fallback is the final chance (and a slower model), so it gets 1.5× the time.
+      const isLast = step === plan[plan.length - 1] && !step.retryOf;
+      const attempt = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(isLast ? Math.round(attemptMs * 1.5) : attemptMs)]);
       let res: Response;
       try {
         res = await fetchImpl(`${GEMINI_API_BASE}/${encodeURIComponent(model)}:generateContent`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
           body: JSON.stringify(body),
-          ...(signal ? { signal } : {}),
+          signal: attempt,
         });
       } catch {
-        throw new AiProviderError(signal?.aborted ? 'request_aborted' : 'upstream_error');
+        if (signal?.aborted) throw new AiProviderError('request_aborted');
+        lastTransient = true; // per-attempt timeout or network blip → try the next step
+        lastStatus = 504;
+        continue;
       }
-      if (res.status === 429 || res.status === 503) {
-        // 429 (free-tier limit) and 503 (model overloaded) mean the request was refused, not processed,
-        // so the next listed model may take it without a duplicate billable call.
+      if (res.status === 429 || res.status === 503 || res.status === 500) {
+        // Refused or overloaded before processing: the next step may take it (free tier, no billing).
         lastStatus = res.status;
+        lastTransient = res.status !== 429;
         const detail = await res.text().catch(() => '');
         if (res.status === 429) {
-          quotaRefusals++;
+          quotaRefused.add(model);
           if (/PerDay|per[ _-]?day|daily/i.test(detail)) daily = true;
         }
         continue;
@@ -122,23 +158,26 @@ export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchIm
       try {
         return await res.json();
       } catch {
-        throw new AiProviderError(signal?.aborted ? 'request_aborted' : 'invalid_response');
+        if (signal?.aborted) throw new AiProviderError('request_aborted');
+        lastTransient = true;
+        lastStatus = 504;
+        continue;
       }
     }
     // Every model refused on quota → the key's free limit is used up.
-    if (quotaRefusals === usable.length) report({ kind: 'quota', model: usable[0], daily });
+    if (usable.every((m) => quotaRefused.has(m))) report({ kind: 'quota', model: usable[0], daily });
     throw new AiProviderError('upstream_error', lastStatus || undefined);
   };
 
   const generateJson = async (prompt: AiPrompt, signal?: AbortSignal) =>
-    parseJsonText(candidateText(await post(config.textModels, GEMINI_API_TEXT_MODELS, promptBody(prompt), signal)));
+    parseJsonText(candidateText(await post(config.textModels, GEMINI_API_TEXT_MODELS, promptBody(prompt), signal, config.textAttemptMs ?? TEXT_ATTEMPT_MS)));
 
   return Object.freeze({
     name: 'google-gemini-api' as const,
     serviceNames: ['google-gemini-api'] as const,
 
     async *streamTutor(prompt: AiPrompt, signal?: AbortSignal): AsyncIterable<string> {
-      yield candidateText(await post(config.textModels, GEMINI_API_TEXT_MODELS, promptBody(prompt), signal));
+      yield candidateText(await post(config.textModels, GEMINI_API_TEXT_MODELS, promptBody(prompt), signal, config.textAttemptMs ?? TEXT_ATTEMPT_MS));
     },
 
     generateJson,
@@ -161,6 +200,7 @@ export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchIm
         generationConfig: {
           temperature: 0,
           maxOutputTokens: 400,
+          thinkingConfig: { thinkingLevel: 'minimal' },
           responseMimeType: 'application/json',
           responseSchema: {
             type: 'OBJECT',
@@ -169,7 +209,7 @@ export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchIm
           },
         },
       };
-      const parsed = parseJsonText(candidateText(await post(config.textModels, GEMINI_API_TEXT_MODELS, body, signal))) as { text?: unknown; language?: unknown };
+      const parsed = parseJsonText(candidateText(await post(config.textModels, GEMINI_API_TEXT_MODELS, body, signal, config.textAttemptMs ?? TEXT_ATTEMPT_MS))) as { text?: unknown; language?: unknown };
       const text = typeof parsed?.text === 'string' ? parsed.text.trim().slice(0, 4000) : '';
       if (!text) return { segments: [] };
       if (parsed.language === 'mixed') {
@@ -189,7 +229,7 @@ export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchIm
           responseModalities: ['AUDIO'],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice } } },
         },
-      }, signal);
+      }, signal, config.ttsAttemptMs ?? TTS_ATTEMPT_MS);
       const inline = candidateParts(response).map((part) => part.inlineData).find(isRecord);
       const mimeType = typeof inline?.mimeType === 'string' ? inline.mimeType : '';
       const data = typeof inline?.data === 'string' ? inline.data : '';

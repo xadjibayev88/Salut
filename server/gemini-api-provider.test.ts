@@ -16,6 +16,7 @@ function provider(responses: Response[], overrides = {}) {
     textModels: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
     ttsModels: ['gemini-3.8-flash-lite-tts'],
     voice: 'Leda',
+    retryDelayMs: 0,
     ...overrides,
   }, fetchImpl as unknown as typeof fetch);
   return { p, fetchImpl };
@@ -31,15 +32,35 @@ describe('Gemini API (free) provider', () => {
     expect((init.headers as Record<string, string>)['x-goog-api-key']).toBe(KEY);
   });
 
-  it('moves to the fallback model only after a 429/503 refusal, never after a processed error', async () => {
+  it('retries an overloaded primary once, then uses the fallback; never retries a processed error', async () => {
+    const x = { contents: [{ role: 'user' as const, parts: [{ text: 'x' }] }] };
     const busy = provider([json({}, 503), textReply({ uz: 'salom' })]);
-    await expect(busy.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).resolves.toEqual({ uz: 'salom' });
-    const a = provider([json({}, 429), textReply({ uz: 'salom' })]);
-    await expect(a.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).resolves.toEqual({ uz: 'salom' });
-    expect(String(a.fetchImpl.mock.calls[1][0])).toContain('gemini-3.1-flash-lite');
-    const b = provider([json({}, 500), textReply({ uz: 'salom' })]);
-    await expect(b.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).rejects.toMatchObject({ code: 'upstream_error' });
-    expect(b.fetchImpl).toHaveBeenCalledTimes(1);
+    await expect(busy.p.generateJson(x)).resolves.toEqual({ uz: 'salom' });
+    expect(busy.fetchImpl.mock.calls.map((c) => String(c[0]).includes('gemini-3.5-flash-lite'))).toEqual([true, true]);
+
+    const twice = provider([json({}, 503), json({}, 503), textReply({ uz: 'salom' })]);
+    await expect(twice.p.generateJson(x)).resolves.toEqual({ uz: 'salom' });
+    expect(String(twice.fetchImpl.mock.calls[2][0])).toContain('gemini-3.1-flash-lite');
+
+    const limited = provider([json({}, 429), textReply({ uz: 'salom' })]);
+    await expect(limited.p.generateJson(x)).resolves.toEqual({ uz: 'salom' });
+    expect(String(limited.fetchImpl.mock.calls[1][0])).toContain('gemini-3.1-flash-lite'); // no pointless repeat after 429
+
+    const bad = provider([json({}, 400), textReply({ uz: 'salom' })]);
+    await expect(bad.p.generateJson(x)).rejects.toMatchObject({ code: 'upstream_error' });
+    expect(bad.fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives each attempt its own time limit so a hung call falls through to the next step', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (fetchImpl.mock.calls.length === 1) {
+        return await new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted'))));
+      }
+      return textReply({ uz: 'salom' });
+    });
+    const p = createGeminiApiProvider({ apiKey: KEY, textModels: ['gemini-3.5-flash-lite', 'gemini-3.6-flash'], ttsModels: [], voice: 'Leda', retryDelayMs: 0, textAttemptMs: 60 }, fetchImpl as unknown as typeof fetch);
+    await expect(p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).resolves.toEqual({ uz: 'salom' });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('refuses to call Google without a usable key', async () => {
@@ -141,7 +162,7 @@ describe('free mode configuration and consent', () => {
 
   it('defaults to flash TTS (lite as backup), Leda voice, and a refusal-only fallback text model', () => {
     const config = geminiApiProviderConfigFromEnv({ GEMINI_API_KEY: KEY });
-    expect(config.textModels).toEqual(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
+    expect(config.textModels).toEqual(['gemini-3.5-flash-lite', 'gemini-3.6-flash']);
     expect(config.ttsModels).toEqual(['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']);
     expect(config.voice).toBe('Leda');
   });
