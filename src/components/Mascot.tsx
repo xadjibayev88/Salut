@@ -85,6 +85,26 @@ function actionForFace(face: ViviCue['face']): NonNullable<ViviCue['action']> | 
   return undefined;
 }
 
+/**
+ * Ovozga bog'langan og'iz: `level` (0..1) audio balandligidan keladi.
+ * Pauzada og'iz yopiladi, baland bo'g'inda keng ochiladi, katta ochilishda til ko'rinadi.
+ */
+function SpeakingMouth({ level }: { level: number }) {
+  const open = Math.max(0, Math.min(1, level));
+  if (open < 0.06) {
+    return <path className="vivi-mouth-closed" d="M90 120 q10 5 20 0" stroke={INK} strokeWidth="3.4" fill="none" strokeLinecap="round" />;
+  }
+  const ry = 2.5 + open * 9.5;
+  const rx = 9.5 - open * 2.2;
+  const cy = 119 + ry * 0.45;
+  return (
+    <g className="vivi-cue-mouth-speaking">
+      <ellipse cx="100" cy={cy} rx={rx} ry={ry} fill="#9D174D" stroke={INK} strokeWidth="2.5" />
+      {open > 0.35 && <ellipse cx="100" cy={cy + ry * 0.45} rx={rx * 0.62} ry={ry * 0.38} fill="#F472B6" />}
+    </g>
+  );
+}
+
 export function Mascot({
   mood = 'happy',
   size = 120,
@@ -145,7 +165,7 @@ export function Mascot({
       );
 
   const mouth = hasCue
-    ? state === 'speaking' ? <ellipse className="vivi-cue-mouth-speaking" cx="100" cy="121" rx="8" ry={6 + numericLevel * 3} fill="#BE185D" stroke={INK} strokeWidth="2.5" />
+    ? state === 'speaking' ? <SpeakingMouth level={numericLevel} />
       : face === 'surprised' ? <ellipse className="vivi-cue-mouth-surprised" cx="100" cy="121" rx="7" ry="9" fill="#BE185D" stroke={INK} strokeWidth="2.5" />
         : face === 'neutral' || face === 'curious' ? <path d="M92 121 h16" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
           : face === 'confused' ? <path d="M90 124 q10-8 20 0" stroke={INK} strokeWidth="3.5" fill="none" strokeLinecap="round" />

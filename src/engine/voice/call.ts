@@ -173,7 +173,8 @@ export class VoiceCall {
 
   private level(l: number) {
     const now = performance.now();
-    if (now - this.lastLevelEmit < 50 && Math.abs(l - this.snap.level) < 0.15) return; // ortiqcha render yo'q
+    // ~30 fps yetarli; 0 (og'iz yopilishi) hech qachon tashlab yuborilmaydi.
+    if (l !== 0 && now - this.lastLevelEmit < 33 && Math.abs(l - this.snap.level) < 0.12) return;
     this.lastLevelEmit = now;
     this.set({ level: l });
   }

@@ -232,13 +232,29 @@ export class TtsQueue {
     el.src = this.url;
     el.playbackRate = this.rate;
     const data = new Uint8Array(this.analyser?.fftSize ?? 512);
+    // Lab-sinxron: RMS + tez ochilish / sekin yopilish (attack/release) va shovqin darvozasi.
+    let env = 0;
+    let floor = 0.02;
+    const t0 = performance.now();
     const meter = () => {
       this.raf = requestAnimationFrame(meter);
-      if (!this.analyser) return this.onLevel?.(0.5);
-      this.analyser.getByteTimeDomainData(data);
-      let peak = 0;
-      for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i] - 128));
-      this.onLevel?.(Math.min(1, peak / 64));
+      let target: number;
+      if (!this.analyser) {
+        // Analizator yo'q (masalan, iOS yoki CORS): bo'g'inlarga o'xshash sun'iy to'lqin.
+        target = syllableWave(performance.now() - t0);
+      } else {
+        this.analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        floor = Math.min(floor * 0.995 + rms * 0.005, 0.05);
+        target = Math.max(0, Math.min(1, (rms - floor * 1.2) * 5.5));
+      }
+      env += (target - env) * (target > env ? 0.55 : 0.22);
+      this.onLevel?.(env < 0.03 ? 0 : env);
     };
     return new Promise((resolve) => {
       const done = () => {
@@ -276,16 +292,40 @@ export class TtsQueue {
         u.lang = s.fr ? 'fr-FR' : v?.lang ?? this.explainLang;
         if (v) u.voice = v;
         u.rate = s.fr ? Math.min(1, this.rate * 0.92) : this.rate;
-        u.onboundary = () => {
-          this.onLevel?.(0.8);
-          setTimeout(() => this.onLevel?.(0.25), 120);
+        // Brauzer ovozida audio signal yo'q — og'iz bo'g'in ritmida harakatlanadi, so'z chegarasida urg'u.
+        let boost = 0;
+        const t0 = performance.now();
+        const anim = () => {
+          this.raf = requestAnimationFrame(anim);
+          boost *= 0.86;
+          this.onLevel?.(Math.min(1, syllableWave(performance.now() - t0) * 0.85 + boost));
         };
-        u.onend = speakNext;
-        u.onerror = speakNext;
-        this.onLevel?.(0.4);
+        const next = () => {
+          cancelAnimationFrame(this.raf);
+          this.onLevel?.(0);
+          speakNext();
+        };
+        u.onstart = () => {
+          cancelAnimationFrame(this.raf);
+          anim();
+        };
+        u.onboundary = () => {
+          boost = 0.35;
+        };
+        u.onend = next;
+        u.onerror = next;
         speechSynthesis.speak(u);
       };
       speakNext();
     });
   }
+}
+
+/** Nutqqa o'xshash bo'g'in to'lqini (~5 bo'g'in/soniya), sun'iy lab harakati uchun. 0..1 */
+export function syllableWave(ms: number): number {
+  const t = ms / 1000;
+  const a = Math.abs(Math.sin(t * Math.PI * 4.7));
+  const b = Math.abs(Math.sin(t * Math.PI * 2.3 + 1.1));
+  const pause = Math.sin(t * Math.PI * 0.55) > 0.86 ? 0.15 : 1; // vaqti-vaqti bilan nafas pauzasi
+  return Math.max(0, Math.min(1, (0.25 + 0.6 * a * (0.55 + 0.45 * b)) * pause));
 }

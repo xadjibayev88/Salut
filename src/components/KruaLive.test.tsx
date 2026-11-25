@@ -39,9 +39,20 @@ describe('Vivi semantic mascot renderer', () => {
     expect(html).toContain(`vivi-cue-action-${action}`);
   });
 
-  it('uses the clamped audio level to vary only the speaking mouth', () => {
-    const html = render({ state: 'speaking', face: 'happy' }, 1);
-    expect(html).toContain('ellipse class="vivi-cue-mouth-speaking" cx="100" cy="121" rx="8" ry="9"');
+  it('opens the speaking mouth with the clamped audio level', () => {
+    const loud = render({ state: 'speaking', face: 'happy' }, 5);
+    expect(loud).toContain('class="vivi-cue-mouth-speaking"');
+    expect(loud).toContain('rx="7.3" ry="12"');
+    const half = render({ state: 'speaking', face: 'happy' }, 0.2);
+    expect(half).toContain('ry="4.4"');
+  });
+
+  it('closes the mouth during silence instead of flapping on a timer', () => {
+    const silent = render({ state: 'speaking', face: 'happy' }, 0);
+    expect(silent).toContain('vivi-mouth-closed');
+    expect(silent).not.toContain('vivi-cue-mouth-speaking');
+    const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+    expect(css).not.toContain('vivi-cue-speech');
   });
 
   it('keeps the animated cue layer still when reduced motion is requested', () => {
