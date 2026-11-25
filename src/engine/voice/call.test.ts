@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { VoiceCall, type CallOptions } from './call';
+import { VoiceCall, VOICE_REPLY_WATCHDOG_MS, type CallOptions } from './call';
 import type { SttResult, SttReviewReason } from './stt';
 
 const result = (text: string, reviewReasons: SttReviewReason[] = []): SttResult => ({
@@ -212,7 +212,7 @@ describe('VoiceCall speech review', () => {
     call.snap = { ...call.snap, phase: 'review', draft: 'Qayta tekshiriladigan matn' };
 
     call.submitDraft();
-    await vi.advanceTimersByTimeAsync(9_000);
+    await vi.advanceTimersByTimeAsync(VOICE_REPLY_WATCHDOG_MS);
 
     expect(call.snap.phase).toBe('review');
     expect(call.snap.retryAvailable).toBe(true);

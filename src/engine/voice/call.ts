@@ -10,6 +10,9 @@ import { TtsQueue } from './tts';
 import { NEUTRAL_VIVI_CUE, validateViviCue, type ViviCue } from '../../shared/vivi-cue';
 import type { InputMode, SessionRecord, SttEngine } from './prefs';
 
+/** Must exceed the server's free-tier retry plan (see server/gemini-api-provider.ts). */
+export const VOICE_REPLY_WATCHDOG_MS = 28_000;
+
 export type Phase = 'connecting' | 'ready' | 'user' | 'review' | 'thinking' | 'speaking' | 'ended';
 export type Notice =
   | 'weak'
@@ -385,14 +388,16 @@ export class VoiceCall {
     let acc = '';
     let responseComplete = false;
     const weak = window.setTimeout(() => !acc && this.notice('weak'), 3500);
-    // If no first token arrives within 9 seconds, abort once and leave retry to the learner.
+    // If no reply arrives in time, abort once and leave retry to the learner. The server may spend up to
+    // ~25 s retrying an overloaded Gemini model (it answers in one piece, not token by token), so the
+    // watchdog must outlast that plan or a reply the server did obtain would be thrown away.
     let stalled = false;
     const watchdog = window.setTimeout(() => {
       if (!acc && !ac.signal.aborted) {
         stalled = true;
         ac.abort();
       }
-    }, 9000);
+    }, VOICE_REPLY_WATCHDOG_MS);
     try {
       const res = await fetch('./api/tutor', {
         method: 'POST',

@@ -104,3 +104,44 @@ describe('client tutor SSE contract', () => {
     expect(tutorFailureMessage(new DOMException('Aborted', 'AbortError'))).toBeNull();
   });
 });
+
+describe('client tutor transient retry', () => {
+  const sse = () => new Response([JSON.stringify({ t: 'Merci !' }), JSON.stringify({ done: true })].map((e) => `data: ${e}\n\n`).join(''), { headers: { 'content-type': 'text/event-stream' } });
+  const err = (status: number, code: string) => new Response(JSON.stringify({ code, message: 'x' }), { status, headers: { 'content-type': 'application/json' } });
+
+  it('asks once more after a brief Google overload and shows the reply', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn().mockResolvedValueOnce(err(503, 'ai_upstream_error')).mockResolvedValueOnce(sse());
+      vi.stubGlobal('fetch', fetchMock);
+      const onText = vi.fn();
+      const done = askTutor(payload, onText);
+      await vi.advanceTimersByTimeAsync(1300);
+      await done;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(onText).toHaveBeenCalledWith('Merci !');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not retry limits, consent or a second failure', async () => {
+    const limit = vi.fn().mockResolvedValue(err(429, 'ai_quota_exhausted'));
+    vi.stubGlobal('fetch', limit);
+    await expect(askTutor(payload, vi.fn())).rejects.toMatchObject({ code: 'ai_quota_exhausted' });
+    expect(limit).toHaveBeenCalledTimes(1);
+
+    vi.useFakeTimers();
+    try {
+      const twice = vi.fn().mockResolvedValueOnce(err(503, 'ai_upstream_error')).mockResolvedValueOnce(err(504, 'ai_timeout'));
+      vi.stubGlobal('fetch', twice);
+      const p = askTutor(payload, vi.fn());
+      const check = expect(p).rejects.toMatchObject({ code: 'ai_timeout' });
+      await vi.advanceTimersByTimeAsync(1300);
+      await check;
+      expect(twice).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
