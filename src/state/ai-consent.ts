@@ -10,7 +10,7 @@ export type AiScope =
   | 'memory'
   | 'microphone_stt'
   | 'text_tts';
-export type AiProviderName = 'google-agent-platform' | 'google-cloud-speech-to-text';
+export type AiProviderName = 'google-agent-platform' | 'google-cloud-speech-to-text' | 'google-gemini-api';
 export interface AiGrant {
   scope: AiScope;
   provider: AiProviderName;
@@ -28,7 +28,31 @@ export interface AiConsent {
 }
 export interface AiConsentResponse {
   policyVersion: string;
+  /** Scope → provider pairs the server enforces right now. */
+  requirements?: AiGrant[];
   consent: AiConsent | null;
+}
+
+export const AI_PROVIDER_LABELS: Record<AiProviderName, string> = {
+  'google-agent-platform': 'Google Cloud Agent Platform (Gemini)',
+  'google-cloud-speech-to-text': 'Google Cloud Speech-to-Text',
+  'google-gemini-api': 'Google Gemini API (AI Studio, bepul tarif)',
+};
+
+/** Free-tier notice shown whenever any scope is served by the Gemini Developer API. */
+export const GEMINI_API_FREE_TIER_NOTICE =
+  'Bepul tarifda Google yuborilgan matn va audiodan o‘z mahsulotlarini yaxshilash uchun foydalanishi va ularni odamlar ko‘rib chiqishi mumkin. Maxfiy ma’lumot (parol, karta, manzil) yubormang.';
+
+/** Apply the server's provider for each scope; scopes the server does not list keep their defaults. */
+export function scopeOptionsFor(requirements: readonly AiGrant[] | undefined) {
+  return AI_SCOPE_OPTIONS.map((option) => {
+    const provider = requirements?.find((r) => r.scope === option.scope)?.provider;
+    if (!provider || !(provider in AI_PROVIDER_LABELS)) return option;
+    const detail = provider === 'google-gemini-api' && option.scope === 'microphone_stt'
+      ? 'Yozib olingan asl audio matnga aylantirish uchun Gemini API’ga yuboriladi.'
+      : option.detail;
+    return { ...option, provider, providerLabel: AI_PROVIDER_LABELS[provider], detail };
+  });
 }
 
 export const AI_SCOPE_OPTIONS: readonly {

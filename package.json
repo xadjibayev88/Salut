@@ -11,7 +11,10 @@
     "start": "node server/main.ts",
     "server": "node --watch server/main.ts",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "ai:on": "node server/ai-switch.ts on",
+    "ai:off": "node server/ai-switch.ts off",
+    "ai:status": "node server/ai-switch.ts status"
   },
   "dependencies": {
     "react": "18.3.1",

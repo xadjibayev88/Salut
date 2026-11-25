@@ -1,6 +1,19 @@
 import { db, tx } from './db.ts';
 
-export const AI_CONSENT_POLICY_VERSION = '2026-11-24-v1' as const;
+/**
+ * Which Google service family receives AI data. `vertex` = billed Google Cloud (Vertex Gemini, Cloud STT,
+ * Gemini TTS); `gemini-api` = Gemini Developer API / AI Studio key (has a no-cost tier). Each mode has its own
+ * provider identity and policy version, so consent given for one never silently covers the other.
+ */
+export type AiProviderMode = 'vertex' | 'gemini-api';
+export function aiProviderMode(env: NodeJS.ProcessEnv): AiProviderMode {
+  return env.VIVI_AI_PROVIDER === 'google-gemini-api' ? 'gemini-api' : 'vertex';
+}
+export const AI_PROVIDER_MODE: AiProviderMode = aiProviderMode(process.env);
+export function policyVersionFor(mode: AiProviderMode): string {
+  return mode === 'gemini-api' ? '2026-11-25-gemini-api-v1' : '2026-11-24-v1';
+}
+export const AI_CONSENT_POLICY_VERSION: string = policyVersionFor(AI_PROVIDER_MODE);
 
 export type AiScope =
   | 'text_tutor'
@@ -12,7 +25,7 @@ export type AiScope =
   | 'text_tts';
 
 /** Only the named Google services from the approved plan; arbitrary provider URLs are rejected. */
-export type AiProviderName = 'google-agent-platform' | 'google-cloud-speech-to-text';
+export type AiProviderName = 'google-agent-platform' | 'google-cloud-speech-to-text' | 'google-gemini-api';
 
 /** accounts.ts creates this only after validating a signed account session. */
 export interface AiSubject {
@@ -42,27 +55,32 @@ export interface AiConsent {
 
 export interface AiRouteRequirement extends AiGrant {}
 
-export const AI_ROUTE_REQUIREMENTS: Readonly<Record<string, AiRouteRequirement>> = Object.freeze({
-  'POST /api/tutor': { scope: 'text_tutor', provider: 'google-agent-platform' },
-  'POST /api/tutor/feedback': { scope: 'text_feedback', provider: 'google-agent-platform' },
-  'POST /api/live/token': { scope: 'live_session', provider: 'google-agent-platform' },
-  'POST /api/translate': { scope: 'translation', provider: 'google-agent-platform' },
-  'POST /api/tutor/memory': { scope: 'memory', provider: 'google-agent-platform' },
-  'POST /api/stt': { scope: 'microphone_stt', provider: 'google-cloud-speech-to-text' },
-  'POST /api/tts': { scope: 'text_tts', provider: 'google-agent-platform' },
-});
+export function routeRequirementsFor(mode: AiProviderMode): Readonly<Record<string, AiRouteRequirement>> {
+  const text: AiProviderName = mode === 'gemini-api' ? 'google-gemini-api' : 'google-agent-platform';
+  const speech: AiProviderName = mode === 'gemini-api' ? 'google-gemini-api' : 'google-cloud-speech-to-text';
+  return Object.freeze({
+    'POST /api/tutor': Object.freeze({ scope: 'text_tutor', provider: text }),
+    'POST /api/tutor/feedback': Object.freeze({ scope: 'text_feedback', provider: text }),
+    'POST /api/live/token': Object.freeze({ scope: 'live_session', provider: text }),
+    'POST /api/translate': Object.freeze({ scope: 'translation', provider: text }),
+    'POST /api/tutor/memory': Object.freeze({ scope: 'memory', provider: text }),
+    'POST /api/stt': Object.freeze({ scope: 'microphone_stt', provider: speech }),
+    'POST /api/tts': Object.freeze({ scope: 'text_tts', provider: text }),
+  }) as Readonly<Record<string, AiRouteRequirement>>;
+}
 
-const SCOPE_PROVIDER: Readonly<Record<AiScope, AiProviderName>> = Object.freeze({
-  text_tutor: 'google-agent-platform',
-  text_feedback: 'google-agent-platform',
-  live_session: 'google-agent-platform',
-  translation: 'google-agent-platform',
-  memory: 'google-agent-platform',
-  microphone_stt: 'google-cloud-speech-to-text',
-  text_tts: 'google-agent-platform',
-});
+export const AI_ROUTE_REQUIREMENTS: Readonly<Record<string, AiRouteRequirement>> = routeRequirementsFor(AI_PROVIDER_MODE);
+
+const SCOPE_PROVIDER: Readonly<Record<AiScope, AiProviderName>> = Object.freeze(
+  Object.fromEntries(Object.values(AI_ROUTE_REQUIREMENTS).map((r) => [r.scope, r.provider])) as Record<AiScope, AiProviderName>,
+);
 const SCOPES = new Set<AiScope>(Object.keys(SCOPE_PROVIDER) as AiScope[]);
-const PROVIDERS = new Set<AiProviderName>(['google-agent-platform', 'google-cloud-speech-to-text']);
+const PROVIDERS = new Set<AiProviderName>(Object.values(SCOPE_PROVIDER));
+
+/** Scope → provider list the consent UI shows, so labels always match what the server enforces. */
+export function aiConsentRequirements(): readonly AiGrant[] {
+  return Object.freeze((Object.keys(SCOPE_PROVIDER) as AiScope[]).map((scope) => Object.freeze({ scope, provider: SCOPE_PROVIDER[scope] })));
+}
 
 function isSubject(subject: AiSubject): boolean {
   return !!subject && subject.kind === 'account' && typeof subject.userId === 'string' && subject.userId.length > 0 && subject.userId.length <= 128;
@@ -182,7 +200,7 @@ export function hasAiConsent(
 
 /** Remove client-supplied saved memory before any tutor prompt is parsed unless its own scope is active. */
 export function sanitizeTutorBodyForMemoryConsent(subject: AiSubject | null, body: unknown): unknown {
-  if (subject && hasAiConsent(subject, 'memory', 'google-agent-platform')) return body;
+  if (subject && hasAiConsent(subject, 'memory', SCOPE_PROVIDER.memory)) return body;
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return body;
   const request = body as Record<string, unknown>;
   const rawContext = request.context;

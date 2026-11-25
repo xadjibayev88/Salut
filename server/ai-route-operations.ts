@@ -113,7 +113,7 @@ const disabledLiveOperation: AiRouteOperation = Object.freeze({
  * Route-specific data boundaries for all six non-Live AI endpoints. These operations are supplied
  * to the route factory for accurate tests, but production readiness remains hard-disabled.
  */
-export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOperation>> {
+export function createAiRouteOperations(options: { readonly geminiAudioHints?: boolean } = {}): Readonly<Record<AiRouteKey, AiRouteOperation>> {
   const tutor = operation<TutorRequest>({
     maxBodyBytes: 64 * 1024,
     parse: parseTutorRequest,
@@ -173,6 +173,11 @@ export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOp
       audio: Uint8Array.from(Buffer.from(input.audio, 'base64')),
       // The provider contract requires a single explicit language; auto currently uses Uzbek.
       languageCode: input.hint === 'fr' ? 'fr-FR' : 'uz-UZ',
+      // Cloud STT needs only bytes + language. Gemini audio understanding also needs the container type,
+      // and Vivi's last line helps it spell names; these are forwarded only in that mode.
+      ...(options.geminiAudioHints
+        ? { mimeType: input.mime, autoLanguage: input.hint === 'auto', ...(input.context ? { context: input.context.slice(-300) } : {}) }
+        : {}),
     }),
     estimateUsage: (input) => withUsage(0, {
       // Compressed browser audio (Opus ≈ 2–4 KB/s): bytes/2000 is a safe upper bound on seconds.

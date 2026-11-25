@@ -3,6 +3,7 @@
 import type { AiPrompt, AiProvider, AiProviderName, SynthesisRequest, TranscriptionRequest } from './ai-provider.ts';
 import type { AiRouteKey } from './ai-routes.ts';
 import type { GoogleCloudProviderConfig } from './google-cloud-provider.ts';
+import type { GeminiApiProviderConfig } from './gemini-api-provider.ts';
 
 /** Default Gemini TTS delivery note: warm, natural Tashkent Uzbek; French phrases in clear French. */
 export const DEFAULT_TTS_STYLE =
@@ -35,6 +36,24 @@ export function googleProviderConfigFromEnv(env: NodeJS.ProcessEnv): GoogleCloud
       style: env.VIVI_TTS_STYLE === 'off' ? undefined : env.VIVI_TTS_STYLE || DEFAULT_TTS_STYLE,
       verified: exactTrue(env.VIVI_TTS_VERIFIED),
     }),
+  });
+}
+
+function list(value: string | undefined, fallback: readonly string[]): readonly string[] {
+  const items = (value ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+  return Object.freeze(items.length ? items : [...fallback]);
+}
+
+/** Free Gemini API mode: primary model first, then the fallback used only after a 429 refusal. */
+export function geminiApiProviderConfigFromEnv(env: NodeJS.ProcessEnv): GeminiApiProviderConfig {
+  const primary = env.VIVI_AI_MODEL ?? 'gemini-3.5-flash-lite';
+  const fallback = env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite';
+  return Object.freeze({
+    apiKey: env.GEMINI_API_KEY,
+    textModels: Object.freeze([...new Set([primary, fallback])]),
+    ttsModels: list(env.VIVI_TTS_MODELS ?? env.GEMINI_TTS_MODELS, ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']),
+    voice: env.VIVI_TTS_VOICE ?? env.GEMINI_TTS_VOICE ?? 'Leda',
+    style: env.VIVI_TTS_STYLE === 'off' ? undefined : env.VIVI_TTS_STYLE || DEFAULT_TTS_STYLE,
   });
 }
 

@@ -326,6 +326,8 @@ export interface AiConsentHttpDependencies {
   readonly subject: (req: IncomingMessage) => AiSubject | null;
   readonly getConsent: (subject: AiSubject) => AiConsent | null;
   readonly grantConsent: (subject: AiSubject, grants: readonly AiGrant[], policyVersion: string) => AiConsent;
+  /** Scope → provider pairs the server currently enforces (shown in the consent UI). */
+  readonly requirements?: () => readonly AiGrant[];
   readonly revokeConsent: (subject: AiSubject) => AiConsent | null;
   readonly deleteMemory: (subject: AiSubject) => boolean;
   readonly readBody: (req: IncomingMessage, maxBytes: number) => Promise<unknown>;
@@ -435,7 +437,7 @@ export function createAiConsentRoutes(deps: AiConsentHttpDependencies): Readonly
     'GET /api/ai/consent': (req, res) => {
       const subject = signedSubject(req, res, 'Rozilik sozlamalari');
       if (!subject) return;
-      try { return json(res, 200, { policyVersion: deps.policyVersion, consent: deps.getConsent(subject) }); }
+      try { return json(res, 200, { policyVersion: deps.policyVersion, requirements: deps.requirements?.() ?? [], consent: deps.getConsent(subject) }); }
       catch { return json(res, 503, { code: 'ai_consent_unavailable', message: 'AI roziligi vaqtincha mavjud emas.' }); }
     },
     'PUT /api/ai/consent': async (req, res) => {
