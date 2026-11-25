@@ -132,6 +132,8 @@ export function tutorFailureMessage(e: unknown): Pick<ChatMessage, 'role' | 'tex
   };
 }
 
+export const TUTOR_RETRY_DELAY_MS = 1200;
+
 /** /api/tutor ga so'rov yuboradi va matn bo'laklarini onDelta orqali uzatadi. */
 export async function askTutor(
   payload: { scenario: Scenario; message: string; history: { role: 'user' | 'tutor'; text: string }[]; context: ReturnType<typeof learnerContext>; character?: string; lang?: string; explicit?: boolean },
@@ -139,16 +141,27 @@ export async function askTutor(
   signal?: AbortSignal,
   onCue?: (cue: ViviCue) => void,
 ): Promise<void> {
-  let res: Response;
-  try {
-    res = await fetch('./api/tutor', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), signal });
-  } catch (e) {
-    if ((e as Error).name === 'AbortError') throw e;
-    throw new TutorError('offline', "Internetga ulanib bo'lmadi. Aloqani tekshirib, qayta urinib ko'ring.");
-  }
-  const ct = res.headers.get('content-type') ?? '';
-  if (!res.ok || !ct.includes('text/event-stream') || !res.body) {
+  let res!: Response;
+  // Google's free tier is sometimes briefly overloaded. The server already retries; if it still could not
+  // get a reply (503/504 before any text was sent), the client waits a moment and asks once more.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch('./api/tutor', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), signal });
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+      throw new TutorError('offline', "Internetga ulanib bo'lmadi. Aloqani tekshirib, qayta urinib ko'ring.");
+    }
+    const ct = res.headers.get('content-type') ?? '';
+    if (res.ok && ct.includes('text/event-stream') && res.body) break;
     const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
+    const transient = (res.status === 503 && body?.code === 'ai_upstream_error') || (res.status === 504 && body?.code === 'ai_timeout');
+    if (transient && attempt === 0 && !signal?.aborted) {
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(resolve, TUTOR_RETRY_DELAY_MS);
+        signal?.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+      });
+      continue;
+    }
     throw new TutorError(body?.code ?? 'upstream', body?.message ?? 'AI ustoz hozircha javob bera olmadi.');
   }
   const reader = res.body.getReader();
