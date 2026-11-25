@@ -142,3 +142,42 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
     configurationReady,
   });
 }
+
+const QUOTA_ENV: Readonly<Record<keyof AiQuotaConfig, string>> = Object.freeze({
+  requestsPerDay: 'VIVI_AI_MAX_REQUESTS_PER_DAY',
+  tokensPerDay: 'VIVI_AI_MAX_TOKENS_PER_DAY',
+  sttAudioSecondsPerDay: 'VIVI_AI_MAX_STT_AUDIO_SECONDS_PER_DAY',
+  ttsCharactersPerDay: 'VIVI_AI_MAX_TTS_CHARACTERS_PER_DAY',
+  ttsAudioSecondsPerDay: 'VIVI_AI_MAX_TTS_AUDIO_SECONDS_PER_DAY',
+  subjectRequestsPerDay: 'VIVI_AI_MAX_SUBJECT_REQUESTS_PER_DAY',
+  subjectTokensPerDay: 'VIVI_AI_MAX_SUBJECT_TOKENS_PER_DAY',
+  subjectSttAudioSecondsPerDay: 'VIVI_AI_MAX_SUBJECT_STT_AUDIO_SECONDS_PER_DAY',
+  subjectTtsCharactersPerDay: 'VIVI_AI_MAX_SUBJECT_TTS_CHARACTERS_PER_DAY',
+  subjectTtsAudioSecondsPerDay: 'VIVI_AI_MAX_SUBJECT_TTS_AUDIO_SECONDS_PER_DAY',
+  spendUsdPerDay: 'VIVI_AI_MAX_SPEND_USD_PER_DAY',
+});
+
+/**
+ * Operator diagnostics: the NAMES of settings that keep AI closed (never their values).
+ * Safe to expose on /api/health so a host without log access can see what to fix.
+ */
+export function aiConfigProblems(env: NodeJS.ProcessEnv): readonly string[] {
+  const config = loadAiRuntimeConfig(env);
+  const problems: string[] = [];
+  if (env.VIVI_AI_ENABLED !== 'true') problems.push('VIVI_AI_ENABLED');
+  if (!config.provider) problems.push('VIVI_AI_PROVIDER');
+  if (!config.model) problems.push('VIVI_AI_MODEL');
+  if (config.provider === 'google-gemini-api') {
+    if (!/^[A-Za-z0-9_.-]{20,}$/.test(env.GEMINI_API_KEY?.trim() ?? '')) problems.push('GEMINI_API_KEY');
+  } else if (config.provider) {
+    if (!config.location) problems.push('GOOGLE_CLOUD_LOCATION');
+    if (!config.adcOperatorAttested) problems.push('VIVI_AI_ADC_OPERATOR_ATTESTED');
+    if (!config.projectConfigured) problems.push('GOOGLE_CLOUD_PROJECT_ID');
+    if (env.VIVI_AI_PROJECT_CONFIG_VERIFIED !== 'true') problems.push('VIVI_AI_PROJECT_CONFIG_VERIFIED');
+  }
+  for (const [field, name] of Object.entries(QUOTA_ENV) as [keyof AiQuotaConfig, string][]) {
+    if (!(typeof config.quota[field] === 'number' && (config.quota[field] as number) > 0)) problems.push(name);
+  }
+  if (config.killSwitchActive) problems.push('VIVI_AI_KILL_SWITCH');
+  return Object.freeze(problems);
+}

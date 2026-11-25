@@ -89,3 +89,17 @@ describe('loadAiRuntimeConfig', () => {
     expect(JSON.stringify(config)).not.toContain('voila-ai-project');
   });
 });
+
+describe('aiConfigProblems', () => {
+  it('lists only the names of settings that keep AI closed, never values', async () => {
+    const { aiConfigProblems } = await import('./ai-config.ts');
+    expect(aiConfigProblems(completeEnv)).toEqual([]);
+    const free = aiConfigProblems({ ...completeEnv, VIVI_AI_PROVIDER: 'google-gemini-api', GEMINI_API_KEY: ' ', VIVI_AI_MAX_TOKENS_PER_DAY: '' });
+    expect(free).toEqual(['GEMINI_API_KEY', 'VIVI_AI_MAX_TOKENS_PER_DAY']);
+    const off = aiConfigProblems({});
+    expect(off).toContain('VIVI_AI_ENABLED');
+    expect(off).toContain('VIVI_AI_KILL_SWITCH');
+    const secret = 'AQ.secret_value_that_must_not_leak_1234';
+    expect(JSON.stringify(aiConfigProblems({ ...completeEnv, VIVI_AI_PROVIDER: 'google-gemini-api', GEMINI_API_KEY: secret }))).not.toContain('secret_value');
+  });
+});
