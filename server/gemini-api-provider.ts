@@ -10,6 +10,7 @@ import {
   type TranscriptionResult,
 } from './ai-provider.ts';
 import { pcmToWav } from './google-cloud-provider.ts';
+import type { AiKeyProblemDetail } from './ai-alerts.ts';
 
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 export const GEMINI_API_TEXT_MODELS = new Set(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
@@ -22,13 +23,15 @@ export interface GeminiApiProviderConfig {
   readonly ttsModels: readonly string[];
   readonly voice: string;
   readonly style?: string;
+  /** Called when Google refuses the key (limit reached or key invalid) so the operator can be alerted. */
+  readonly onKeyProblem?: (problem: AiKeyProblemDetail) => void;
 }
 
 const STT_INSTRUCTION = `Sen nutqni matnga aylantiruvchisan. Gapiruvchi — fransuz tilini o'rganayotgan o'zbek o'quvchi; u AI ustoz «Vivi» bilan gaplashyapti.
-- Audiodagi gapni AYNAN yoz: tarjima qilma, javob berma, o'zingdan so'z qo'shma.
+- Audiodagi BARCHA aytilgan so'zlarni boshidan oxirigacha AYNAN yoz: hech bir qismini (o'zbekcha ham, fransuzcha ham) tashlab ketma, tarjima qilma, javob berma, o'zingdan so'z qo'shma.
 - Nutq o'zbekcha, fransuzcha yoki aralash bo'lishi mumkin: o'zbekcha — lotin yozuvida (o', g', sh, ch), fransuzcha — fransuz imlosida (urg'u belgilari bilan).
 - O'quvchining grammatik xatolarini TUZATMA.
-- Ustozning oxirgi gapi faqat ism va so'zlarni to'g'ri yozish uchun; uni matnga qo'shma.
+- Ustozning oxirgi gapi faqat ism va so'zlarni to'g'ri yozish uchun beriladi; uni audioda aytilmagan bo'lsa matnga qo'shma, lekin audioda aytilgan gapni u bilan o'xshash deb tashlab ham ketma.
 - Nutq eshitilmasa yoki tushunarsiz bo'lsa — text bo'sh.
 - language: "uz", "fr" yoki "mixed".`;
 
@@ -79,6 +82,11 @@ export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchIm
     const usable = models.filter((m) => allowed.has(m));
     if (!usable.length) throw new AiProviderError('provider_unavailable');
     let lastStatus = 0;
+    let quotaRefusals = 0;
+    let daily = false;
+    const report = (problem: AiKeyProblemDetail) => {
+      try { config.onKeyProblem?.(problem); } catch { /* alerts never break a request */ }
+    };
     for (const model of usable) {
       if (signal?.aborted) throw new AiProviderError('request_aborted');
       let res: Response;
@@ -92,19 +100,33 @@ export function createGeminiApiProvider(config: GeminiApiProviderConfig, fetchIm
       } catch {
         throw new AiProviderError(signal?.aborted ? 'request_aborted' : 'upstream_error');
       }
-      if (res.status === 429) {
-        // Free-tier rate limit: the request was refused, not processed — the next listed model may accept it.
-        lastStatus = 429;
-        await res.body?.cancel().catch(() => undefined);
+      if (res.status === 429 || res.status === 503) {
+        // 429 (free-tier limit) and 503 (model overloaded) mean the request was refused, not processed,
+        // so the next listed model may take it without a duplicate billable call.
+        lastStatus = res.status;
+        const detail = await res.text().catch(() => '');
+        if (res.status === 429) {
+          quotaRefusals++;
+          if (/PerDay|per[ _-]?day|daily/i.test(detail)) daily = true;
+        }
         continue;
       }
-      if (!res.ok) throw new AiProviderError('upstream_error', res.status);
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        if ((res.status === 400 || res.status === 401 || res.status === 403) && /API_KEY_INVALID|API key (not valid|expired)|PERMISSION_DENIED|API_KEY_SERVICE_BLOCKED/i.test(detail)) {
+          report({ kind: 'invalid_key', model });
+          throw new AiProviderError('auth_unavailable', res.status);
+        }
+        throw new AiProviderError('upstream_error', res.status);
+      }
       try {
         return await res.json();
       } catch {
         throw new AiProviderError(signal?.aborted ? 'request_aborted' : 'invalid_response');
       }
     }
+    // Every model refused on quota → the key's free limit is used up.
+    if (quotaRefusals === usable.length) report({ kind: 'quota', model: usable[0], daily });
     throw new AiProviderError('upstream_error', lastStatus || undefined);
   };
 

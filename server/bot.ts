@@ -333,7 +333,19 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
   // Har qanday usulda (Payme, Click, karta, Visa) obuna yoqilsa — foydalanuvchiga xabar.
   onGrant((userId) => void notifyDecision(userId, true));
 
-  return { handle, notifyReceipt, notifyDecision, notifyReview };
+  /** Oddiy xizmat ogohlantirishi barcha admin chatlariga (masalan, AI limiti tugadi). */
+  async function notifyAdmins(html: string): Promise<number> {
+    let sent = 0;
+    for (const chat of adminChats()) {
+      try {
+        await send(chat, html);
+        sent++;
+      } catch { /* boshqa adminlarga yuborishda davom etamiz */ }
+    }
+    return sent;
+  }
+
+  return { handle, notifyReceipt, notifyDecision, notifyReview, notifyAdmins };
 }
 
 // ---------- Telegram API + polling ----------

@@ -51,7 +51,8 @@ export function geminiApiProviderConfigFromEnv(env: NodeJS.ProcessEnv): GeminiAp
   return Object.freeze({
     apiKey: env.GEMINI_API_KEY,
     textModels: Object.freeze([...new Set([primary, fallback])]),
-    ttsModels: list(env.VIVI_TTS_MODELS ?? env.GEMINI_TTS_MODELS, ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']),
+    // flash-tts first: in a live Uzbek test it was natural and tight (7 s) while lite padded long pauses (25 s).
+    ttsModels: list(env.VIVI_TTS_MODELS, ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']),
     voice: env.VIVI_TTS_VOICE ?? env.GEMINI_TTS_VOICE ?? 'Leda',
     style: env.VIVI_TTS_STYLE === 'off' ? undefined : env.VIVI_TTS_STYLE || DEFAULT_TTS_STYLE,
   });

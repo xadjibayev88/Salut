@@ -3,6 +3,7 @@ import { createGeminiApiProvider, GEMINI_API_BASE } from './gemini-api-provider.
 import { loadAiRuntimeConfig } from './ai-config.ts';
 import { aiProviderMode, policyVersionFor, routeRequirementsFor } from './ai-consent.ts';
 import { geminiApiProviderConfigFromEnv } from './ai-runtime.ts';
+import { createAiKeyAlerter } from './ai-alerts.ts';
 
 const KEY = 'AIzaSyTEST_key_0123456789abcdef';
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -30,7 +31,9 @@ describe('Gemini API (free) provider', () => {
     expect((init.headers as Record<string, string>)['x-goog-api-key']).toBe(KEY);
   });
 
-  it('moves to the fallback model only after a 429 refusal, never after a processed error', async () => {
+  it('moves to the fallback model only after a 429/503 refusal, never after a processed error', async () => {
+    const busy = provider([json({}, 503), textReply({ uz: 'salom' })]);
+    await expect(busy.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).resolves.toEqual({ uz: 'salom' });
     const a = provider([json({}, 429), textReply({ uz: 'salom' })]);
     await expect(a.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).resolves.toEqual({ uz: 'salom' });
     expect(String(a.fetchImpl.mock.calls[1][0])).toContain('gemini-3.1-flash-lite');
@@ -68,6 +71,42 @@ describe('Gemini API (free) provider', () => {
   });
 });
 
+describe('key problem alerts', () => {
+  it('reports a daily quota only when every model refused on quota', async () => {
+    const onKeyProblem = vi.fn();
+    const quota = () => json({ error: { status: 'RESOURCE_EXHAUSTED', details: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] } }, 429);
+    const a = provider([quota(), quota()], { onKeyProblem });
+    await expect(a.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).rejects.toMatchObject({ code: 'upstream_error' });
+    expect(onKeyProblem).toHaveBeenCalledWith({ kind: 'quota', model: 'gemini-3.5-flash-lite', daily: true });
+    onKeyProblem.mockClear();
+    const b = provider([quota(), json({}, 503)], { onKeyProblem });
+    await expect(b.p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).rejects.toThrow();
+    expect(onKeyProblem).not.toHaveBeenCalled();
+  });
+
+  it('reports a rejected key', async () => {
+    const onKeyProblem = vi.fn();
+    const { p } = provider([json({ error: { status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } }, 400)], { onKeyProblem });
+    await expect(p.generateJson({ contents: [{ role: 'user', parts: [{ text: 'x' }] }] })).rejects.toMatchObject({ code: 'auth_unavailable' });
+    expect(onKeyProblem).toHaveBeenCalledWith({ kind: 'invalid_key', model: 'gemini-3.5-flash-lite' });
+  });
+
+  it('sends one Telegram alert per problem kind per window', () => {
+    let now = 0;
+    const send = vi.fn();
+    const alert = createAiKeyAlerter(send, () => now);
+    expect(alert({ kind: 'quota', model: 'm', daily: true })).toBe(true);
+    expect(alert({ kind: 'quota', model: 'm', daily: true })).toBe(false);
+    expect(alert({ kind: 'invalid_key', model: 'm' })).toBe(true);
+    now = 3 * 60 * 60 * 1000 + 1;
+    expect(alert({ kind: 'quota', model: 'm' })).toBe(true);
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(String(send.mock.calls[0][0])).toContain('kunlik');
+    expect(String(send.mock.calls[0][0])).toContain('GEMINI_API_KEY');
+    expect(String(send.mock.calls[0][0])).not.toMatch(/AIza|AQ\./);
+  });
+});
+
 describe('free mode configuration and consent', () => {
   const quotas = Object.fromEntries([
     'REQUESTS', 'TOKENS', 'STT_AUDIO_SECONDS', 'TTS_CHARACTERS', 'TTS_AUDIO_SECONDS',
@@ -86,6 +125,7 @@ describe('free mode configuration and consent', () => {
   it('enables with only an API key — no Cloud project, region, ADC or billing', () => {
     expect(loadAiRuntimeConfig(freeEnv).providerEnabled).toBe(true);
     expect(loadAiRuntimeConfig({ ...freeEnv, GEMINI_API_KEY: '' }).providerEnabled).toBe(false);
+    expect(loadAiRuntimeConfig({ ...freeEnv, GEMINI_API_KEY: 'AQ.Ab8_new-format.example_key_value' }).providerEnabled).toBe(true);
     expect(loadAiRuntimeConfig({ ...freeEnv, VIVI_AI_MODEL: 'gemini-9-ultra' }).providerEnabled).toBe(false);
     expect(loadAiRuntimeConfig({ ...freeEnv, VIVI_AI_KILL_SWITCH: 'on' }).providerEnabled).toBe(false);
   });
@@ -99,10 +139,10 @@ describe('free mode configuration and consent', () => {
     expect(routeRequirementsFor('vertex')['POST /api/stt'].provider).toBe('google-cloud-speech-to-text');
   });
 
-  it('defaults to the lite TTS model and Leda voice, with a 429-only fallback text model', () => {
+  it('defaults to flash TTS (lite as backup), Leda voice, and a refusal-only fallback text model', () => {
     const config = geminiApiProviderConfigFromEnv({ GEMINI_API_KEY: KEY });
     expect(config.textModels).toEqual(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
-    expect(config.ttsModels[0]).toBe('gemini-3.8-flash-lite-tts');
+    expect(config.ttsModels).toEqual(['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']);
     expect(config.voice).toBe('Leda');
   });
 });

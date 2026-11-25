@@ -18,6 +18,7 @@ import { createGoogleCloudProvider } from './google-cloud-provider.ts';
 import { createGoogleAdcTokenSource } from './google-auth.ts';
 import { createProviderCall, geminiApiProviderConfigFromEnv, googleProviderConfigFromEnv } from './ai-runtime.ts';
 import { createGeminiApiProvider } from './gemini-api-provider.ts';
+import { createAiKeyAlerter } from './ai-alerts.ts';
 import { registerClientLogRoute, type RouteTable } from './client-log.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
@@ -578,7 +579,11 @@ const GOOGLE_TTS_VOICE = AI_PROVIDER_MODE === 'gemini-api'
   : GOOGLE_PROVIDER_CONFIG.textToSpeech?.voice ?? 'Leda';
 // VIVI_AI_PROVIDER=google-gemini-api → no-cost Gemini Developer API (AI Studio key); otherwise billed Vertex.
 const googleProvider = AI_PROVIDER_MODE === 'gemini-api'
-  ? createGeminiApiProvider(geminiApiProviderConfigFromEnv(process.env), fetch)
+  ? createGeminiApiProvider({
+    ...geminiApiProviderConfigFromEnv(process.env),
+    // Limit reached / key rejected → Telegram message to ADMIN_TELEGRAM_CHAT_ID (or admin accounts linked to the bot).
+    onKeyProblem: createAiKeyAlerter((html) => bot()?.notifyAdmins(html)),
+  }, fetch)
   : createGoogleCloudProvider(GOOGLE_PROVIDER_CONFIG, {
     auth: createGoogleAdcTokenSource(),
     fetchImpl: fetch,
@@ -675,5 +680,7 @@ server.keepAliveTimeout = 65_000;
 
 startBot();
 server.listen(PORT, () =>
-  console.log(`Voilà! server: http://localhost:${PORT} · AI: o'chiq · TTS: faqat matn (tekshirilmagan)`),
+  console.log(`Voilà! server: http://localhost:${PORT} · AI: ${aiRoutesEffectivelyReady()
+    ? `yoqilgan (${AI_PROVIDER_MODE === 'gemini-api' ? 'Gemini API, bepul' : 'Google Cloud Vertex'} · ${AI_RUNTIME_CONFIG.model})`
+    : "o'chiq (.env.example va `npm run ai:status` ni tekshiring)"}`),
 );

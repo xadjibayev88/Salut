@@ -115,7 +115,8 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
   const quota = parseQuota(env);
   const killSwitchActive = env.VIVI_AI_KILL_SWITCH !== 'off';
   // Gemini API mode needs only a server-side API key: no Cloud project, region or ADC.
-  const geminiApiKeyPresent = /^[A-Za-z0-9_-]{20,}$/.test(env.GEMINI_API_KEY?.trim() ?? '');
+  // Classic `AIza…` keys and the newer `AQ.…` format (which contains dots) are both accepted.
+  const geminiApiKeyPresent = /^[A-Za-z0-9_.-]{20,}$/.test(env.GEMINI_API_KEY?.trim() ?? '');
   const configurationReady = geminiApi
     ? exactTrue(env.VIVI_AI_ENABLED) && model !== null && geminiApiKeyPresent && allQuotaValuesPositive(quota)
     : exactTrue(env.VIVI_AI_ENABLED) &&
