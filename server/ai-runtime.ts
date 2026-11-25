@@ -47,7 +47,8 @@ function list(value: string | undefined, fallback: readonly string[]): readonly 
 /** Free Gemini API mode: primary model first, then the fallback used only after a 429 refusal. */
 export function geminiApiProviderConfigFromEnv(env: NodeJS.ProcessEnv): GeminiApiProviderConfig {
   const primary = env.VIVI_AI_MODEL ?? 'gemini-3.5-flash-lite';
-  const fallback = env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite';
+  // Live check (Nov 2026): 3.1-flash-lite answered 503 every time; 3.6-flash was 4/4 at ~2 s.
+  const fallback = env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.6-flash';
   return Object.freeze({
     apiKey: env.GEMINI_API_KEY,
     textModels: Object.freeze([...new Set([primary, fallback])]),
