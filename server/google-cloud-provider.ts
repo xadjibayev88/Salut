@@ -24,10 +24,14 @@ export interface VerifiedServiceConfig {
 
 export interface VerifiedSttConfig extends VerifiedServiceConfig {
   readonly recognizer?: string;
+  /** Per-language regions: Chirp 2 serves uz-UZ and fr-FR from different documented locations. */
+  readonly locations?: Readonly<Partial<Record<SpeechLanguageCode, string>>>;
 }
 
 export interface VerifiedTtsConfig extends VerifiedServiceConfig {
   readonly voice?: string;
+  /** Optional natural-language delivery instruction placed before the text (Gemini TTS style control). */
+  readonly style?: string;
 }
 
 /** All model, location, recognizer and voice choices are supplied explicitly; none have defaults. */
@@ -113,18 +117,20 @@ function sttEndpoint(config: GoogleCloudProviderConfig, languageCode: SpeechLang
     service.verified !== true ||
     service.model !== 'chirp_2' ||
     !STT_MODELS.has(service.model) ||
-    service.location !== STT_LOCATION_BY_LANGUAGE[languageCode] ||
+    (service.locations?.[languageCode] ?? service.location) !== STT_LOCATION_BY_LANGUAGE[languageCode] ||
     !validRecognizer(service.recognizer)
   ) {
     throw new AiProviderError('provider_unavailable');
   }
+  const location = STT_LOCATION_BY_LANGUAGE[languageCode];
+  // Speech-to-Text v2 regional recognizers are served only from the matching regional endpoint.
   return {
-    url: `https://speech.googleapis.com/v2/projects/${projectId}/locations/${service.location}/recognizers/${service.recognizer}:recognize`,
+    url: `https://${location}-speech.googleapis.com/v2/projects/${projectId}/locations/${location}/recognizers/${service.recognizer}:recognize`,
     model: service.model,
   };
 }
 
-function ttsEndpoint(config: GoogleCloudProviderConfig): { url: string; voice: string } {
+function ttsEndpoint(config: GoogleCloudProviderConfig): { url: string; voice: string; style?: string } {
   const projectId = requiredProject(config);
   const service = config.textToSpeech;
   if (
@@ -140,7 +146,35 @@ function ttsEndpoint(config: GoogleCloudProviderConfig): { url: string; voice: s
   return {
     url: `${host}/v1/projects/${projectId}/locations/${service.location}/publishers/google/models/${service.model}:generateContent`,
     voice: service.voice,
+    ...(typeof service.style === 'string' && service.style.trim() ? { style: service.style.trim().slice(0, 400) } : {}),
   };
+}
+
+/** Gemini TTS returns raw 16-bit little-endian PCM (`audio/L16;codec=pcm;rate=24000`); browsers need a WAV header. */
+export function pcmToWav(pcm: Buffer, sampleRate: number, channels = 1): Buffer {
+  const header = Buffer.alloc(44);
+  const byteRate = sampleRate * channels * 2;
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(channels * 2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([header, pcm]);
+}
+
+function pcmRate(mimeType: string): number | null {
+  if (!/^audio\/(l16|pcm)\b/i.test(mimeType)) return null;
+  const match = /rate=(\d{4,6})/i.exec(mimeType);
+  const rate = match ? Number(match[1]) : 24_000;
+  return rate >= 8_000 && rate <= 48_000 ? rate : null;
 }
 
 function promptPayload(prompt: AiPrompt, jsonMode: boolean): JsonRecord {
@@ -384,11 +418,12 @@ export function createGoogleCloudProvider(
     async synthesize(request: SynthesisRequest, signal?: AbortSignal): Promise<SynthesisResult> {
       const service = ttsEndpoint(config);
       if (typeof request?.text !== 'string' || request.text.trim().length === 0) throw new AiProviderError('provider_unavailable');
+      const spoken = service.style ? `${service.style}\n\n${request.text}` : request.text;
       const payload: JsonRecord = {
-        contents: [{ role: 'user', parts: [{ text: request.text }] }],
+        contents: [{ role: 'user', parts: [{ text: spoken }] }],
         generationConfig: {
           responseModalities: ['AUDIO'],
-          speechConfig: { voiceConfig: { voice: service.voice } },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: service.voice } } },
         },
       };
       const response = await postJson(service.url, payload, signal);
@@ -402,14 +437,18 @@ export function createGoogleCloudProvider(
       );
       if (audioParts.length !== 1) throw new AiProviderError('invalid_response');
       const inlineData = audioParts[0].inlineData as JsonRecord;
+      const mimeType = typeof inlineData.mimeType === 'string' ? inlineData.mimeType : '';
+      const rate = pcmRate(mimeType);
       if (
-        inlineData.mimeType !== 'audio/wav' ||
+        (mimeType !== 'audio/wav' && rate === null) ||
         typeof inlineData.data !== 'string' ||
         !/^[A-Za-z0-9+/]+={0,2}$/.test(inlineData.data)
       ) {
         throw new AiProviderError('invalid_response');
       }
-      const audio = Buffer.from(inlineData.data, 'base64');
+      const decoded = Buffer.from(inlineData.data, 'base64');
+      if (rate !== null && (decoded.length === 0 || decoded.length % 2 !== 0)) throw new AiProviderError('invalid_response');
+      const audio = rate !== null ? pcmToWav(decoded, rate) : decoded;
       if (!isValidRiffWave(audio)) throw new AiProviderError('invalid_response');
       return { audio, mimeType: 'audio/wav' } satisfies SynthesisResult;
     },

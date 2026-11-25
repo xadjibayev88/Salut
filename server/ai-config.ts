@@ -47,9 +47,9 @@ const VERIFIED_MODELS = new Set<string>(['gemini-3.5-flash-lite']);
 // These locations are documented in the approved design as candidate Google Cloud regions.
 // They are not proof of model access: project-specific availability must be attested separately.
 const VERIFIED_LOCATION_CANDIDATES = new Set<string>(['asia-southeast1', 'europe-west4']);
-// Task 1 adds the gate, not the Google Cloud transport. The provider stays disabled until a later
-// task implements and tests the server-only adapter; environment values cannot bypass this switch.
-const GOOGLE_PROVIDER_TRANSPORT_READY = false;
+// The server-only Google adapter (google-cloud-provider.ts + google-auth.ts ADC) is installed and tested.
+// Enabling still requires every operator value below; missing or unverified input keeps AI closed.
+const GOOGLE_PROVIDER_TRANSPORT_READY = true;
 
 function exactTrue(value: string | undefined): boolean {
   return value === 'true';

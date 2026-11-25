@@ -171,7 +171,7 @@ describe('Google Cloud provider fake transport', () => {
       }],
     });
     const [url, init] = fetchImpl.mock.calls[0];
-    expect(String(url)).toBe('https://speech.googleapis.com/v2/projects/voila-ai-project/locations/asia-southeast1/recognizers/_:recognize');
+    expect(String(url)).toBe('https://asia-southeast1-speech.googleapis.com/v2/projects/voila-ai-project/locations/asia-southeast1/recognizers/_:recognize');
     expect(JSON.parse(String(init?.body))).toEqual({
       config: { model: 'chirp_2', languageCodes: ['uz-UZ'], autoDecodingConfig: {} },
       content: Buffer.from([1, 2, 3]).toString('base64'),
@@ -188,7 +188,7 @@ describe('Google Cloud provider fake transport', () => {
     await expect(registry.get(sttIdentity).transcribe({ audio: new Uint8Array([1]), languageCode: 'uz-UZ' }))
       .resolves.toEqual({ segments: [] });
     expect(String(fetchImpl.mock.calls[0][0])).toBe(
-      'https://speech.googleapis.com/v2/projects/voila-ai-project/locations/asia-southeast1/recognizers/_:recognize',
+      'https://asia-southeast1-speech.googleapis.com/v2/projects/voila-ai-project/locations/asia-southeast1/recognizers/_:recognize',
     );
   });
 
@@ -217,8 +217,34 @@ describe('Google Cloud provider fake transport', () => {
     );
     expect(JSON.parse(String(init?.body))).toMatchObject({
       contents: [{ role: 'user', parts: [{ text: 'Bonjour' }] }],
-      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { voice: 'Kore' } } },
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
     });
+  });
+
+  it('wraps Gemini TTS raw L16 PCM into a playable WAV and prepends the delivery style', async () => {
+    const pcm = Buffer.alloc(4800 * 2, 7);
+    const response = jsonResponse({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: pcm.toString('base64') } }] } }] });
+    const { provider, fetchImpl } = setup(response, {
+      ...validConfig(),
+      textToSpeech: { ...validConfig().textToSpeech, style: 'Read warmly in natural Uzbek:' },
+    });
+    const result = await provider.synthesize({ text: 'Salom!' });
+    const wav = Buffer.from(result.audio);
+    expect(result.mimeType).toBe('audio/wav');
+    expect(wav.toString('ascii', 0, 4)).toBe('RIFF');
+    expect(wav.readUInt32LE(24)).toBe(24_000);
+    expect(wav.readUInt32LE(40)).toBe(pcm.length);
+    expect(JSON.parse(String(fetchImpl.mock.calls[0][1]?.body)).contents[0].parts[0].text).toBe('Read warmly in natural Uzbek:\n\nSalom!');
+  });
+
+  it('uses per-language STT regions so Uzbek and French both work', async () => {
+    const ok = jsonResponse({ results: [{ alternatives: [{ transcript: 'Bonjour' }] }] });
+    const { provider, fetchImpl } = setup(ok, {
+      ...validConfig(),
+      speechToText: { ...validConfig().speechToText, locations: { 'uz-UZ': 'asia-southeast1', 'fr-FR': 'europe-west4' } },
+    });
+    await provider.transcribe({ audio: new Uint8Array([1, 2]), languageCode: 'fr-FR' });
+    expect(String(fetchImpl.mock.calls[0][0])).toBe('https://europe-west4-speech.googleapis.com/v2/projects/voila-ai-project/locations/europe-west4/recognizers/_:recognize');
   });
 
   it('rejects truncated headers and malformed RIFF/WAVE chunks', async () => {

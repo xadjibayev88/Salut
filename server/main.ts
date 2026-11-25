@@ -14,6 +14,9 @@ import { AI_CONSENT_POLICY_VERSION, deleteAiMemory, getAiConsent, grantAiConsent
 import { createAiConsentRoutes, createAiRoutes, deriveTrustedExternalOrigin, effectiveAiRouteReady, enabledAiRoutes, strictRequestOriginAllowed } from './ai-routes.ts';
 import { abortAiUsage, isAiQuotaKillSwitchActive, isAiQuotaStorageReady, reserveAiUsage, settleAiUsage } from './ai-quota.ts';
 import { createAiRouteOperations } from './ai-route-operations.ts';
+import { createGoogleCloudProvider } from './google-cloud-provider.ts';
+import { createGoogleAdcTokenSource } from './google-auth.ts';
+import { createProviderCall, googleProviderConfigFromEnv } from './ai-runtime.ts';
 import { registerClientLogRoute, type RouteTable } from './client-log.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
@@ -329,16 +332,20 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
   'GET /api/voice/config': (req, res) => {
     const premium = isPremium(req);
     const aiReady = aiRoutesEffectivelyReady();
+    // Voice is advertised only when the matching Google service was explicitly verified by the operator.
+    const sttReady = aiReady && process.env.VIVI_STT_VERIFIED === 'true';
+    const ttsReady = aiReady && process.env.VIVI_TTS_VERIFIED === 'true';
     json(res, 200, {
       ai: aiReady,
       aiProvider: aiReady ? AI_RUNTIME_CONFIG.provider : null,
-      stt: false,
-      sttProvider: null,
-      tts: 'text',
-      ttsTier: 'text',
-      ttsProvider: null,
+      stt: sttReady,
+      sttProvider: sttReady ? 'google-cloud-speech-to-text' : null,
+      // 'elevenlabs' is the client's name for the server-audio engine; the server speaks via Gemini TTS.
+      tts: ttsReady ? 'elevenlabs' : 'text',
+      ttsTier: ttsReady ? 'gemini' : 'text',
+      ttsProvider: ttsReady ? 'google-agent-platform' : null,
       audioTags: false,
-      voices: [],
+      voices: ttsReady ? [{ name: 'Vivi', id: GOOGLE_TTS_VOICE }] : [],
       sessionMinutes: premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : Math.min(SESSION_MIN, FREE_VOICE_MIN) + bonusMin(req),
       rewardMinutes: REWARD_VIVI_MIN,
       rewardsLeft: premium ? 0 : bonusClaimsLeft(req),
@@ -558,10 +565,17 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
   respond: json,
 }));
 
-// Production AI handlers remain unreachable: the Google transport, quota middleware, shared durable store,
-// and operation rollout are not verified. The route payload minimizers are installed for regression tests only.
-const AI_QUOTA_RESERVATION_MIDDLEWARE_READY = false;
-const AI_ROUTE_OPERATIONS_READY = false;
+// The Google transport (server-only ADC), quota reservation middleware and route operations are installed.
+// Routes still stay closed until the operator config (VIVI_AI_*), shared durable quota store attestation and
+// kill switch all pass — see `.env.example`.
+const AI_QUOTA_RESERVATION_MIDDLEWARE_READY = true;
+const AI_ROUTE_OPERATIONS_READY = true;
+const GOOGLE_PROVIDER_CONFIG = googleProviderConfigFromEnv(process.env);
+const GOOGLE_TTS_VOICE = GOOGLE_PROVIDER_CONFIG.textToSpeech?.voice ?? 'Leda';
+const googleProvider = createGoogleCloudProvider(GOOGLE_PROVIDER_CONFIG, {
+  auth: createGoogleAdcTokenSource(),
+  fetchImpl: fetch,
+});
 function aiRoutesEffectivelyReady(): boolean {
   return effectiveAiRouteReady({
     providerReady: AI_RUNTIME_CONFIG.providerEnabled,
@@ -589,7 +603,7 @@ const aiRouteHandlers = createAiRoutes({
   quota: { reserveAiUsage, settleAiUsage, abortAiUsage },
   requestId: () => randomBytes(18).toString('base64url'),
   operations: aiRouteOperations,
-  providerCall: async () => { throw new Error('provider transport is not installed'); },
+  providerCall: createProviderCall(googleProvider),
 });
 const consentRouteHandlers = createAiConsentRoutes({
   policyVersion: AI_CONSENT_POLICY_VERSION,
