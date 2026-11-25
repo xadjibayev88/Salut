@@ -9,7 +9,7 @@ import { clearCookie, createSessionToken, currentAiSubject, currentUserId, delet
 import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
 import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases, stats, submitReview } from './social.ts';
-import { loadAiRuntimeConfig } from './ai-config.ts';
+import { aiConfigProblems, loadAiRuntimeConfig } from './ai-config.ts';
 import { AI_CONSENT_POLICY_VERSION, AI_PROVIDER_MODE, aiConsentRequirements, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, sanitizeTutorBodyForMemoryConsent } from './ai-consent.ts';
 import { createAiConsentRoutes, createAiRoutes, deriveTrustedExternalOrigin, effectiveAiRouteReady, enabledAiRoutes, strictRequestOriginAllowed } from './ai-routes.ts';
 import { abortAiUsage, applyFreshKillSwitchFromEnv, isAiQuotaKillSwitchActive, isAiQuotaStorageReady, reserveAiUsage, settleAiUsage } from './ai-quota.ts';
@@ -24,6 +24,7 @@ import { registerClientLogRoute, type RouteTable } from './client-log.ts';
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
 const AI_RUNTIME_CONFIG = loadAiRuntimeConfig(env);
+const AI_CONFIG_PROBLEMS = aiConfigProblems(env);
 const num = (k: string, d: number) => (Number(env[k]) > 0 ? Number(env[k]) : d);
 const PORT = num('PORT', 8787);
 const TRUST_PROXY = env.TRUST_PROXY === '1';
@@ -324,12 +325,21 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
     json(res, ok ? 200 : 409, { ok });
   },
 
-  'GET /api/health': (_q, res) => json(res, 200, {
-    ok: true,
-    ai: aiRoutesEffectivelyReady(),
-    model: aiRoutesEffectivelyReady() ? AI_RUNTIME_CONFIG.model : null,
-    exhausted: [],
-  }),
+  'GET /api/health': (_q, res) => {
+    const ai = aiRoutesEffectivelyReady();
+    json(res, 200, {
+      ok: true,
+      ai,
+      model: ai ? AI_RUNTIME_CONFIG.model : null,
+      exhausted: [],
+      // Names only (never values) of what keeps Vivi AI closed, for hosts without log access.
+      ...(ai ? {} : { aiProblems: [
+        ...AI_CONFIG_PROBLEMS,
+        ...(isAiQuotaStorageReady() ? [] : ['VIVI_AI_QUOTA_STORE_SHARED_DURABLE_VERIFIED (yoki baza)']),
+        ...(isAiQuotaKillSwitchActive() && !AI_CONFIG_PROBLEMS.includes('VIVI_AI_KILL_SWITCH') ? ['bazadagi kill switch (npm run ai:on)'] : []),
+      ] }),
+    });
+  },
 
   'GET /api/voice/config': (req, res) => {
     const premium = isPremium(req);

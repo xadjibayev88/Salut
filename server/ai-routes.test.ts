@@ -658,7 +658,7 @@ describe('AI route consent/quota middleware', () => {
     expect(main).toContain('providerCall: createProviderCall(googleProvider)');
     expect(main).toContain("stt: sttReady");
     expect(main).toContain("if (routeKey === 'POST /api/live/token') return void aiRouteHandlers['POST /api/live/token'](req, res);");
-    expect(main).toContain('ai: aiRoutesEffectivelyReady()');
+    expect(main).toContain('const ai = aiRoutesEffectivelyReady();');
     expect(main).toContain('ai: aiReady');
     expect(main).toContain("requestOriginAllowed: aiRequestOriginAllowed");
     expect(main).toContain("tts: ttsReady ? 'elevenlabs' : 'text'");
