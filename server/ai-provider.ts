@@ -1,5 +1,5 @@
 /** Consent/disclosure identities are distinct even when one adapter implements both Google APIs. */
-export const AI_PROVIDER_NAMES = ['google-agent-platform', 'google-cloud-speech-to-text'] as const;
+export const AI_PROVIDER_NAMES = ['google-agent-platform', 'google-cloud-speech-to-text', 'google-gemini-api'] as const;
 export type AiProviderName = (typeof AI_PROVIDER_NAMES)[number];
 
 export type AiProviderErrorCode =
@@ -55,6 +55,12 @@ export type SpeechLanguageCode = 'uz-UZ' | 'fr-FR';
 export interface TranscriptionRequest {
   readonly audio: Uint8Array;
   readonly languageCode: SpeechLanguageCode;
+  /** Container type of the browser recording (e.g. audio/webm); used by Gemini audio understanding. */
+  readonly mimeType?: string;
+  /** True when the learner did not choose a language; the transcriber may keep mixed Uzbek/French. */
+  readonly autoLanguage?: boolean;
+  /** Vivi's last line, only to spell names/words correctly. */
+  readonly context?: string;
 }
 
 export interface SpeechAlternative {

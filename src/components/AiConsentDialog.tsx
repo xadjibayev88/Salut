@@ -4,6 +4,8 @@ import { useStore } from '../state/store';
 import {
   AI_CONSENT_POLICY_VERSION,
   AI_SCOPE_OPTIONS,
+  GEMINI_API_FREE_TIER_NOTICE,
+  scopeOptionsFor,
   deleteAiMemoryRequest,
   loadAiConsent,
   revokeAiConsentRequest,
@@ -17,6 +19,7 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
   const { state, update } = useStore();
   const [policyVersion, setPolicyVersion] = useState(AI_CONSENT_POLICY_VERSION);
   const [consent, setConsent] = useState<AiConsent | null>(null);
+  const [options, setOptions] = useState(() => [...AI_SCOPE_OPTIONS]);
   const [selected, setSelected] = useState<AiScope[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -40,6 +43,7 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
         return;
       }
       setPolicyVersion(r.body.policyVersion);
+      setOptions(scopeOptionsFor(r.body.requirements));
       setConsent(r.body.consent);
       const validCurrent = r.body.consent?.policyVersion === r.body.policyVersion;
       setSelected(validCurrent ? r.body.consent!.grants.filter((g) => g.policyVersion === r.body.policyVersion && g.revokedAt === null).map((g) => g.scope) : []);
@@ -64,7 +68,7 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
     if (!policyVersion || !selected.length) return;
     setSaving(true);
     setError('');
-    const grants = AI_SCOPE_OPTIONS.filter((option) => selected.includes(option.scope))
+    const grants = options.filter((option) => selected.includes(option.scope))
       .map(({ scope, provider }) => ({ scope, provider }));
     const r = await saveAiConsent(policyVersion, grants);
     setSaving(false);
@@ -118,7 +122,10 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
         {policyVersion && <p><b>Siyosat versiyasi:</b> {policyVersion}</p>}
         {loading ? <p className="muted">Rozilik holati yuklanmoqda…</p> : (
           <div className="ai-consent-options">
-            {AI_SCOPE_OPTIONS.map((option) => (
+            {options.some((o) => o.provider === 'google-gemini-api') && (
+              <p className="muted small" role="note">⚠️ {GEMINI_API_FREE_TIER_NOTICE}</p>
+            )}
+            {options.map((option) => (
               <label className="setting" key={option.scope}>
                 <span>
                   <b>{option.label}</b><br />

@@ -13,6 +13,8 @@ import { TabIcon } from './components/TabIcons';
 import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
 import { AiConsentDialog } from './components/AiConsentDialog';
+import { CountUp } from './components/CountUp';
+import { startScrollReveal } from './engine/motion';
 // Og'ir sahifalar alohida yuklanadi (birinchi ochilish tezroq), bo'sh paytda oldindan olib qo'yiladi.
 const loaders = {
   Tutor: () => import('./screens/Tutor').then((m) => ({ default: m.Tutor })),
@@ -130,6 +132,8 @@ export function App() {
   const wide = useMedia('(min-width: 1180px)');
   const [tapped, setTapped] = useState<{ id: Tab; n: number } | null>(null);
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
+  const [comet, setComet] = useState<{ from: number; to: number; n: number } | null>(null);
+  useEffect(() => startScrollReveal(), []);
   const go = (t: Tab) => {
     if (t === tab) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -139,6 +143,7 @@ export function App() {
     const from = TABS.findIndex((x) => x.id === tab);
     const to = TABS.findIndex((x) => x.id === t);
     setDir(to >= from ? 'fwd' : 'back');
+    if (from >= 0 && to >= 0) setComet((c) => ({ from, to, n: (c?.n ?? 0) + 1 }));
     history.replaceState(null, '', `#/${t}`);
     setVisited((v) => (v.includes(t) ? v : [...v, t]));
     setTab(t);
@@ -205,6 +210,15 @@ export function App() {
       <nav className="bottombar" style={{ ['--tabs' as string]: TABS.length, ['--i' as string]: Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
         {/* Faol bo'lim ostidagi «shisha linza» — bo'limlar orasida suzib o'tadi */}
         <span className={`tab-lens ${TABS.some((t) => t.id === tab) ? '' : 'hidden'}`} aria-hidden="true" />
+        {/* Glow Trail: bo'lim almashganda eski joydan yangisiga nurli kometa uchib o'tadi */}
+        {comet && (
+          <span
+            key={comet.n}
+            className="tab-comet"
+            aria-hidden="true"
+            style={{ ['--from' as string]: comet.from, ['--to' as string]: comet.to, ['--dir' as string]: comet.to > comet.from ? 1 : -1 }}
+          />
+        )}
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -267,10 +281,10 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
         </span>
       )}
       <button type="button" className={`stat streak ${active ? 'on' : ''}`} title="Kunlik seriya" onClick={onProfile}>
-        <StreakFlame on={active} /> <b>{state.streak}</b>
+        <StreakFlame on={active} /> <b><CountUp value={state.streak} /></b>
       </button>
       <button type="button" className="stat gems" title="Tangalar" onClick={onShop}>
-        🪙 <b>{state.gems}</b>
+        🪙 <b><CountUp value={state.gems} /></b>
       </button>
       <button type="button" className="stat heart" title="Kofe (xato qilsangiz kamayadi)" onClick={onShop}>
         ☕ <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>

@@ -30,6 +30,8 @@ export interface AiRouteResult {
   readonly actualUsage?: AiUsage;
   /** Optional server-encoded SSE frames, used only after the operation has normalized its result. */
   readonly sseEvents?: readonly string[];
+  /** Optional binary body (e.g. synthesized WAV audio) sent with its validated content type. */
+  readonly binary?: { readonly data: Uint8Array; readonly contentType: 'audio/wav' };
 }
 
 export interface AiRouteExecutionContext {
@@ -113,6 +115,17 @@ function safeRequestBodyError(error: unknown): { status: number; body: unknown }
 function safeRespond(res: ServerResponse, respond: AiRouteDependencies['respond'], status: number, body: unknown): void {
   if (res.writableEnded) return;
   respond(res, status, body);
+}
+
+function safeRespondBinary(res: ServerResponse, status: number, binary: NonNullable<AiRouteResult['binary']>): void {
+  if (res.writableEnded) return;
+  res.writeHead(status, {
+    'content-type': binary.contentType,
+    'content-length': String(binary.data.byteLength),
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+  });
+  res.end(Buffer.from(binary.data.buffer, binary.data.byteOffset, binary.data.byteLength));
 }
 
 function safeRespondSse(res: ServerResponse, status: number, events: readonly string[]): void {
@@ -301,6 +314,7 @@ export function createAiRoutes(deps: AiRouteDependencies): Readonly<Record<AiRou
         return safeRespond(res, deps.respond, 503, body);
       }
       if (result?.sseEvents) return safeRespondSse(res, result.status ?? 200, result.sseEvents);
+      if (result?.binary) return safeRespondBinary(res, result.status ?? 200, result.binary);
       return safeRespond(res, deps.respond, result?.status ?? 200, result?.body ?? null);
     };
   }
@@ -312,6 +326,8 @@ export interface AiConsentHttpDependencies {
   readonly subject: (req: IncomingMessage) => AiSubject | null;
   readonly getConsent: (subject: AiSubject) => AiConsent | null;
   readonly grantConsent: (subject: AiSubject, grants: readonly AiGrant[], policyVersion: string) => AiConsent;
+  /** Scope → provider pairs the server currently enforces (shown in the consent UI). */
+  readonly requirements?: () => readonly AiGrant[];
   readonly revokeConsent: (subject: AiSubject) => AiConsent | null;
   readonly deleteMemory: (subject: AiSubject) => boolean;
   readonly readBody: (req: IncomingMessage, maxBytes: number) => Promise<unknown>;
@@ -421,7 +437,7 @@ export function createAiConsentRoutes(deps: AiConsentHttpDependencies): Readonly
     'GET /api/ai/consent': (req, res) => {
       const subject = signedSubject(req, res, 'Rozilik sozlamalari');
       if (!subject) return;
-      try { return json(res, 200, { policyVersion: deps.policyVersion, consent: deps.getConsent(subject) }); }
+      try { return json(res, 200, { policyVersion: deps.policyVersion, requirements: deps.requirements?.() ?? [], consent: deps.getConsent(subject) }); }
       catch { return json(res, 503, { code: 'ai_consent_unavailable', message: 'AI roziligi vaqtincha mavjud emas.' }); }
     },
     'PUT /api/ai/consent': async (req, res) => {

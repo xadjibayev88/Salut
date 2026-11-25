@@ -47,7 +47,7 @@ describe('loadAiRuntimeConfig', () => {
     const config = loadAiRuntimeConfig({ ...completeEnv, VIVI_AI_LIVE_ENABLED: 'true' });
     expect(config.liveEnabled).toBe(false);
     expect(config.configurationReady).toBe(true);
-    expect(config.providerEnabled).toBe(false);
+    expect(config.providerEnabled).toBe(true);
   });
 
   it('accepts only the named Google provider and verified model/location candidates', () => {
@@ -64,13 +64,15 @@ describe('loadAiRuntimeConfig', () => {
     const config = loadAiRuntimeConfig(completeEnv);
     expect(config.adcOperatorAttested).toBe(true);
     expect(config.configurationReady).toBe(true);
-    expect(config.providerEnabled).toBe(false);
+    expect(loadAiRuntimeConfig({ ...completeEnv, VIVI_AI_ADC_OPERATOR_ATTESTED: 'false' }).providerEnabled).toBe(false);
   });
 
-  it('keeps the provider disabled until its Google transport is implemented', () => {
+  it('enables the installed Google transport only when every operator value is complete and the kill switch is off', () => {
     const config: AiRuntimeConfig = loadAiRuntimeConfig(completeEnv);
     expect(config.configurationReady).toBe(true);
-    expect(config.providerEnabled).toBe(false);
+    expect(config.providerEnabled).toBe(true);
+    expect(loadAiRuntimeConfig({ ...completeEnv, VIVI_AI_KILL_SWITCH: 'on' }).providerEnabled).toBe(false);
+    expect(loadAiRuntimeConfig({}).providerEnabled).toBe(false);
   });
 
   it('does not enable a provider for truthy-looking but invalid flags or malformed numeric values', () => {

@@ -27,6 +27,10 @@ function withUsage(tokens: number, extras: Partial<AiUsage> = {}): AiUsage {
   return Object.freeze({ ...ZERO_USAGE, tokens: Math.max(0, Math.ceil(tokens)), ...extras });
 }
 
+export function ttsSecondsUpperBound(text: string): number {
+  return Math.ceil(text.length / 5) + 5;
+}
+
 function textLength(value: string): number {
   return Math.ceil(value.length / 4);
 }
@@ -109,7 +113,7 @@ const disabledLiveOperation: AiRouteOperation = Object.freeze({
  * Route-specific data boundaries for all six non-Live AI endpoints. These operations are supplied
  * to the route factory for accurate tests, but production readiness remains hard-disabled.
  */
-export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOperation>> {
+export function createAiRouteOperations(options: { readonly geminiAudioHints?: boolean } = {}): Readonly<Record<AiRouteKey, AiRouteOperation>> {
   const tutor = operation<TutorRequest>({
     maxBodyBytes: 64 * 1024,
     parse: parseTutorRequest,
@@ -142,13 +146,20 @@ export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOp
     parse: parseTranslateRequest,
     minimize: (input) => promptFromLegacyBody(translateBody(input, TEXT_MODEL_FOR_PROMPT_SHAPING)),
     estimateUsage: (input) => withUsage(2 * (input.text.length + input.context.length + 300)),
+    sanitizeResult: (result) => {
+      const value = (result ?? {}) as { uz?: unknown; say?: unknown };
+      const uz = typeof value.uz === 'string' ? value.uz.trim().slice(0, 200) : '';
+      const say = typeof value.say === 'string' ? value.say.trim().slice(0, 120) : '';
+      return uz ? { uz, ...(say ? { say } : {}) } : { uz: '' };
+    },
   });
   const memory = operation<MemoryRequest>({
     maxBodyBytes: 64 * 1024,
     parse: parseMemoryRequest,
     minimize: (input) => promptFromLegacyBody(memoryBody(input, TEXT_MODEL_FOR_PROMPT_SHAPING)),
     estimateUsage: (input) => withUsage(2 * (input.memory.length + input.turns.reduce((sum, turn) => sum + turn.text.length, 0) + 500)),
-    sanitizeResult: cleanMemory,
+    // The client reads `{ memory }`; a bare string body was silently ignored.
+    sanitizeResult: (result) => ({ memory: cleanMemory(result) }),
   });
   const stt = operation<SttRequest>({
     maxBodyBytes: 4 * 1024 * 1024,
@@ -162,9 +173,15 @@ export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOp
       audio: Uint8Array.from(Buffer.from(input.audio, 'base64')),
       // The provider contract requires a single explicit language; auto currently uses Uzbek.
       languageCode: input.hint === 'fr' ? 'fr-FR' : 'uz-UZ',
+      // Cloud STT needs only bytes + language. Gemini audio understanding also needs the container type,
+      // and Vivi's last line helps it spell names; these are forwarded only in that mode.
+      ...(options.geminiAudioHints
+        ? { mimeType: input.mime, autoLanguage: input.hint === 'auto', ...(input.context ? { context: input.context.slice(-300) } : {}) }
+        : {}),
     }),
     estimateUsage: (input) => withUsage(0, {
-      sttAudioSeconds: Math.min(60, Math.max(1, Math.ceil((input.audio.length * 3 / 4) / 32_000))),
+      // Compressed browser audio (Opus ≈ 2–4 KB/s): bytes/2000 is a safe upper bound on seconds.
+      sttAudioSeconds: Math.min(60, Math.max(1, Math.ceil((input.audio.length * 3 / 4) / 2_000))),
     }),
     sanitizeResult: (result, input) => {
       const raw = (result ?? {}) as { segments?: Array<{ languageCode?: unknown; alternatives?: Array<{ transcript?: unknown; confidence?: unknown }> }> };
@@ -211,7 +228,24 @@ export function createAiRouteOperations(): Readonly<Record<AiRouteKey, AiRouteOp
       return text ? { text } : 'Empty TTS request';
     },
     minimize: (input) => Object.freeze({ text: input.text }),
-    estimateUsage: (input) => withUsage(0, { ttsCharacters: input.text.length }),
+    // Upper bound reservation (speech is ≥ ~5 chars/s); settling above the hold would trip the global kill switch.
+    estimateUsage: (input) => withUsage(0, { ttsCharacters: input.text.length, ttsAudioSeconds: ttsSecondsUpperBound(input.text) }),
+    formatResult: (result, input) => {
+      const value = result as { audio?: unknown; mimeType?: unknown } | null;
+      if (!value || !(value.audio instanceof Uint8Array) || value.mimeType !== 'audio/wav' || value.audio.byteLength < 44) {
+        return { status: 502, body: { code: 'tts_failed', message: 'Ovoz yaratilmadi.' } };
+      }
+      // 16-bit mono PCM at the WAV header's sample rate → real audio seconds for quota settlement.
+      const bytes = Buffer.from(value.audio.buffer, value.audio.byteOffset, value.audio.byteLength);
+      const rate = bytes.readUInt32LE(24) || 24_000;
+      const seconds = Math.min(ttsSecondsUpperBound(input.text), Math.max(1, Math.ceil((bytes.byteLength - 44) / (rate * 2))));
+      return {
+        status: 200,
+        body: null,
+        binary: { data: value.audio, contentType: 'audio/wav' },
+        actualUsage: withUsage(0, { ttsCharacters: input.text.length, ttsAudioSeconds: seconds }),
+      };
+    },
   });
 
   return Object.freeze({

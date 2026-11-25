@@ -8,10 +8,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "start": "node server/main.ts",
-    "server": "node --watch server/main.ts",
+    "start": "node --env-file-if-exists=.env server/main.ts",
+    "server": "node --env-file-if-exists=.env --watch server/main.ts",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "ai:on": "node --env-file-if-exists=.env server/ai-switch.ts on",
+    "ai:off": "node --env-file-if-exists=.env server/ai-switch.ts off",
+    "ai:status": "node --env-file-if-exists=.env server/ai-switch.ts status"
   },
   "dependencies": {
     "react": "18.3.1",

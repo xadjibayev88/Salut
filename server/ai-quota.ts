@@ -450,6 +450,23 @@ export function setAiQuotaKillSwitchActive(active: boolean): boolean {
   return defaultStore.setKillSwitchActive(active);
 }
 
+/**
+ * A freshly created database starts with the persisted switch ON (`updated_at = 0`, never touched).
+ * On hosts without a persistent volume (e.g. a Railway redeploy) that would silently disable AI after every
+ * deploy, so an untouched row follows the operator's explicit `VIVI_AI_KILL_SWITCH=off`. A switch that an
+ * operator or a quota overrun has set (`updated_at > 0`) is never changed here.
+ */
+export function applyFreshKillSwitchFromEnv(env: NodeJS.ProcessEnv, connection: DatabaseSync = db(), now = Date.now()): boolean {
+  if (env.VIVI_AI_KILL_SWITCH !== 'off') return false;
+  try {
+    const result = connection.prepare('UPDATE ai_quota_controls SET kill_switch_active = 0, updated_at = ? WHERE id = 1 AND updated_at = 0 AND kill_switch_active = 1')
+      .run(Math.max(1, now));
+    return Number(result.changes) === 1;
+  } catch {
+    return false;
+  }
+}
+
 export function reserveAiUsage(subject: AiSubject, usage: AiUsage, requestId: string): AiQuotaReservationResult {
   return defaultStore.reserveAiUsage(subject, usage, requestId);
 }

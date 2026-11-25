@@ -1,5 +1,5 @@
-export type AiProvider = 'google-agent-platform';
-export type AiModel = 'gemini-3.5-flash-lite';
+export type AiProvider = 'google-agent-platform' | 'google-gemini-api';
+export type AiModel = 'gemini-3.5-flash-lite' | 'gemini-3.1-flash-lite';
 export type AiLocation = 'asia-southeast1' | 'europe-west4';
 
 export interface AiQuotaConfig {
@@ -42,14 +42,16 @@ export interface AiRuntimeConfig {
   readonly configurationReady: boolean;
 }
 
-const VERIFIED_PROVIDERS = new Set<string>(['google-agent-platform']);
+const VERIFIED_PROVIDERS = new Set<string>(['google-agent-platform', 'google-gemini-api']);
 const VERIFIED_MODELS = new Set<string>(['gemini-3.5-flash-lite']);
+// Gemini Developer API (AI Studio key) text models; the free tier serves these without a billing account.
+const GEMINI_API_MODELS = new Set<string>(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
 // These locations are documented in the approved design as candidate Google Cloud regions.
 // They are not proof of model access: project-specific availability must be attested separately.
 const VERIFIED_LOCATION_CANDIDATES = new Set<string>(['asia-southeast1', 'europe-west4']);
-// Task 1 adds the gate, not the Google Cloud transport. The provider stays disabled until a later
-// task implements and tests the server-only adapter; environment values cannot bypass this switch.
-const GOOGLE_PROVIDER_TRANSPORT_READY = false;
+// The server-only Google adapter (google-cloud-provider.ts + google-auth.ts ADC) is installed and tested.
+// Enabling still requires every operator value below; missing or unverified input keeps AI closed.
+const GOOGLE_PROVIDER_TRANSPORT_READY = true;
 
 function exactTrue(value: string | undefined): boolean {
   return value === 'true';
@@ -98,7 +100,8 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
   const rawModel = env.VIVI_AI_MODEL;
   const rawLocation = env.GOOGLE_CLOUD_LOCATION;
   const provider = rawProvider && VERIFIED_PROVIDERS.has(rawProvider) ? (rawProvider as AiProvider) : null;
-  const model = rawModel && VERIFIED_MODELS.has(rawModel) ? (rawModel as AiModel) : null;
+  const geminiApi = provider === 'google-gemini-api';
+  const model = rawModel && (geminiApi ? GEMINI_API_MODELS : VERIFIED_MODELS).has(rawModel) ? (rawModel as AiModel) : null;
   const location = rawLocation && VERIFIED_LOCATION_CANDIDATES.has(rawLocation) ? (rawLocation as AiLocation) : null;
   const adcOperatorAttested = exactTrue(env.VIVI_AI_ADC_OPERATOR_ATTESTED);
   const projectConfigured = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(env.GOOGLE_CLOUD_PROJECT_ID ?? '');
@@ -111,8 +114,12 @@ export function loadAiRuntimeConfig(env: NodeJS.ProcessEnv): AiRuntimeConfig {
   });
   const quota = parseQuota(env);
   const killSwitchActive = env.VIVI_AI_KILL_SWITCH !== 'off';
-  const configurationReady =
-    exactTrue(env.VIVI_AI_ENABLED) &&
+  // Gemini API mode needs only a server-side API key: no Cloud project, region or ADC.
+  // Classic `AIza…` keys and the newer `AQ.…` format (which contains dots) are both accepted.
+  const geminiApiKeyPresent = /^[A-Za-z0-9_.-]{20,}$/.test(env.GEMINI_API_KEY?.trim() ?? '');
+  const configurationReady = geminiApi
+    ? exactTrue(env.VIVI_AI_ENABLED) && model !== null && geminiApiKeyPresent && allQuotaValuesPositive(quota)
+    : exactTrue(env.VIVI_AI_ENABLED) &&
     provider !== null &&
     model !== null &&
     location !== null &&
