@@ -12,7 +12,7 @@ import { decideReview, myReview, pendingReviews, publicReviews, recentPurchases,
 import { loadAiRuntimeConfig } from './ai-config.ts';
 import { AI_CONSENT_POLICY_VERSION, AI_PROVIDER_MODE, aiConsentRequirements, deleteAiMemory, getAiConsent, grantAiConsent, hasAiConsent, revokeAiConsent, sanitizeTutorBodyForMemoryConsent } from './ai-consent.ts';
 import { createAiConsentRoutes, createAiRoutes, deriveTrustedExternalOrigin, effectiveAiRouteReady, enabledAiRoutes, strictRequestOriginAllowed } from './ai-routes.ts';
-import { abortAiUsage, isAiQuotaKillSwitchActive, isAiQuotaStorageReady, reserveAiUsage, settleAiUsage } from './ai-quota.ts';
+import { abortAiUsage, applyFreshKillSwitchFromEnv, isAiQuotaKillSwitchActive, isAiQuotaStorageReady, reserveAiUsage, settleAiUsage } from './ai-quota.ts';
 import { createAiRouteOperations } from './ai-route-operations.ts';
 import { createGoogleCloudProvider } from './google-cloud-provider.ts';
 import { createGoogleAdcTokenSource } from './google-auth.ts';
@@ -572,6 +572,7 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
 // Routes still stay closed until the operator config (VIVI_AI_*), shared durable quota store attestation and
 // kill switch all pass — see `.env.example`.
 const AI_QUOTA_RESERVATION_MIDDLEWARE_READY = true;
+if (applyFreshKillSwitchFromEnv(process.env)) console.log("AI: yangi bazada kill switch VIVI_AI_KILL_SWITCH=off bo'yicha o'chirildi.");
 const AI_ROUTE_OPERATIONS_READY = true;
 const GOOGLE_PROVIDER_CONFIG = googleProviderConfigFromEnv(process.env);
 const GOOGLE_TTS_VOICE = AI_PROVIDER_MODE === 'gemini-api'

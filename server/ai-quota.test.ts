@@ -7,7 +7,7 @@ import { Worker } from 'node:worker_threads';
 import type { DatabaseSync } from 'node:sqlite';
 import { db, resetDbForTests } from './db.ts';
 import type { AiSubject } from './ai-consent.ts';
-import { createAiQuotaStore, isAiQuotaStorageReady, isAiQuotaStorageSharedDurableAttested, type AiQuotaLimits, type AiUsage } from './ai-quota.ts';
+import { applyFreshKillSwitchFromEnv, createAiQuotaStore, isAiQuotaStorageReady, isAiQuotaStorageSharedDurableAttested, type AiQuotaLimits, type AiUsage } from './ai-quota.ts';
 
 const { DatabaseSync: SQLiteDatabase } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 
@@ -364,4 +364,25 @@ describe('atomic shared AI quota', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   }, 20_000);
+});
+
+describe('fresh database kill switch', () => {
+  const killSwitch = () => db().prepare('SELECT kill_switch_active AS on_, updated_at FROM ai_quota_controls WHERE id = 1').get() as { on_: number; updated_at: number };
+
+  it('follows VIVI_AI_KILL_SWITCH=off only on an untouched new database', () => {
+    resetDbForTests();
+    expect(killSwitch()).toEqual({ on_: 1, updated_at: 0 });
+    expect(applyFreshKillSwitchFromEnv({}, db(), fixedNow)).toBe(false);
+    expect(applyFreshKillSwitchFromEnv({ VIVI_AI_KILL_SWITCH: 'on' }, db(), fixedNow)).toBe(false);
+    expect(killSwitch().on_).toBe(1);
+    expect(applyFreshKillSwitchFromEnv({ VIVI_AI_KILL_SWITCH: 'off' }, db(), fixedNow)).toBe(true);
+    expect(killSwitch()).toEqual({ on_: 0, updated_at: fixedNow });
+  });
+
+  it('never clears a switch that an operator or a quota overrun turned on', () => {
+    resetDbForTests();
+    expect(store().setKillSwitchActive(true)).toBe(true);
+    expect(applyFreshKillSwitchFromEnv({ VIVI_AI_KILL_SWITCH: 'off' }, db(), fixedNow + 1)).toBe(false);
+    expect(killSwitch().on_).toBe(1);
+  });
 });
