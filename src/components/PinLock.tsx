@@ -3,6 +3,7 @@
 //  ular orasida chiziqlar chiziladi → kataklar markazga yig'ilib, yashil zarrachalar portlaydi →
 //  «Muvaffaqiyatli» belgisi. Xato kodda kataklar qizarib silkinadi.
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { motionAllowed } from '../engine/motion';
 import { PIN_LENGTH } from '../engine/applock';
 
@@ -90,7 +91,7 @@ export function PinPad({
   const done = stage === 'burst';
   const busy = stage !== 'input' && stage !== 'error';
   return (
-    <div className={`pin-card pin-${stage}`} onClick={() => !busy && input.current?.focus()}>
+    <div className={`pin-card pin-st-${stage}`} onClick={() => !busy && input.current?.focus()}>
       <span className="pin-grabber" aria-hidden="true" />
       <h2 className="pin-title">{done ? successTitle : title}</h2>
       <p className="pin-sub">{done ? 'Xush kelibsiz! Ilova ochilmoqda…' : message || subtitle}</p>
@@ -184,7 +185,7 @@ export function LockScreen({
         onSubmit={verify}
         onSuccess={onUnlock}
         footer={
-          <button type="button" className="pin-link" onClick={onForgot}>
+          <button type="button" className="pin-forgot" onClick={onForgot}>
             PINni unutdingizmi?
           </button>
         }
@@ -265,12 +266,15 @@ export function PinSetupSheet({
       />
     );
 
-  return (
+  // Portal: oyna profil sozlamalari ichida chizilsa, ota blokning backdrop-filter'i position:fixed'ni
+  // o'sha blokka qamab, kartani qirqib qo'yardi. body'ga chizilganda har doim to'liq ekran.
+  return createPortal(
     <div className="lock-screen sheet-mode" role="dialog" aria-modal="true" aria-label="PIN sozlamasi">
       {pad}
       <button type="button" className="pin-close" onClick={() => onClose(false)}>
         Bekor qilish
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }
