@@ -1,3 +1,4 @@
+import { liquidGlassSupported, readLiquidGlass, saveLiquidGlass } from '../components/LiquidGlass';
 import { DrawLine } from '../components/StripeFx';
 import { ReviewForm } from '../components/SocialProof';
 import { PinSetupSheet } from '../components/PinLock';
@@ -142,6 +143,12 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       <div className="settings">
         <ThemeSetting />
         <TabMotionSetting />
+        {liquidGlassSupported() && (
+          <label className="setting">
+            <span>💧 Suyuq shisha (Liquid Glass)</span>
+            <input type="checkbox" defaultChecked={readLiquidGlass()} onChange={(e) => saveLiquidGlass(e.target.checked)} />
+          </label>
+        )}
         <PinSetting />
         <label className="setting">
           <span>⚡ Yengil rejim (sekin telefonlar uchun)</span>
