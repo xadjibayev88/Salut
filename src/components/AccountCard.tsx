@@ -4,7 +4,7 @@ import { Ic } from './Icons';
 import { useAccount } from '../state/account';
 import { AuthScreen } from '../screens/Auth';
 
-export function AccountCard() {
+export function AccountCard({ onManageAiConsent }: { onManageAiConsent?: () => void }) {
   const { me, premium, signOut, deleteAccount } = useAccount();
   const [auth, setAuth] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -47,6 +47,11 @@ export function AccountCard() {
             <button type="button" className="btn btn-ghost btn-lg" onClick={() => { setMenu(false); void signOut(); }}>
               Hisobdan chiqish
             </button>
+            {onManageAiConsent && (
+              <button type="button" className="btn btn-text" onClick={() => { setMenu(false); onManageAiConsent(); }}>
+                AI roziliklari
+              </button>
+            )}
             <button type="button" className="btn btn-text danger" onClick={() => { setMenu(false); setConfirm(true); }}>
               Hisobni o'chirish
             </button>

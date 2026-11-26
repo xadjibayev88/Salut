@@ -67,7 +67,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         </div>
         <div className="pf-acc" aria-hidden={!accOpen}>
           <div className="pf-acc-inner">
-            <AccountCard />
+            <AccountCard onManageAiConsent={onManageAiConsent} />
           </div>
         </div>
         <button type="button" className="pf-acc-toggle" aria-expanded={accOpen} aria-label="Hisob ma'lumotlari" onClick={() => setAccOpen((v) => !v)}>
@@ -223,12 +223,6 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         <ReviewForm />
       </div>
 
-      <h2 className="section-title">Maxfiylik</h2>
-      <div className="panel">
-        <b><Ic name="shield" size={18} /> Vivi AI va maxfiylik</b>
-        <p className="muted small">Har bir AI vazifasiga rozilikni alohida boshqaring, uni bekor qiling yoki Vivi xotirasini o‘chiring.</p>
-        <button type="button" className="btn btn-ghost" onClick={onManageAiConsent}>AI roziliklarini boshqarish</button>
-      </div>
       <a className="btn btn-ghost btn-lg about-link" href="#/about">
         <Ic name="info" size={18} /> Biz haqimizda · ijtimoiy tarmoqlar · ulashish
       </a>
