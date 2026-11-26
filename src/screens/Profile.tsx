@@ -1,5 +1,6 @@
 import { currentLang, LANG_EVENT, LANGUAGES, type Lang } from '../i18n';
 import { Ic } from '../components/Icons';
+import { HoldButton, RangeValue } from '../components/Micro';
 import { chooseLanguage } from '../i18n/choose';
 import { liquidGlassSupported, readLiquidGlass, saveLiquidGlass } from '../components/LiquidGlass';
 import { DrawLine } from '../components/StripeFx';
@@ -21,7 +22,6 @@ import { useAccount } from '../state/account';
 
 export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }) {
   const { state, update, reset } = useStore();
-  const [confirmReset, setConfirmReset] = useState(false);
   const [name, setName] = useState(state.name);
   const [picking, setPicking] = useState(false);
   const [accOpen, setAccOpen] = useState(false);
@@ -198,13 +198,13 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         </label>
         <label className="setting">
           <span><Ic name="mic" size={18} /> Talaffuz tezligi</span>
-          <input
-            type="range"
+          <RangeValue
             min={0.5}
             max={1.2}
             step={0.05}
             value={state.settings.ttsRate}
-            onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, ttsRate: Number(e.target.value) } }))}
+            ariaLabel="Talaffuz tezligi"
+            onChange={(v) => update((s) => ({ ...s, settings: { ...s.settings, ttsRate: v } }))}
           />
         </label>
         <div className="setting">
@@ -229,24 +229,12 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       <p className="legal-links">
         <a href="./privacy.html" target="_blank" rel="noreferrer">Maxfiylik siyosati</a> · <a href="./terms.html" target="_blank" rel="noreferrer">Foydalanish shartlari</a>
       </p>
-      <button type="button" className="btn btn-text danger" onClick={() => setConfirmReset(true)}>
-        Progressni o'chirish
-      </button>
-      {confirmReset && (
-        <div className="modal-back" onClick={() => setConfirmReset(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="big-emoji"><Ic name="warning" size={48} /></div>
-            <h3>Hamma progress o'chiriladi</h3>
-            <p className="muted">Ball, seriya, so'zlar va yutuqlar qaytarib bo'lmaydigan tarzda o'chadi.</p>
-            <button type="button" className="btn btn-danger btn-lg" onClick={reset}>
-              Ha, o'chirish
-            </button>
-            <button type="button" className="btn btn-text" onClick={() => setConfirmReset(false)}>
-              Bekor qilish
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="reset-zone">
+        <HoldButton holdingLabel="O'chirilmoqda — qo'yib yubormang…" ms={1600} onDone={reset}>
+          Progressni o'chirish — bosib turing
+        </HoldButton>
+        <small className="muted">Ball, seriya, so'zlar va yutuqlar qaytarib bo'lmaydigan tarzda o'chadi.</small>
+      </div>
     </div>
   );
 }

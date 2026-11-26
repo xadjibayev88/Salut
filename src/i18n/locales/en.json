@@ -1387,5 +1387,10 @@
  "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Text/audio is sent to Google Gemini for chat, voice, translation and memory. Change it anytime in your profile.",
  "Yana salom!": "Welcome back!",
  "Hozirgi darsga tushish": "Jump to current lesson",
- "AI roziliklari": "AI consents"
+ "AI roziliklari": "AI consents",
+ "Bosib turing — o'chirish": "Hold to delete",
+ "Bosib turing…": "Keep holding…",
+ "Lug'atga": "Save",
+ "Progressni o'chirish — bosib turing": "Reset progress — hold",
+ "Saqlandi": "Saved"
 }

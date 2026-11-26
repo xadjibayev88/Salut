@@ -1,6 +1,7 @@
 // Suhbat tahlili: hisoblagichlar, rekordlar, kuchli/zaif tomonlar va yangi so'zlarni lug'atga qo'shish.
 import { useEffect, useState } from 'react';
 import { Ic } from '../../components/Icons';
+import { SaveMark } from '../../components/Micro';
 import { compareStats, loadHistory, saveSession, type Feedback, type SessionRecord } from '../../engine/voice/prefs';
 import { speak } from '../../engine/audio';
 import { useStore } from '../../state/store';
@@ -154,9 +155,7 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
                       <Ic name="speaker" size={14} /> {w.fr}
                     </button>
                     <span className="muted">{w.uz}</span>
-                    <button type="button" className={`btn btn-ghost small-btn ${added.has(w.fr.toLowerCase()) ? 'done' : ''}`} onClick={() => (added.has(w.fr.toLowerCase()) ? removeWord(w.fr) : addWord(w))}>
-                      {added.has(w.fr.toLowerCase()) ? "✕ Lug'atdan chiqarish" : "Lug'atga qo'shish"}
-                    </button>
+                    <SaveMark saved={added.has(w.fr.toLowerCase())} count={state.customWords.length} onToggle={() => (added.has(w.fr.toLowerCase()) ? removeWord(w.fr) : addWord(w))} />
                   </div>
                 ))}
               </div>

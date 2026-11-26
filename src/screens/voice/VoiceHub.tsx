@@ -1,5 +1,6 @@
 import { SuperBanner, SuperOfferModal } from '../../components/SuperOffer';
 import { Ic } from '../../components/Icons';
+import { RangeValue } from '../../components/Micro';
 // Vivi ovozli suhbati: tanishuv → xarakter va rol tanlash → qo'ng'iroq → tahlil.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CHARACTERS, CUSTOM_ROLE_MAX, CUSTOM_ROLE_MIN, EXPLAIN_LANGS, ROLES } from '../../data/characters';
@@ -567,7 +568,7 @@ export function VoiceHub() {
                 </label>
                 <label className="vh-field">
                   <span>Gapirish tezligi</span>
-                  <input type="range" min={0.75} max={1.2} step={0.05} value={prefs.rate} onChange={(e) => setPrefs({ rate: Number(e.target.value) })} />
+                  <RangeValue min={0.75} max={1.2} step={0.05} value={prefs.rate} ariaLabel="Gapirish tezligi" onChange={(v) => setPrefs({ rate: v })} />
                 </label>
                 <label className="vh-check">
                   <input type="checkbox" checked={prefs.subtitles} onChange={(e) => setPrefs({ subtitles: e.target.checked })} /> Subtitrlar

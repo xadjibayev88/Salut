@@ -1,6 +1,7 @@
 // Profil: hisob kartasi (kirish holati, Super, chiqish, hisobni o'chirish).
 import { useState } from 'react';
 import { Ic } from './Icons';
+import { HoldButton } from './Micro';
 import { useAccount } from '../state/account';
 import { AuthScreen } from '../screens/Auth';
 
@@ -71,16 +72,16 @@ export function AccountCard({ onManageAiConsent }: { onManageAiConsent?: () => v
             <div className="big-emoji"><Ic name="warning" size={48} /></div>
             <h3>Hisob butunlay o'chirilsinmi?</h3>
             <p className="muted">Hisob, bulutdagi progress va obuna ma'lumotlari serverdan o'chiriladi. Bu amalni qaytarib bo'lmaydi.</p>
-            <button
-              type="button"
-              className="btn btn-danger btn-lg"
-              onClick={async () => {
+            <HoldButton
+              className="btn-lg"
+              holdingLabel="O'chirilmoqda — qo'yib yubormang…"
+              onDone={async () => {
                 await deleteAccount();
                 setConfirm(false);
               }}
             >
-              Ha, o'chirish
-            </button>
+              Bosib turing — o'chirish
+            </HoldButton>
             <button type="button" className="btn btn-text" onClick={() => setConfirm(false)}>
               Bekor qilish
             </button>
