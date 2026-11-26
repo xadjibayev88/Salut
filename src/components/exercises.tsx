@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ViviPeek } from './ViviPeek';
 import { COURSE, type Word } from '../data/course';
 import type { Exercise } from '../engine/exercises';
 import type { Answer } from '../engine/evaluate';
@@ -306,6 +307,8 @@ export function TypeView({ ex, locked, onAnswer }: ViewProps<'type'>) {
           </div>
         </div>
       )}
+      <div className="type-wrap">
+      <ViviPeek mode={locked ? 'happy' : text ? 'typing' : 'idle'} len={text.length} className="type-peek" />
       <textarea
         ref={ref}
         className="type-input"
@@ -322,6 +325,7 @@ export function TypeView({ ex, locked, onAnswer }: ViewProps<'type'>) {
           if (e.key === 'Enter') e.preventDefault();
         }}
       />
+      </div>
       {ex.dir === 'uz2fr' && (
         <div className="accent-row">
           {ACCENTS.map((a) => (
