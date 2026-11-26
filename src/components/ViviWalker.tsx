@@ -200,7 +200,7 @@ function CatSide() {
         <path d="M35 4.6 L37.3 2.6 L37.3 5.8 Z" fill="#F9A8D4" />
         <circle cx="32" cy="11.2" r="7.4" fill={FUR} stroke={LINE} strokeWidth="1.5" />
         <g className="vw-beret">
-          <ellipse cx="31" cy="4.6" rx="5.4" ry="2.1" fill="#A78BFA" stroke={LINE} strokeWidth="1.1" transform="rotate(-14 31 4.6)" />
+          <ellipse cx="31" cy="4.6" rx="5.4" ry="2.1" fill="#B49CFF" stroke={LINE} strokeWidth="1.1" transform="rotate(-14 31 4.6)" />
           <circle cx="31.4" cy="2.2" r="0.9" fill="#7C3AED" />
         </g>
         <ellipse className="vw-eye" cx="35" cy="10.4" rx="1.35" ry="1.8" fill={INK} />

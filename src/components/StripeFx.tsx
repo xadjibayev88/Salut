@@ -250,13 +250,13 @@ export function DrawLine({ values, max }: { values: number[]; max: number }) {
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="dl-stroke" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stopColor="#5eead4" />
-            <stop offset=".55" stopColor="#818cf8" />
-            <stop offset="1" stopColor="#f0abfc" />
+            <stop offset="0" stopColor="#7FE3FF" />
+            <stop offset=".55" stopColor="#B49CFF" />
+            <stop offset="1" stopColor="#FF8FD0" />
           </linearGradient>
           <linearGradient id="dl-area" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#a78bfa" stopOpacity=".34" />
-            <stop offset="1" stopColor="#a78bfa" stopOpacity="0" />
+            <stop offset="0" stopColor="#B49CFF" stopOpacity=".34" />
+            <stop offset="1" stopColor="#B49CFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path className="dl-area" d={area} fill="url(#dl-area)" />
@@ -269,7 +269,7 @@ export function DrawLine({ values, max }: { values: number[]; max: number }) {
 
 /* ---------------- Confetti → burst ---------------- */
 
-const BURST = ['#5eead4', '#818cf8', '#c084fc', '#f0abfc', '#fbbf24', '#fb7185'];
+const BURST = ['#7FE3FF', '#B49CFF', '#FF8FD0', '#FF8FD0', '#FFD23F', '#FF6B9A'];
 
 /** Gradient doira «pop» qiladi, ichida belgi chiziladi, atrofga ~60 bo'lak otiladi. */
 export function BurstCheck({ label }: { label: string }) {

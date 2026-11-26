@@ -252,55 +252,67 @@ export function VoiceHub() {
     );
   }
 
-  // ---------- Bosh sahifa ----------
+  // ---------- Bosh sahifa (ixcham) ----------
+  const voiceName = config?.voices.find((v) => v.id === prefs.voiceId)?.name ?? config?.voices[0]?.name;
+  const langLabel = EXPLAIN_LANGS.find((l) => l.id === prefs.lang)?.label;
+  const memLines = (state.memory ?? '').split('\n').map((l) => l.replace(/^-\s*/, '').trim()).filter(Boolean);
+  const pickChar = (c: (typeof CHARACTERS)[number]) =>
+    c.adult ? (prefs.adultConfirmed ? setPrefs({ character: c.id }) : setConsentFor(c.id)) : c.consent && !prefs.strictConsent ? setConsentFor(c.id) : setPrefs({ character: c.id });
   return (
-    <div className="voice-hub">
+    <div className="voice-hub vh2">
       {offer && !memoryReview && <SuperOfferModal reason={offer} onClose={() => setOffer(null)} />}
-      <div className="vh-head">
-        <div>
-          <h1 className="page-title">Vivi AI</h1>
-          <p className="muted">Jonli AI suhbatdoshingiz. Xarakterni tanlang va gaplashishni boshlang.</p>
-        </div>
-        <button type="button" className="icon-btn" aria-label="Qanday gaplashish kerak" onClick={() => setShowHelp(true)}>
-          ❓
-        </button>
-      </div>
 
-      <div className="char-carousel" role="list" aria-label="Xarakterni tanlang">
-        {CHARACTERS.map((c) => (
-          <div
-            key={c.id}
-            role="listitem"
-            className={`char-card ${c.id === prefs.character ? 'on' : ''}`}
-            style={{ ['--ch' as string]: c.color }}
-            onClick={() => (c.adult ? (prefs.adultConfirmed ? setPrefs({ character: c.id }) : setConsentFor(c.id)) : c.consent && !prefs.strictConsent ? setConsentFor(c.id) : setPrefs({ character: c.id }))}
-          >
-            <div className="char-top">
-              <span className="char-icon">{c.icon}</span>
-              {c.id === prefs.character && <span className="char-check">✓</span>}
-            </div>
-            <b>{c.name}</b>
-            <small className="char-tag">{c.tagline}</small>
-            <p>{c.description}</p>
-            <button
-              type="button"
-              className="char-sample"
-              onClick={(e) => {
-                e.stopPropagation();
-                sample(c.sample);
-              }}
-            >
-              ▶ «{c.sample}»
+      <section className="vh2-hero" style={{ ['--ch' as string]: ch.color }}>
+        <div className="vh2-top">
+          <span className="vh2-badge">✦ Vivi AI</span>
+          <button type="button" className="vh2-icon" aria-label="Qanday gaplashish kerak" onClick={() => setShowHelp(true)}>
+            ?
+          </button>
+          <button type="button" className="vh2-icon" aria-label="Sozlamalar" onClick={() => setShowAdvanced(true)}>
+            ⚙︎
+          </button>
+        </div>
+        <div className="vh2-stage">
+          <span className="vh2-avatar">{ch.icon}</span>
+          <div className="vh2-who">
+            <b>{ch.name}</b>
+            <small>{ch.tagline}</small>
+            <button type="button" className="vh2-sample" onClick={() => sample(ch.sample)}>
+              ▶ Ovozini eshitish
             </button>
           </div>
-        ))}
-      </div>
+        </div>
+        <div className="vh2-chars" role="list" aria-label="Xarakterni tanlang">
+          {CHARACTERS.map((c) => (
+            <button key={c.id} type="button" role="listitem" className={`vh2-char ${c.id === prefs.character ? 'on' : ''}`} style={{ ['--ch' as string]: c.color }} onClick={() => pickChar(c)} aria-pressed={c.id === prefs.character}>
+              <span>{c.icon}</span>
+              <small>{c.name.replace(/ Vivi$/, '')}</small>
+            </button>
+          ))}
+        </div>
+        {config?.live && (
+          <button type="button" className={`vh2-live ${prefs.live ? 'on' : ''}`} onClick={() => setPrefs({ live: !prefs.live })} aria-pressed={prefs.live}>
+            <span className="vh2-live-ic">⚡</span>
+            <span className="vh2-live-t">
+              <b>Jonli rejim</b>
+              <small>Gemini Live · emotsiyali ovoz</small>
+            </span>
+            <span className="sw" />
+          </button>
+        )}
+      </section>
 
-      <section className="vh-section">
-        <h3>Rol — Vivi kim bo'ladi</h3>
-        <div className="role-grid">
+      <section className="vh2-card">
+        <div className="vh2-row-h">
+          <b>Mavzu</b>
+          <button type="button" className="vh2-settings" onClick={() => setShowAdvanced(true)}>
+            {langLabel}
+            {voiceName ? ` · ${voiceName}` : ''} · {prefs.inputMode === 'ptt' ? 'Bosib gapirish' : "Qo'lsiz"} ›
+          </button>
+        </div>
+        <div className="vh2-roles">
           {ROLES.map((r) => (
-            <button key={r.id} type="button" className={`role-chip ${r.id === prefs.role ? 'on' : ''}`} onClick={() => setPrefs({ role: r.id })}>
+            <button key={r.id} type="button" className={`vh2-role ${r.id === prefs.role ? 'on' : ''}`} onClick={() => setPrefs({ role: r.id })}>
               <span>{r.icon}</span> {r.title}
             </button>
           ))}
@@ -330,129 +342,9 @@ export function VoiceHub() {
         )}
       </section>
 
-      <section className="vh-section two">
-        <label className="vh-field">
-          <span>Tushuntirish tili</span>
-          <select value={prefs.lang} onChange={(e) => setPrefs({ lang: e.target.value as VoicePrefs['lang'] })}>
-            {EXPLAIN_LANGS.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-          <small className="muted">Vivi shu tilda tushuntiradi, mashq — fransuzcha.</small>
-        </label>
-        {config && config.voices.length > 0 && (
-          <label className="vh-field">
-            <span>Ovoz</span>
-            <select value={prefs.voiceId || config.voices[0].id} onChange={(e) => setPrefs({ voiceId: e.target.value })}>
-              {config.voices.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <div className="vh-field">
-          <span>Muloqot usuli</span>
-          <div className="seg">
-            <button type="button" className={prefs.inputMode === 'ptt' ? 'on' : ''} onClick={() => setPrefs({ inputMode: 'ptt' })}>
-              Bosib gapirish
-            </button>
-            <button type="button" className={prefs.inputMode === 'handsfree' ? 'on' : ''} onClick={() => setPrefs({ inputMode: 'handsfree' })}>
-              Qo'lsiz rejim
-            </button>
-          </div>
-          <small className="muted">{prefs.inputMode === 'ptt' ? 'Vivini (yoki Space) bosib turib gapirasiz.' : 'Hech narsani bosmasdan gapirasiz — Vivi doimo tinglaydi.'}</small>
-        </div>
-      </section>
-
-      <button type="button" className="vh-adv-toggle" onClick={() => setShowAdvanced(!showAdvanced)}>
-        {showAdvanced ? '▾' : '▸'} Qo'shimcha sozlamalar
-      </button>
-      {showAdvanced && (
-        <section className="vh-section two">
-          <label className="vh-field">
-            <span>Men gapiradigan til</span>
-            <select value={prefs.micLang} onChange={(e) => setPrefs({ micLang: e.target.value as VoicePrefs['micLang'] })}>
-              <option value="auto">Avtomatik (Vivi javobiga qarab)</option>
-              <option value="uz-UZ">O'zbekcha</option>
-              <option value="fr-FR">Français</option>
-              <option value="ru-RU">Русский</option>
-              <option value="en-US">English</option>
-            </select>
-          </label>
-          <label className="vh-field">
-            <span>Gapirish tezligi</span>
-            <input type="range" min={0.75} max={1.2} step={0.05} value={prefs.rate} onChange={(e) => setPrefs({ rate: Number(e.target.value) })} />
-          </label>
-          <label className="vh-check">
-            <input type="checkbox" checked={prefs.subtitles} onChange={(e) => setPrefs({ subtitles: e.target.checked })} /> Subtitrlar
-          </label>
-          <label className="vh-check">
-            <input type="checkbox" checked={prefs.fullscreen} onChange={(e) => setPrefs({ fullscreen: e.target.checked })} /> Suhbat paytida to'liq ekran
-          </label>
-          <label className="vh-check explicit-check">
-            <input type="checkbox" checked={prefs.game} onChange={(e) => setPrefs({ game: e.target.checked })} /> 💥 Qasos rejimi <span className="badge-new">Yangi</span>
-            <small>Kechki ko'chada Vivi, qurollar g'ildiragi va sog'liq chizig'i. Aytgan hamma gaplari uchun o'ch oling (multfilm uslubida).</small>
-          </label>
-          <label className="vh-check explicit-check">
-            <input
-              type="checkbox"
-              checked={prefs.explicit && prefs.adultConfirmed}
-              onChange={(e) => (e.target.checked && !prefs.adultConfirmed ? setConsentFor('explicit') : setPrefs({ explicit: e.target.checked }))}
-            />{' '}
-            🔞 Senzurasiz rejim (18+)
-            <small>Har qanday xarakter keskinroq, filtrlanmagan iboralar bilan gapiradi. 18 yoshga to'lgan bo'lishingiz kerak.</small>
-          </label>
-        </section>
-      )}
-
       {config && config.tts === 'browser' && !browserVoiceAvailable(prefs.lang) && (
         <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
       )}
-
-      {isFree && <SuperBanner onOpen={() => setOffer('enter')} />}
-
-      {config?.live && (
-        <button type="button" className={`live-toggle ${prefs.live ? 'on' : ''}`} onClick={() => setPrefs({ live: !prefs.live })} aria-pressed={prefs.live}>
-          <span style={{ fontSize: 26 }}>⚡</span>
-          <span>
-            <b>Jonli rejim — Gemini Live</b>
-            <small>
-              Real vaqtda, emotsiyali ovoz; Vivi gapini istalgan payt bo'lish mumkin
-              {config.premium ? '' : ` · bugun ${config.liveMinutes ?? 10} daqiqa bepul`}
-            </small>
-          </span>
-          <span className="sw" />
-        </button>
-      )}
-
-      <section className="vh-section memory-card">
-        <div className="memory-head">
-          <b>🧠 Vivi sizni eslaydi</b>
-          {state.memory && (
-            <button type="button" className="btn btn-text danger" onClick={() => update((s) => ({ ...s, memory: '' }))}>
-              Unutish
-            </button>
-          )}
-        </div>
-        {state.memory ? (
-          <ul className="memory-list">
-            {state.memory
-              .split('\n')
-              .map((l) => l.replace(/^-\s*/, '').trim())
-              .filter(Boolean)
-              .slice(0, 8)
-              .map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-          </ul>
-        ) : (
-          <p className="muted small">Hozircha xotira bo'sh. Suhbatlashganingiz sari Vivi sizning qiziqishlaringiz, maqsadingiz va o'tgan mavzularni eslab qoladi.</p>
-        )}
-      </section>
 
       {config && config.messagesLeft != null && (
         <p className="vh-quota">
@@ -460,6 +352,7 @@ export function VoiceHub() {
           <a href="#/shop">Super — cheksiz va Dilzoda ovozi</a>
         </p>
       )}
+      {isFree && <SuperBanner onOpen={() => setOffer('enter')} />}
       <div className="vh-start">
         {liveOut ? (
           <div className="rest-card">
@@ -519,39 +412,155 @@ export function VoiceHub() {
             disabled={!customOk}
             onClick={() => setView({ kind: prefs.live && config.live ? 'live' : 'call', key: Date.now() })}
           >
-            {prefs.live && config.live ? '⚡' : '🎙️'} {ch.name} bilan gaplashish · {prefs.live && config.live ? config.liveMinutes ?? config.sessionMinutes : config.sessionMinutes} daqiqagacha
+            {prefs.live && config.live ? '⚡' : '🎙️'} Gaplashishni boshlash
+            <small className="start-sub">{`${prefs.live && config.live ? config.liveMinutes ?? config.sessionMinutes : config.sessionMinutes} daqiqagacha`}</small>
           </button>
         )}
       </div>
-      <p className="tutor-note vh-note-ai">Vivi — bu AI, u xato qilishi yoki kutilmagan tarzda javob berishi mumkin. Muhim qarorlarda unga tayanmang.</p>
 
-      <section className="vh-section">
-        <h3>So'nggi suhbatlar</h3>
-        {history.length === 0 ? (
-          <p className="muted">Hozircha suhbatlar yo'q</p>
-        ) : (
-          <div className="recent-list">
-            {history.slice(0, 6).map((h) => {
-              const c = CHARACTERS.find((x) => x.id === h.character);
-              const r = ROLES.find((x) => x.id === h.role);
-              return (
-                <button key={h.id} type="button" className="recent" onClick={() => setView({ kind: 'feedback', record: h })}>
-                  <span className="recent-icon">{c?.icon}</span>
-                  <span className="recent-text">
-                    <b>
-                      {r?.title} · {c?.name}
-                    </b>
-                    <small className="muted">
-                      {new Date(h.at).toLocaleDateString()} · {h.stats.words} so'z · {Math.round(h.durationMs / 60000)} daq
-                    </small>
-                  </span>
-                  <span className="recent-open">Tahlilni ochish ›</span>
-                </button>
-              );
-            })}
-          </div>
+      <div className="vh2-mini">
+        <details className="vh2-mem">
+          <summary>
+            <span>🧠</span>
+            <b>Vivi eslaydi</b>
+            <small>{memLines.length ? `${memLines.length} ta narsa` : "hali bo'sh"}</small>
+          </summary>
+          {memLines.length ? (
+            <>
+              <ul className="memory-list">
+                {memLines.slice(0, 8).map((l, i) => (
+                  <li key={i}>{l}</li>
+                ))}
+              </ul>
+              <button type="button" className="btn btn-text danger" onClick={() => update((s) => ({ ...s, memory: '' }))}>
+                Unutish
+              </button>
+            </>
+          ) : (
+            <p className="muted small">Suhbatlashganingiz sari Vivi qiziqishlaringiz va maqsadingizni eslab qoladi.</p>
+          )}
+        </details>
+        {history.length > 0 && (
+          <details className="vh2-mem">
+            <summary>
+              <span>🕘</span>
+              <b>So'nggi suhbatlar</b>
+              <small>{history.length}</small>
+            </summary>
+            <div className="recent-list">
+              {history.slice(0, 6).map((h) => {
+                const c = CHARACTERS.find((x) => x.id === h.character);
+                const r = ROLES.find((x) => x.id === h.role);
+                return (
+                  <button key={h.id} type="button" className="recent" onClick={() => setView({ kind: 'feedback', record: h })}>
+                    <span className="recent-icon">{c?.icon}</span>
+                    <span className="recent-text">
+                      <b>
+                        {r?.title} · {c?.name}
+                      </b>
+                      <small className="muted">
+                        {new Date(h.at).toLocaleDateString()} · {h.stats.words} so'z · {Math.round(h.durationMs / 60000)} daq
+                      </small>
+                    </span>
+                    <span className="recent-open">›</span>
+                  </button>
+                );
+              })}
+            </div>
+          </details>
         )}
-      </section>
+      </div>
+      <p className="tutor-note vh-note-ai">Vivi — bu AI, u xato qilishi mumkin. Muhim qarorlarda unga tayanmang.</p>
+
+      {showAdvanced && (
+        <div className="modal-back" onClick={() => setShowAdvanced(false)}>
+          <div className="sheet vh2-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="vh2-sheet-h">
+              <h3>Sozlamalar</h3>
+              <button type="button" className="icon-btn" onClick={() => setShowAdvanced(false)} aria-label="Yopish">
+                ✕
+              </button>
+            </div>
+            <section className="vh-section two">
+              <label className="vh-field">
+                <span>Tushuntirish tili</span>
+                <select value={prefs.lang} onChange={(e) => setPrefs({ lang: e.target.value as VoicePrefs['lang'] })}>
+                  {EXPLAIN_LANGS.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                <small className="muted">Vivi shu tilda tushuntiradi, mashq — fransuzcha.</small>
+              </label>
+              {config && config.voices.length > 0 && (
+                <label className="vh-field">
+                  <span>Ovoz</span>
+                  <select value={prefs.voiceId || config.voices[0].id} onChange={(e) => setPrefs({ voiceId: e.target.value })}>
+                    {config.voices.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="vh-field">
+                <span>Muloqot usuli</span>
+                <div className="seg">
+                  <button type="button" className={prefs.inputMode === 'ptt' ? 'on' : ''} onClick={() => setPrefs({ inputMode: 'ptt' })}>
+                    Bosib gapirish
+                  </button>
+                  <button type="button" className={prefs.inputMode === 'handsfree' ? 'on' : ''} onClick={() => setPrefs({ inputMode: 'handsfree' })}>
+                    Qo'lsiz rejim
+                  </button>
+                </div>
+                <small className="muted">{prefs.inputMode === 'ptt' ? 'Vivini (yoki Space) bosib turib gapirasiz.' : 'Hech narsani bosmasdan gapirasiz — Vivi doimo tinglaydi.'}</small>
+              </div>
+            </section>
+
+            <h4 className="vh-sub">Qo'shimcha</h4>
+            {(
+              <section className="vh-section two">
+                <label className="vh-field">
+                  <span>Men gapiradigan til</span>
+                  <select value={prefs.micLang} onChange={(e) => setPrefs({ micLang: e.target.value as VoicePrefs['micLang'] })}>
+                    <option value="auto">Avtomatik (Vivi javobiga qarab)</option>
+                    <option value="uz-UZ">O'zbekcha</option>
+                    <option value="fr-FR">Français</option>
+                    <option value="ru-RU">Русский</option>
+                    <option value="en-US">English</option>
+                  </select>
+                </label>
+                <label className="vh-field">
+                  <span>Gapirish tezligi</span>
+                  <input type="range" min={0.75} max={1.2} step={0.05} value={prefs.rate} onChange={(e) => setPrefs({ rate: Number(e.target.value) })} />
+                </label>
+                <label className="vh-check">
+                  <input type="checkbox" checked={prefs.subtitles} onChange={(e) => setPrefs({ subtitles: e.target.checked })} /> Subtitrlar
+                </label>
+                <label className="vh-check">
+                  <input type="checkbox" checked={prefs.fullscreen} onChange={(e) => setPrefs({ fullscreen: e.target.checked })} /> Suhbat paytida to'liq ekran
+                </label>
+                <label className="vh-check explicit-check">
+                  <input type="checkbox" checked={prefs.game} onChange={(e) => setPrefs({ game: e.target.checked })} /> 💥 Qasos rejimi <span className="badge-new">Yangi</span>
+                  <small>Kechki ko'chada Vivi, qurollar g'ildiragi va sog'liq chizig'i. Aytgan hamma gaplari uchun o'ch oling (multfilm uslubida).</small>
+                </label>
+                <label className="vh-check explicit-check">
+                  <input
+                    type="checkbox"
+                    checked={prefs.explicit && prefs.adultConfirmed}
+                    onChange={(e) => (e.target.checked && !prefs.adultConfirmed ? setConsentFor('explicit') : setPrefs({ explicit: e.target.checked }))}
+                  />{' '}
+                  🔞 Senzurasiz rejim (18+)
+                  <small>Har qanday xarakter keskinroq, filtrlanmagan iboralar bilan gapiradi. 18 yoshga to'lgan bo'lishingiz kerak.</small>
+                </label>
+              </section>
+            )}
+
+          </div>
+        </div>
+      )}
 
       {(consentFor === 'adult' || consentFor === 'explicit') && (
         <div className="modal-back" onClick={() => setConsentFor(null)}>
