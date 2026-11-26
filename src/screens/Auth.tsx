@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '../state/account';
 import { SocialLogin } from '../components/SocialLogin';
 import { motionAllowed } from '../engine/motion';
+import { createPortal } from 'react-dom';
+import { KruaLive } from '../components/KruaLive';
+import { Ic } from '../components/Icons';
+import type { ViviCue } from '../shared/vivi-cue';
 
 type GoogleId = {
   initialize: (o: { client_id: string; callback: (r: { credential: string }) => void; ux_mode?: string; auto_select?: boolean; itp_support?: boolean }) => void;
@@ -46,12 +50,6 @@ function androidGoogle(clientId: string): Promise<string> {
   });
 }
 
-type Phase = 'idle' | 'out' | 'core' | 'in';
-// Morf vaqtlari (ms): forma yo'qoladi → bo'laklar markazda birlashib aylanadi → yangi forma ochiladi.
-const OUT_MS = 340;
-const CORE_MS = 640;
-const IN_MS = 460;
-
 const Icon = {
   user: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8" r="3.6" /><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6" /></svg>,
   mail: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5" /><path d="m4.5 7 7.5 6 7.5-6" /></svg>,
@@ -61,60 +59,70 @@ const Icon = {
   arrow: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
 };
 
-export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdrop = false }: { initial?: 'login' | 'register'; onDone: () => void; onSkip?: () => void; title?: string; backdrop?: boolean }) {
+type Field = 'name' | 'email' | 'pass' | null;
+
+/**
+ * To'liq ekranli kirish / ro'yxatdan o'tish. Tepada jonli Vivi bilan gradient panel, pastda forma;
+ * rejim almashganda panel sirpanib qarama-qarshi tomonga o'tadi (videodagi «sliding panel», vertikal).
+ * Ochiq turganda pastki va yuqori menyular ko'rinmaydi (portal + to'liq qoplama), sahifa bir ekranga sig'adi.
+ */
+export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { initial?: 'login' | 'register'; onDone: () => void; onSkip?: () => void; title?: string; backdrop?: boolean }) {
   const { me, signIn, signInGoogle } = useAccount();
-  // Ro'yxatdan o'tishda: Vivi AI va maxfiylik shartlariga bitta toggle bilan rozilik (majburiy).
+  const [mode, setMode] = useState(initial);
+  const [panelDown, setPanelDown] = useState(initial === 'login');
   const [agree, setAgree] = useState(false);
   const agreeRef = useRef(false);
   agreeRef.current = agree;
   const modeRef = useRef(initial);
-  const [mode, setMode] = useState(initial);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [height, setHeight] = useState<number | null>(null);
+  modeRef.current = mode;
   const [showPass, setShowPass] = useState(false);
-  const card = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
-  const timers = useRef<number[]>([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  /** Glassy morph: forma xiralashib yo'qoladi, karta kvadratga siqiladi, bo'laklar birlashadi, so'ng yangi forma ochiladi. */
-  const switchMode = () => {
-    const next = mode === 'register' ? 'login' : 'register';
-    setError(null);
-    const el = card.current;
-    if (!el || !motionAllowed() || phase !== 'idle') {
-      if (phase === 'idle') setMode(next);
-      return;
-    }
-    const h0 = el.offsetHeight;
-    const square = Math.min(h0, Math.round(el.offsetWidth * 0.86));
-    setHeight(h0);
-    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
-    requestAnimationFrame(() => {
-      setPhase('out');
-      setHeight(square);
-    });
-    at(OUT_MS, () => {
-      setPhase('core');
-      setMode(next);
-    });
-    at(OUT_MS + CORE_MS, () => {
-      setPhase('in');
-      setHeight(content.current?.offsetHeight ?? null);
-    });
-    at(OUT_MS + CORE_MS + IN_MS, () => {
-      setPhase('idle');
-      setHeight(null);
-    });
-  };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focus, setFocus] = useState<Field>(null);
+  const [done, setDone] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const gBtn = useRef<HTMLDivElement>(null);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const clientId = me.googleClientId;
   const native = !!window.AndroidAuth;
+  const login = mode === 'login';
+
+  // Ochiq turganda orqadagi sahifa aylanmasin.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.classList.add('auth-open');
+    return () => {
+      document.body.style.overflow = prev;
+      document.documentElement.classList.remove('auth-open');
+    };
+  }, []);
+
+  const finish = () => {
+    if (modeRef.current === 'register' && agreeRef.current) void grantAllAiConsent().catch(() => undefined);
+    setDone(true);
+    timers.current.push(window.setTimeout(onDone, motionAllowed() ? 650 : 0));
+  };
+
+  /** Panel sirpanadi; forma o'rtada almashadi. */
+  const switchMode = () => {
+    if (switching) return;
+    const next = login ? 'register' : 'login';
+    setError(null);
+    if (!motionAllowed()) {
+      setMode(next);
+      setPanelDown(next === 'login');
+      return;
+    }
+    setSwitching(true);
+    setPanelDown(next === 'login');
+    timers.current.push(window.setTimeout(() => setMode(next), 330));
+    timers.current.push(window.setTimeout(() => setSwitching(false), 760));
+  };
 
   useEffect(() => {
     if (!clientId || native) return;
@@ -133,19 +141,13 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
             else finish();
           },
         });
-        window.google.accounts.id.renderButton(gBtn.current, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: Math.min(360, gBtn.current.clientWidth || 320), locale: 'uz' });
+        window.google.accounts.id.renderButton(gBtn.current, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: Math.min(360, gBtn.current.clientWidth || 320), locale: 'uz' });
       })
       .catch(() => alive && setError("Google bilan kirish yuklanmadi — email orqali kiring"));
     return () => {
       alive = false;
     };
-  }, [clientId, native]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  modeRef.current = mode;
-  const finish = () => {
-    if (modeRef.current === 'register' && agreeRef.current) void grantAllAiConsent().catch(() => undefined);
-    onDone();
-  };
+  }, [clientId, native, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const nativeGoogle = async () => {
     if (!clientId) return;
@@ -165,54 +167,64 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    if (mode === 'register' && !agree) {
-      setBusy(false);
+    if (!login && !agree) {
       setError("Ro'yxatdan o'tish uchun Vivi AI va maxfiylik shartlariga rozilik bering.");
       return;
     }
+    setBusy(true);
+    setError(null);
     const err = await signIn(mode, email, password, name);
     setBusy(false);
     if (err) setError(err);
     else finish();
   };
 
-  const login = mode === 'login';
-  const hasSocial = !!(clientId || me.auth?.facebookAppId || me.auth?.appleClientId || me.auth?.telegramBot);
-  return (
-    <div className={`auth glassy-auth ${backdrop ? 'with-backdrop' : ''}`}>
-      {backdrop && (
-        <div className="ga-backdrop" aria-hidden="true">
-          <i /><i /><i /><i />
-        </div>
-      )}
-      <div className={`ga-shell ga-${phase}`}>
-      {/* Plitka, bo'laklar va halqalar kartadan tashqarida — kartaning qiya kesimi ularni qirqmasin. */}
-      <span className="ga-chip" aria-hidden="true" />
-      <span className="ga-piece tl" aria-hidden="true" />
-      <span className="ga-piece br" aria-hidden="true" />
-      <span className="ga-rings" aria-hidden="true"><i /><i /><i /></span>
-      <div ref={card} className="ga-card" style={height === null ? undefined : { height }}>
-        <div ref={content} className="ga-content" aria-busy={phase !== 'idle'}>
-          <header className="ga-head">
-            <h1>
-              {title ?? (login ? <>Xush <span>kelibsiz</span></> : <>Profil <span>yarating</span></>)}
-            </h1>
-            <p>{login ? "Hisobingizga kiring va o'qishni davom ettiring." : 'Progressingiz saqlanadi va istalgan qurilmada davom etasiz.'}</p>
-          </header>
+  // Jonli Vivi: forma bilan birga «yashaydi».
+  const cue: ViviCue = done
+    ? { state: 'idle', face: 'proud', action: 'hop', ornament: 'sparkle' }
+    : busy
+      ? { state: 'thinking', face: 'curious', ornament: 'thought_dots' }
+      : error
+        ? { state: 'idle', face: 'confused', action: 'head_tilt' }
+        : switching
+          ? { state: 'idle', face: 'surprised', action: 'hop' }
+          : focus === 'pass'
+            ? { state: 'listening', face: 'amused', action: 'blink' }
+            : focus === 'email' || focus === 'name'
+              ? { state: 'listening', face: 'curious', action: 'ear_perk' }
+              : !login && agree
+                ? { state: 'idle', face: 'happy', action: 'tail_wag', ornament: 'heart' }
+                : { state: 'idle', face: 'happy', action: 'wave' };
 
-          {!login && (
-            <label className={`ga-consent ${agree ? 'on' : ''}`}>
-              <span>
-                <b>Vivi AI va maxfiylik shartlariga roziman</b>
-                <small>Vivi bilan suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profil → «Vivi AI va maxfiylik»da istalgan payt o'zgartirasiz.</small>
-              </span>
-              <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setError(null); }} />
-            </label>
-          )}
+  const hasSocial = !!(clientId || me.auth?.facebookAppId || me.auth?.appleClientId || me.auth?.telegramBot);
+  const locked = !login && !agree;
+  return createPortal(
+    <div className={`authx ${panelDown ? 'is-down' : ''} ${switching ? 'is-switching' : ''} ${done ? 'is-done' : ''}`} role="dialog" aria-modal="true" aria-label={login ? 'Kirish' : "Ro'yxatdan o'tish"}>
+      <section className="authx-panel">
+        <span className="authx-blob b1" aria-hidden="true" />
+        <span className="authx-blob b2" aria-hidden="true" />
+        {onSkip && (
+          <button type="button" className="authx-close" onClick={onSkip} aria-label="Yopish">
+            <Ic name="close" size={18} />
+          </button>
+        )}
+        <div className="authx-vivi">
+          <KruaLive cue={cue} size={118} />
+        </div>
+        <div className="authx-hello">
+          <h2>{login ? 'Yana salom!' : 'Salut, do\'stim!'}</h2>
+          <p>{login ? "Hisobingiz yo'qmi? Bir daqiqada yarating." : 'Hisobingiz bormi? Kirib, progressni davom ettiring.'}</p>
+          <button type="button" className="authx-ghost" onClick={switchMode} disabled={switching || busy}>
+            {login ? 'Profil yaratish' : 'Kirish'}
+          </button>
+        </div>
+      </section>
+
+      <section className="authx-form">
+        <div className="authx-inner" key={mode}>
+          <h1>{login ? 'Kirish' : title ?? 'Profil yarating'}</h1>
           {hasSocial && (
-            <div className={`ga-social ${!login && !agree ? 'ga-locked' : ''}`} aria-disabled={!login && !agree}>
+            <div className={`authx-social ${locked ? 'ga-locked' : ''}`} aria-disabled={locked}>
               {clientId &&
                 (native ? (
                   <button type="button" className="ga-social-btn" disabled={busy} onClick={nativeGoogle}>
@@ -224,74 +236,66 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
               <SocialLogin onDone={finish} onError={setError} />
             </div>
           )}
-          {hasSocial && <div className="ga-or"><span>yoki email bilan</span></div>}
+          {hasSocial && <div className="authx-or"><span>yoki email bilan</span></div>}
 
-          <form onSubmit={submit} className="ga-form">
+          <form onSubmit={submit} className="authx-fields">
             {!login && (
-              <label className="ga-field">
-                <span className="ga-label">Ismingiz</span>
-                <span className="ga-input">
-                  {Icon.user}
-                  <input placeholder="Ali" autoComplete="given-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
-                </span>
+              <label className="authx-input">
+                {Icon.user}
+                <input placeholder="Ismingiz" aria-label="Ismingiz" autoComplete="given-name" value={name} maxLength={40} onFocus={() => setFocus('name')} onBlur={() => setFocus(null)} onChange={(e) => setName(e.target.value)} />
               </label>
             )}
-            <label className="ga-field">
-              <span className="ga-label">Email manzil</span>
-              <span className="ga-input">
-                {Icon.mail}
-                <input type="email" placeholder="ism@pochta.uz" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-              </span>
+            <label className="authx-input">
+              {Icon.mail}
+              <input type="email" placeholder="Email manzil" aria-label="Email manzil" autoComplete="email" required value={email} onFocus={() => setFocus('email')} onBlur={() => setFocus(null)} onChange={(e) => setEmail(e.target.value)} />
             </label>
-            <label className="ga-field">
-              <span className="ga-label">Parol</span>
-              <span className="ga-input">
-                {Icon.lock}
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  placeholder={login ? '••••••••' : 'Kamida 8 ta belgi'}
-                  autoComplete={login ? 'current-password' : 'new-password'}
-                  required
-                  minLength={login ? 1 : 8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button type="button" className="ga-eye" aria-label={showPass ? 'Parolni yashirish' : "Parolni ko'rsatish"} onClick={() => setShowPass((v) => !v)}>
-                  {showPass ? Icon.eyeOff : Icon.eye}
-                </button>
-              </span>
+            <label className="authx-input">
+              {Icon.lock}
+              <input
+                type={showPass ? 'text' : 'password'}
+                placeholder={login ? 'Parol' : 'Parol (kamida 8 ta belgi)'}
+                aria-label="Parol"
+                autoComplete={login ? 'current-password' : 'new-password'}
+                required
+                minLength={login ? 1 : 8}
+                value={password}
+                onFocus={() => setFocus('pass')}
+                onBlur={() => setFocus(null)}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button type="button" className="ga-eye" aria-label={showPass ? 'Parolni yashirish' : "Parolni ko'rsatish"} onClick={() => setShowPass((v) => !v)}>
+                {showPass ? Icon.eyeOff : Icon.eye}
+              </button>
             </label>
+            {!login && (
+              <label className={`authx-consent ${agree ? 'on' : ''}`}>
+                <span>
+                  <b>Vivi AI va maxfiylik shartlariga roziman</b>
+                  <small>Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.</small>
+                </span>
+                <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setError(null); }} />
+              </label>
+            )}
             {error && <p className="auth-error" role="alert">{error}</p>}
-            <button type="submit" className="ga-submit" disabled={busy || (!login && !agree)}>
+            <button type="submit" className="authx-submit" disabled={busy || locked}>
               {busy ? 'Kuting…' : login ? 'Kirish' : 'Profil yaratish'} {!busy && Icon.arrow}
             </button>
           </form>
 
-          <p className="ga-switch">
-            {login ? "Hisobingiz yo'qmi?" : 'Hisobingiz bormi?'}{' '}
-            <button type="button" onClick={switchMode} disabled={phase !== 'idle'}>
-              {login ? 'Profil yaratish' : 'Kirish'}
-            </button>
+          <p className="authx-legal">
+            <a href="./terms.html" target="_blank" rel="noreferrer">Foydalanish shartlari</a>
+            <i aria-hidden="true">·</i>
+            <a href="./privacy.html" target="_blank" rel="noreferrer">Maxfiylik siyosati</a>
+            {onSkip && (
+              <>
+                <i aria-hidden="true">·</i>
+                <button type="button" onClick={onSkip}>Keyinroq</button>
+              </>
+            )}
           </p>
-          {onSkip && (
-            <button type="button" className="btn btn-text muted-btn" onClick={onSkip}>
-              Keyinroq
-            </button>
-          )}
         </div>
-      </div>
-      </div>
-      <p className="auth-legal">
-        Davom etish orqali siz{' '}
-        <a href="./terms.html" target="_blank" rel="noreferrer">
-          foydalanish shartlari
-        </a>{' '}
-        va{' '}
-        <a href="./privacy.html" target="_blank" rel="noreferrer">
-          maxfiylik siyosati
-        </a>
-        ga rozilik bildirasiz.
-      </p>
-    </div>
+      </section>
+    </div>,
+    document.body,
   );
 }

@@ -69,7 +69,7 @@ export function Onboarding() {
             if (step === 3) finish();
             else if (step === 0) setStep(1);
           }}
-          onSkip={step === 3 ? finish : undefined}
+          onSkip={step === 3 ? finish : () => setAuth(null)}
         />
       </div>
     );
