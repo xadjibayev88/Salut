@@ -1,3 +1,5 @@
+import { BoltIcon, CoinIcon, CupIcon, FlagIcon } from './components/TopBarIcons';
+import { ViviWalker } from './components/ViviWalker';
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { grantSuperFreeze, LEAGUES, MAX_HEARTS, msToNextHeart, streakActiveToday } from './engine/game';
 import { dayKey } from './engine/time';
@@ -261,22 +263,23 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
   const compact = useScrolledPast(28);
   return (
     <header className={`topbar ${compact ? 'compact' : ''}`}>
-      <button type="button" className="stat flag" title="Fransuz tili" onClick={onProfile}>
-        🇫🇷
+      <button type="button" className="stat flag" title="Fransuz tili" aria-label="Fransuz tili" onClick={onProfile}>
+        <FlagIcon />
       </button>
+      <ViviWalker cheerKey={state.gems + state.streak * 100000} />
       {state.xpBoostUntil > Date.now() && (
         <span className="stat boost" title="Ikki barobar XP faol">
-          ⚡ <b>2x</b>
+          <BoltIcon /> <b>2x</b>
         </span>
       )}
       <button type="button" className={`stat streak ${active ? 'on' : ''}`} title="Kunlik seriya" onClick={onProfile}>
         <StreakFlame on={active} /> <b><CountUp value={state.streak} /></b>
       </button>
       <button type="button" className="stat gems" title="Tangalar" onClick={onShop}>
-        🪙 <b><CountUp value={state.gems} /></b>
+        <CoinIcon /> <b><CountUp value={state.gems} /></b>
       </button>
       <button type="button" className="stat heart" title="Kofe (xato qilsangiz kamayadi)" onClick={onShop}>
-        ☕ <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>
+        <CupIcon full={state.unlimitedHearts || premium || state.hearts > 0} /> <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>
       </button>
     </header>
   );
