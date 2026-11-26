@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Ic } from '../components/Icons';
+import { CoinIcon } from '../components/TopBarIcons';
+import { FishIcon } from '../components/TopBarIcons';
 import { buyXpBoost, XP_BOOST_COST, XP_BOOST_MINUTES, buyFreeze, buyHeartRefill, FREEZE_COST, HEART_REFILL_COST, MAX_FREEZES, MAX_HEARTS, msToNextHeart } from '../engine/game';
 import { playSfx } from '../engine/audio';
 import { useStore } from '../state/store';
@@ -29,7 +32,7 @@ export function Shop() {
       <h1 className="page-title">Do'kon</h1>
       <SuperPage />
       <div className="gem-balance">
-        🪙 <b>{state.gems}</b> {'tanga'}
+        <CoinIcon /> <b>{state.gems}</b> {'tanga'}
       </div>
 
       <h2 className="section-title">Do'kon rastasi</h2>
@@ -37,7 +40,7 @@ export function Shop() {
         items={[
           {
             id: 'coffee',
-            icon: '🐟',
+            icon: <FishIcon />,
             name: 'Vivi akvariumi',
             desc: "Xato qilganda baliqcha kamayadi. Akvariumni to'ldirsangiz, Vivi to'q — darslar to'xtovsiz davom etadi.",
             price: HEART_REFILL_COST,
@@ -51,7 +54,7 @@ export function Shop() {
           },
           {
             id: 'xp',
-            icon: '⚡',
+            icon: <Ic name="bolt" size={30} />,
             name: 'Ikki barobar XP',
             desc: `${XP_BOOST_MINUTES} daqiqa davomida har bir dars va suhbat uchun 2x XP. Turnirda tez ko'tarilish uchun.`,
             price: XP_BOOST_COST,
@@ -65,7 +68,7 @@ export function Shop() {
           },
           {
             id: 'freeze',
-            icon: '⛱️',
+            icon: <Ic name="shield" size={30} />,
             name: 'Seriya soyaboni',
             desc: 'Bir kun dars qilmasangiz ham kunlik seriyangiz saqlanib qoladi.',
             price: FREEZE_COST,

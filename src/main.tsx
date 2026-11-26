@@ -4,6 +4,7 @@ import { App } from './App';
 import { StoreProvider } from './state/store';
 import { AccountProvider } from './state/account';
 import { AppLockGate } from './components/AppLockGate';
+import { IconDefs } from './components/Icons';
 import './styles.css';
 import { initTheme } from './engine/theme';
 import { initI18n } from './i18n';
@@ -28,6 +29,7 @@ void initI18n()
       <StrictMode>
         <StoreProvider>
           <AccountProvider>
+            <IconDefs />
             <AppLockGate>
               <App />
             </AppLockGate>

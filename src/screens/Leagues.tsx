@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { Ic } from '../components/Icons';
 import { AdSlot } from '../components/AdSlot';
 import { RewardedButton } from '../components/RewardedButton';
 import { maybeInterstitial } from '../engine/ads';
@@ -117,14 +118,14 @@ export function Leagues() {
           <small className="lg-level">{lg.tier + 1}-daraja / {LEAGUES.length}</small>
           <h1>{`${LEAGUES[lg.tier].name} liga`}</h1>
           <p>{LEAGUES[lg.tier].motto}</p>
-          <span className="lg-timer">⏳ {timeLeft(lg.weekId)} qoldi</span>
+          <span className="lg-timer"><Ic name="clock" size={15} /> {timeLeft(lg.weekId)} qoldi</span>
         </div>
       </section>
       {/* Ligalar zinapoyasi */}
       <div className="league-badges lg-ladder" ref={badges}>
         {LEAGUES.map((l, i) => (
           <div key={l.name} className={`lbadge ${i === lg.tier ? 'cur' : i > lg.tier ? 'locked' : 'passed'}`} style={{ ['--c' as string]: l.color, ['--c2' as string]: l.color2 }} title={`${i + 1}. ${l.name} liga`}>
-            {i > lg.tier ? <span className="lb-lock">🔒</span> : <LeagueShield tier={i} size={38} />}
+            {i > lg.tier ? <span className="lb-lock"><Ic name="lock" size={26} /></span> : <LeagueShield tier={i} size={38} />}
             <small>{l.name}</small>
           </div>
         ))}
@@ -133,7 +134,7 @@ export function Leagues() {
       <StreakRepair compact />
       <Folder
         className="quests-folder"
-        icon="🎯"
+        icon={<Ic name="target" size={22} />}
         title="Kunlik vazifalar"
         summary={`${quests.done}/${quests.total} bajarildi · hammasiga +${quests.bonus} 🪙`}
       >
@@ -155,7 +156,7 @@ export function Leagues() {
       </div>
       <GroupBubbles rows={rows} total={rows.reduce((a, r) => a + r.xp, 0)} />
       <details className="league-how">
-        <summary>❓ Turnir qanday ishlaydi?</summary>
+        <summary><Ic name="help" size={18} /> Turnir qanday ishlaydi?</summary>
         <ul>
           <li>Har hafta siz {LEAGUE_SIZE} kishilik guruhda bellashasiz. Hafta dushanbadan yakshanbagacha.</li>
           <li>
@@ -193,7 +194,7 @@ export function Leagues() {
               {rank === LEAGUE_SIZE - DEMOTE + 1 && (
                 <div className="zone-line down">▼ TUSHISH ZONASI · {LEAGUE_SIZE - DEMOTE + 1}–{LEAGUE_SIZE}{lg.tier === 0 ? ' (bu ligada tushish yo\'q)' : ''}</div>
               )}
-              <span className={`brank r${rank}`}>{rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}</span>
+              <span className={`brank r${rank}`}>{rank <= 3 ? <Ic name="medal" size={24} className={`medal-${rank}`} /> : rank}</span>
               <span className="bavatar"><Avatar value={r.avatar} size={30} /></span>
               <span className="bname">{r.isMe ? (r.name === 'Siz' ? 'Siz' : `${r.name} (siz)`) : r.name}</span>
               <span className="bxp">{r.xp} XP</span>

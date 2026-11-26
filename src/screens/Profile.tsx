@@ -1,4 +1,5 @@
 import { currentLang, LANG_EVENT, LANGUAGES, type Lang } from '../i18n';
+import { Ic } from '../components/Icons';
 import { chooseLanguage } from '../i18n/choose';
 import { liquidGlassSupported, readLiquidGlass, saveLiquidGlass } from '../components/LiquidGlass';
 import { DrawLine } from '../components/StripeFx';
@@ -58,9 +59,9 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
             <input className="name-input" value={name} placeholder="Ismingiz" onChange={(e) => setName(e.target.value)} onBlur={() => update((s) => ({ ...s, name: name.trim() }))} />
             <p className="muted">{sinceLabel} · 🇺🇿 → 🇫🇷</p>
             <div className="pf-chips">
-              {premium && <span className="pf-chip super">💎 SUPER</span>}
+              {premium && <span className="pf-chip super"><Ic name="crown" size={14} /> SUPER</span>}
               <span className="pf-chip">{`${LEAGUES[state.league.tier].icon} ${LEAGUES[state.league.tier].name} liga`}</span>
-              <span className="pf-chip">⭐ {`${state.xp} XP`}</span>
+              <span className="pf-chip"><Ic name="star" size={14} /> {`${state.xp} XP`}</span>
             </div>
           </div>
         </div>
@@ -85,11 +86,11 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       <h2 className="section-title">Statistika</h2>
       <div className="pf-stats">
         {[
-          ['☀️', state.streak, 'Kunlik seriya', '#f59e0b'],
-          ['⭐', state.xp, 'Jami XP', '#eab308'],
-          ['📚', words, "O'rganilgan so'z", '#6366f1'],
-          ['🏅', state.longestStreak, 'Eng uzun seriya', '#f97316'],
-          ['💯', state.perfectLessons, 'Xatosiz dars', '#ef4444'],
+          [<Ic name="flame" size={22} />, state.streak, 'Kunlik seriya', '#f59e0b'],
+          [<Ic name="star" size={22} />, state.xp, 'Jami XP', '#eab308'],
+          [<Ic name="book" size={22} />, words, "O'rganilgan so'z", '#6366f1'],
+          [<Ic name="medal" size={22} />, state.longestStreak, 'Eng uzun seriya', '#f97316'],
+          [<Ic name="shield" size={22} />, state.perfectLessons, 'Xatosiz dars', '#ef4444'],
           [LEAGUES[state.league.tier].icon, LEAGUES[state.league.tier].name, 'Turnir ligasi', '#22c55e'],
         ].map(([ico, val, label, c]) => (
           <div key={String(label)} className="pf-stat" style={{ ['--c' as string]: String(c) }}>
@@ -107,7 +108,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
             <b>{weekXp}</b> XP
             <small>bu hafta</small>
           </span>
-          <span className="pf-goal">🎯 {`Kunlik maqsad: ${state.dailyGoal} XP`}</span>
+          <span className="pf-goal"><Ic name="target" size={14} /> {`Kunlik maqsad: ${state.dailyGoal} XP`}</span>
         </div>
         <WeekStrip />
       <div className="xp-chart" aria-label="So'nggi 14 kunlik XP">
@@ -135,7 +136,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
 
       <Folder
         className="ach-folder"
-        icon="🏆"
+        icon={<Ic name="trophy" size={22} />}
         title="Yutuqlar"
         summary={`${ACHIEVEMENTS.filter((a) => state.achievements[a.id]).length} / ${ACHIEVEMENTS.length} ochilgan`}
       >
@@ -167,13 +168,13 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         <TabMotionSetting />
         {liquidGlassSupported() && (
           <label className="setting">
-            <span>💧 Suyuq shisha (Liquid Glass)</span>
+            <span><Ic name="sparkle" size={18} /> Suyuq shisha (Liquid Glass)</span>
             <input type="checkbox" defaultChecked={readLiquidGlass()} onChange={(e) => saveLiquidGlass(e.target.checked)} />
           </label>
         )}
         <PinSetting />
         <label className="setting">
-          <span>⚡ Yengil rejim (sekin telefonlar uchun)</span>
+          <span><Ic name="bolt" size={18} /> Yengil rejim (sekin telefonlar uchun)</span>
           <input
             type="checkbox"
             defaultChecked={document.documentElement.classList.contains('lite')}
@@ -188,15 +189,15 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
           />
         </label>
         <label className="setting">
-          <span>🔈 Ovoz effektlari</span>
+          <span><Ic name="speaker" size={18} /> Ovoz effektlari</span>
           <input type="checkbox" checked={state.settings.sound} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, sound: e.target.checked } }))} />
         </label>
         <label className="setting">
-          <span>🎧 Tinglash mashqlari</span>
+          <span><Ic name="headphones" size={18} /> Tinglash mashqlari</span>
           <input type="checkbox" checked={state.settings.listening} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, listening: e.target.checked } }))} />
         </label>
         <label className="setting">
-          <span>🗣️ Talaffuz tezligi</span>
+          <span><Ic name="mic" size={18} /> Talaffuz tezligi</span>
           <input
             type="range"
             min={0.5}
@@ -207,7 +208,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
           />
         </label>
         <div className="setting">
-          <span>🎯 Kunlik maqsad</span>
+          <span><Ic name="target" size={18} /> Kunlik maqsad</span>
           <div className="seg">
             {[10, 20, 30, 50].map((g) => (
               <button key={g} type="button" className={state.dailyGoal === g ? 'on' : ''} onClick={() => update((s) => ({ ...s, dailyGoal: g }))}>
@@ -224,12 +225,12 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
 
       <h2 className="section-title">Maxfiylik</h2>
       <div className="panel">
-        <b>🔐 Vivi AI va maxfiylik</b>
+        <b><Ic name="shield" size={18} /> Vivi AI va maxfiylik</b>
         <p className="muted small">Har bir AI vazifasiga rozilikni alohida boshqaring, uni bekor qiling yoki Vivi xotirasini o‘chiring.</p>
         <button type="button" className="btn btn-ghost" onClick={onManageAiConsent}>AI roziliklarini boshqarish</button>
       </div>
       <a className="btn btn-ghost btn-lg about-link" href="#/about">
-        ℹ️ Biz haqimizda · ijtimoiy tarmoqlar · ulashish
+        <Ic name="info" size={18} /> Biz haqimizda · ijtimoiy tarmoqlar · ulashish
       </a>
       <p className="legal-links">
         <a href="./privacy.html" target="_blank" rel="noreferrer">Maxfiylik siyosati</a> · <a href="./terms.html" target="_blank" rel="noreferrer">Foydalanish shartlari</a>
@@ -240,7 +241,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       {confirmReset && (
         <div className="modal-back" onClick={() => setConfirmReset(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="big-emoji">⚠️</div>
+            <div className="big-emoji"><Ic name="warning" size={48} /></div>
             <h3>Hamma progress o'chiriladi</h3>
             <p className="muted">Ball, seriya, so'zlar va yutuqlar qaytarib bo'lmaydigan tarzda o'chadi.</p>
             <button type="button" className="btn btn-danger btn-lg" onClick={reset}>
@@ -266,7 +267,7 @@ function LanguageSetting() {
   }, []);
   const cur = LANGUAGES.find((l) => l.id === lang) ?? LANGUAGES[0];
   return (
-    <Folder className="setting-folder lang-folder" icon="🌐" title="Ilova tili" summary={<span data-no-i18n>{cur.flag} {cur.name}</span>}>
+    <Folder className="setting-folder lang-folder" icon={<Ic name="globe" size={22} />} title="Ilova tili" summary={<span data-no-i18n>{cur.flag} {cur.name}</span>}>
       {LANGUAGES.map((l) => (
         <button key={l.id} type="button" role="radio" aria-checked={lang === l.id} className={`lang-chip ${lang === l.id ? 'on' : ''}`} onClick={() => void chooseLanguage(l.id)} data-no-i18n>
           <span className="lang-flag">{l.flag}</span>
@@ -293,14 +294,14 @@ function ThemeSetting() {
   return (
     <div className="setting theme-setting">
       <span>
-        🎨 Ko'rinish
+        <Ic name="palette" size={18} /> Ko'rinish
         <br />
         <small className="muted">{pref === 'auto' ? 'Avto — telefon sozlamasiga qarab' : dark ? 'Tungi rejim' : 'Kunduzgi rejim'}</small>
       </span>
       <div className="theme-controls">
         <ThemeToggle dark={dark} onToggle={(next) => apply(next ? 'dark' : 'light')} />
         <button type="button" className={`theme-auto ${pref === 'auto' ? 'on' : ''}`} aria-pressed={pref === 'auto'} onClick={() => apply(pref === 'auto' ? (dark ? 'dark' : 'light') : 'auto')}>
-          🌗 Avto
+          <Ic name="moon" size={14} /> Avto
         </button>
       </div>
     </div>
@@ -312,7 +313,7 @@ function TabMotionSetting() {
   const current = useTabMotion();
   const name = TAB_MOTIONS.find((m) => m.id === current)?.name ?? '';
   return (
-    <Folder className="setting-folder tm-folder" icon="✨" title="Menyu animatsiyasi" summary={`Tanlangan: ${name}`}>
+    <Folder className="setting-folder tm-folder" icon={<Ic name="sparkle" size={22} />} title="Menyu animatsiyasi" summary={`Tanlangan: ${name}`}>
       {TAB_MOTIONS.map((m) => (
         <button
           key={m.id}
@@ -341,7 +342,7 @@ function PinSetting() {
   return (
     <div className="setting pin-setting">
       <span>
-        🔒 Kirish paroli (PIN)
+        <Ic name="lock" size={18} /> Kirish paroli (PIN)
         <br />
         <small className="muted">{on ? 'Yoqilgan — ilova ochilganda PIN so‘raladi.' : 'O‘chiq. Shaxsiy 4 xonali PIN qo‘ying.'}</small>
       </span>

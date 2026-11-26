@@ -1,13 +1,14 @@
 // Do'kon «ilgich»i (kiyim do'koni uslubi): mahsulotlar arqonga ilingan, surganda chayqaladi;
 // bosilsa mahsulot katta oynada ochiladi. Ichidagi suyuqlik — mahsulot darajasi (masalan, akvariumdagi suv/baliqchalar);
 // sotib olinganda suyuqlik to'lqin bilan yangi darajaga ko'tariladi. Faqat transform/opacity.
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { CoinIcon } from './TopBarIcons';
 import { createPortal } from 'react-dom';
 import { motionAllowed } from '../engine/motion';
 
 export interface RailItem {
   id: string;
-  icon: string;
+  icon: ReactNode;
   name: string;
   desc: string;
   price: number;
@@ -90,7 +91,7 @@ export function ShopRail({ items }: { items: RailItem[] }) {
                   <b className="hang-name">{it.name}</b>
                   <small className="hang-level">{it.levelLabel}</small>
                   <span className="hang-tag">
-                    🪙 {it.price}
+                    <CoinIcon /> {it.price}
                   </span>
                 </span>
               </span>
@@ -141,7 +142,7 @@ function ItemSheet({ items, index, onIndex, onClose }: { items: RailItem[]; inde
           {String(index + 1).padStart(2, '0')} / {String(items.length).padStart(2, '0')}
         </small>
         <h3 className="item-name">{it.name}</h3>
-        <b className="item-price">🪙 {it.price}</b>
+        <b className="item-price"><CoinIcon /> {it.price}</b>
         <p className="item-desc muted">{it.desc}</p>
         <div className="item-dots" role="tablist" aria-label="Mahsulotlar">
           {items.map((x, i) => (
@@ -159,7 +160,7 @@ function ItemSheet({ items, index, onIndex, onClose }: { items: RailItem[]; inde
           ) : stage === 'done' ? (
             '✓ Olindi'
           ) : it.canBuy ? (
-            <>🛍️ Sotib olish · 🪙 {it.price}</>
+            <>Sotib olish · <CoinIcon /> {it.price}</>
           ) : (
             it.whyNot ?? 'Hozir olib bo‘lmaydi'
           )}

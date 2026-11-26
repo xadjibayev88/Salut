@@ -1,5 +1,7 @@
 // Kunlik vazifalar kartasi va uzilgan seriyani tiklash taklifi.
 import { useState } from 'react';
+import { Ic } from './Icons';
+import { CoinIcon } from './TopBarIcons';
 import { canRepairStreak, claimQuest, dailyQuests, QUESTS_BONUS, repairStreak, STREAK_REPAIR_COST, todayDaily } from '../engine/game';
 import { playSfx } from '../engine/audio';
 import { useStore } from '../state/store';
@@ -47,7 +49,7 @@ export function QuestsCard({ compact = false }: { compact?: boolean }) {
               <span className="quest-ok">✓</span>
             ) : (
               <button type="button" className="quest-claim" disabled={!done} onClick={() => claim(q.id)} aria-label={`Sovg'ani olish: ${q.reward} tanga`}>
-                🎁 {q.reward}
+                <Ic name="gift" size={15} /> {q.reward}
               </button>
             )}
           </div>
@@ -70,7 +72,7 @@ export function StreakRepair({ compact = false }: { compact?: boolean }) {
   const can = premium || state.gems >= STREAK_REPAIR_COST;
   return (
     <div className={`streak-repair ${compact ? 'compact' : ''}`}>
-      <span className="sr-icon">☀️</span>
+      <span className="sr-icon"><Ic name="flame" size={26} /></span>
       <div>
         <b>{state.lostStreak.value} kunlik seriya uzildi</b>
         <small className="muted">{compact ? `2 kun ichida tiklang${premium ? ' · bepul' : ''}` : `Ikki kun ichida tiklash mumkin${premium ? ' — Super uchun bepul' : ''}.`}</small>
@@ -87,7 +89,7 @@ export function StreakRepair({ compact = false }: { compact?: boolean }) {
           }
         }}
       >
-        {premium ? 'Tiklash' : `🪙 ${STREAK_REPAIR_COST}`}
+        {premium ? 'Tiklash' : <><CoinIcon /> {STREAK_REPAIR_COST}</>}
       </button>
     </div>
   );

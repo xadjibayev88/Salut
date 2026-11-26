@@ -1,4 +1,6 @@
 import { PurchaseToast, Reviews, StatsLine, SupportRow, useSocial } from '../components/SocialProof';
+import { Ic } from '../components/Icons';
+import { FishIcon } from '../components/TopBarIcons';
 // Voilà Super: obuna sahifasi — taqqoslash narxi, tariflar (chegirma bilan), to'lov usullari:
 // Payme / Click (avtomatik) va karta orqali o'tkazma (chek yuklanadi, admin tasdiqlaydi).
 import { useEffect, useRef, useState } from 'react';
@@ -8,13 +10,13 @@ import { accountApi, useAccount, type PlanId } from '../state/account';
 import { AuthScreen } from './Auth';
 import { BurstCheck, GlassPayCard, KineticTitle, RollNumber, SendButton } from '../components/StripeFx';
 
-const PERKS = [
-  ['🐱', 'Vivi AI — faqat Super\'da', 'Fransuzcha ovozli va matnli suhbat, xatolar tahlili'],
-  ['⚡', 'Gemini Live — jonli suhbat', 'Real vaqtda, emotsiyali; 30 daqiqalik sessiyalar'],
-  ['💬', 'Cheksiz xabarlar', 'Kunlik 30 ta xabar chegarasi yo\'q'],
-  ['🐟', 'Cheksiz baliqcha', 'Xato qilsangiz ham darsdan chiqib ketmaysiz'],
-  ['🚫', 'Reklamasiz', 'Darslar va suhbat orasida reklama yo\'q'],
-  ['☀️', 'Seriyani bepul tiklash', 'Uzilgan seriyani 2 kun ichida tangasiz tiklaysiz'],
+const PERKS: [React.ReactNode, string, string][] = [
+  [<Ic key="a" name="chat" size={22} />, 'Vivi AI — faqat Super\'da', 'Fransuzcha ovozli va matnli suhbat, xatolar tahlili'],
+  [<Ic key="b" name="bolt" size={22} />, 'Gemini Live — jonli suhbat', 'Real vaqtda, emotsiyali; 30 daqiqalik sessiyalar'],
+  [<Ic key="c" name="sparkle" size={22} />, 'Cheksiz xabarlar', 'Kunlik 30 ta xabar chegarasi yo\'q'],
+  [<FishIcon key="d" />, 'Cheksiz baliqcha', 'Xato qilsangiz ham darsdan chiqib ketmaysiz'],
+  [<Ic key="e" name="shield" size={22} />, 'Reklamasiz', 'Darslar va suhbat orasida reklama yo\'q'],
+  [<Ic key="f" name="flame" size={22} />, 'Seriyani bepul tiklash', 'Uzilgan seriyani 2 kun ichida tangasiz tiklaysiz'],
 ];
 
 const fmt = (n: number) => n.toLocaleString('ru-RU').replace(/[, ]/g, ' ');
@@ -114,7 +116,7 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
   return createPortal(
     <div className="modal-back" onClick={onClose}>
       <div className="sheet card-pay" onClick={(e) => e.stopPropagation()}>
-        <h3>💳 Karta orqali to'lash</h3>
+        <h3><Ic name="card" size={22} /> Karta orqali to'lash</h3>
         <ol className="card-steps">
           <li>
             {kind === 'visa' ? (
@@ -292,7 +294,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
       {anchor && sel && (
         <div className="price-anchor">
           <span>
-            💡 {anchor.label}: <s>{fmt(anchor.uzs)} so'm</s>
+            <Ic name="sparkle" size={16} /> {anchor.label}: <s>{fmt(anchor.uzs)} so'm</s>
           </span>
           <b>
             Bizda atigi <RollNumber value={sel.uzs} format={fmt} /> so'm!
@@ -336,7 +338,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
       {review?.status === 'rejected' ? (
         <p className="auth-error">Chek tasdiqlanmadi. To'lov summasi va chekni tekshirib, qayta yuboring yoki biz bilan bog'laning.</p>
       ) : review ? (
-        <div className="review-note">⏳ Chekingiz tekshirilmoqda. Tasdiqlangach, Super o'zi yoqiladi — bu sahifani yopsangiz ham bo'ladi.</div>
+        <div className="review-note"><Ic name="clock" size={18} /> Chekingiz tekshirilmoqda. Tasdiqlangach, Super o'zi yoqiladi — bu sahifani yopsangiz ham bo'ladi.</div>
       ) : null}
 
       {me.billing.providers.length > 0 ? (
@@ -353,17 +355,17 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
           )}
           {me.billing.providers.includes('card') && (
             <button type="button" className="btn btn-pay card" disabled={!!busy} onClick={() => pay('card')}>
-              💳 Karta orqali (Uzcard / Humo)
+              <Ic name="card" size={18} /> Karta orqali (Uzcard / Humo)
             </button>
           )}
           {me.billing.providers.includes('visa') && (
             <button type="button" className="btn btn-pay visa" disabled={!!busy} onClick={() => pay('visa')}>
-              🌍 Visa / Mastercard
+              <Ic name="globe" size={18} /> Visa / Mastercard
             </button>
           )}
           {me.billing.telegram && (
             <button type="button" className="btn btn-pay telegram" disabled={!!busy} onClick={() => pay('telegram')}>
-              {busy === 'telegram' ? 'Kuting…' : "✈️ Telegram bot orqali to'lash"}
+              {busy === 'telegram' ? 'Kuting…' : "Telegram bot orqali to'lash"}
             </button>
           )}
         </div>

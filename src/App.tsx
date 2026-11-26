@@ -1,5 +1,6 @@
 import { GlassRefraction, useLiquidGlassOn } from './components/LiquidGlass';
 import { BoltIcon, CoinIcon, FishIcon, FlagIcon } from './components/TopBarIcons';
+import { Ic } from './components/Icons';
 import { ViviWalker } from './components/ViviWalker';
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { grantSuperFreeze, LEAGUES, MAX_HEARTS, msToNextHeart, streakActiveToday } from './engine/game';
@@ -191,7 +192,7 @@ export function App() {
           </button>
         ))}
         <button type="button" className={`nav-item ${tab === 'about' ? 'active' : ''}`} onClick={() => go('about')}>
-          <span className="nav-icon">ℹ️</span>
+          <span className="nav-icon"><Ic name="info" size={22} /></span>
           <span>Biz haqimizda</span>
         </button>
       </nav>
@@ -315,7 +316,7 @@ function SidePanels({ onGo }: { onGo: (t: Tab) => void }) {
           </span>
         </div>
         <div className="goal-row">
-          <span className="panel-big">{p >= 1 ? '🏅' : '⚡'}</span>
+          <span className="panel-big"><Ic name={p >= 1 ? 'medal' : 'bolt'} size={34} /></span>
           <div className="progress small">
             <div className="progress-fill gold" style={{ width: `${Math.max(4, p * 100)}%` }} />
           </div>
@@ -324,7 +325,7 @@ function SidePanels({ onGo }: { onGo: (t: Tab) => void }) {
       <div className="panel">
         <div className="panel-h">
           <b>Kunlik seriya</b>
-          <span className="muted">⛱️ {state.streakFreezes}</span>
+          <span className="muted"><Ic name="shield" size={16} /> {state.streakFreezes}</span>
         </div>
         <WeekStrip />
       </div>

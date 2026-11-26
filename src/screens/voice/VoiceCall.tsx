@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHARACTERS } from '../../data/characters';
+import { Ic } from '../../components/Icons';
 import { VoiceCall as Controller, type CallOptions, type Snapshot } from '../../engine/voice/call';
 import { displayText } from '../../engine/voice/markers';
 import type { SttReviewReason } from '../../engine/voice/stt';
@@ -302,7 +303,7 @@ export function VoiceCallScreen({
             }}
             onContextMenu={(e) => e.preventDefault()}
           >
-            🎤 {pressed ? 'Gapiring…' : 'Bosib turib gapiring'}
+            <Ic name="mic" size={20} /> {pressed ? 'Gapiring…' : 'Bosib turib gapiring'}
           </button>
         )}
         <div className="seg small">
@@ -325,7 +326,7 @@ export function VoiceCallScreen({
                 ctrl.setVoice(voices[i].id);
               }}
             >
-              🔁 {voices[voiceIdx]?.name}
+              <Ic name="refresh" size={16} /> {voices[voiceIdx]?.name}
             </button>
           )}
           <button type="button" className="btn btn-danger" onClick={() => ctrl.end('user')}>

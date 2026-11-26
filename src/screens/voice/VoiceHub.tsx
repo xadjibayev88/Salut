@@ -1,4 +1,5 @@
 import { SuperBanner, SuperOfferModal } from '../../components/SuperOffer';
+import { Ic } from '../../components/Icons';
 // Vivi ovozli suhbati: tanishuv → xarakter va rol tanlash → qo'ng'iroq → tahlil.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CHARACTERS, CUSTOM_ROLE_MAX, CUSTOM_ROLE_MIN, EXPLAIN_LANGS, ROLES } from '../../data/characters';
@@ -266,10 +267,10 @@ export function VoiceHub() {
         <div className="vh2-top">
           <span className="vh2-badge">✦ Vivi AI</span>
           <button type="button" className="vh2-icon" aria-label="Qanday gaplashish kerak" onClick={() => setShowHelp(true)}>
-            ?
+            <Ic name="help" size={20} />
           </button>
           <button type="button" className="vh2-icon" aria-label="Sozlamalar" onClick={() => setShowAdvanced(true)}>
-            ⚙︎
+            <Ic name="gear" size={20} />
           </button>
         </div>
         <div className="vh2-stage">
@@ -278,7 +279,7 @@ export function VoiceHub() {
             <b>{ch.name}</b>
             <small>{ch.tagline}</small>
             <button type="button" className="vh2-sample" onClick={() => sample(ch.sample)}>
-              ▶ Ovozini eshitish
+              <Ic name="play" size={13} /> Ovozini eshitish
             </button>
           </div>
         </div>
@@ -292,7 +293,7 @@ export function VoiceHub() {
         </div>
         {config?.live && (
           <button type="button" className={`vh2-live ${prefs.live ? 'on' : ''}`} onClick={() => setPrefs({ live: !prefs.live })} aria-pressed={prefs.live}>
-            <span className="vh2-live-ic">⚡</span>
+            <span className="vh2-live-ic"><Ic name="bolt" size={18} /></span>
             <span className="vh2-live-t">
               <b>Jonli rejim</b>
               <small>Gemini Live · emotsiyali ovoz</small>
@@ -343,7 +344,7 @@ export function VoiceHub() {
       </section>
 
       {config && config.tts === 'browser' && !browserVoiceAvailable(prefs.lang) && (
-        <p className="vh-note">ℹ️ Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
+        <p className="vh-note"><Ic name="info" size={16} /> Qurilmangizda {EXPLAIN_LANGS.find((l) => l.id === prefs.lang)!.label.toLowerCase()} ovoz topilmadi — Vivi fransuzcha qismlarni o'qiydi, qolgani subtitrda chiqadi.</p>
       )}
 
       {config && config.messagesLeft != null && (
@@ -412,7 +413,7 @@ export function VoiceHub() {
             disabled={!customOk}
             onClick={() => setView({ kind: prefs.live && config.live ? 'live' : 'call', key: Date.now() })}
           >
-            {prefs.live && config.live ? '⚡' : '🎙️'} Gaplashishni boshlash
+            <Ic name={prefs.live && config.live ? 'bolt' : 'mic'} size={20} /> Gaplashishni boshlash
             <small className="start-sub">{`${prefs.live && config.live ? config.liveMinutes ?? config.sessionMinutes : config.sessionMinutes} daqiqagacha`}</small>
           </button>
         )}
@@ -421,7 +422,7 @@ export function VoiceHub() {
       <div className="vh2-mini">
         <details className="vh2-mem">
           <summary>
-            <span>🧠</span>
+            <Ic name="brain" size={20} />
             <b>Vivi eslaydi</b>
             <small>{memLines.length ? `${memLines.length} ta narsa` : "hali bo'sh"}</small>
           </summary>
@@ -443,7 +444,7 @@ export function VoiceHub() {
         {history.length > 0 && (
           <details className="vh2-mem">
             <summary>
-              <span>🕘</span>
+              <Ic name="history" size={20} />
               <b>So'nggi suhbatlar</b>
               <small>{history.length}</small>
             </summary>

@@ -1,4 +1,5 @@
 import { ALL_LESSONS } from '../data/course';
+import { Ic } from '../components/Icons';
 import { wordRecall } from '../engine/game';
 import { speak, ttsSupported } from '../engine/audio';
 import { useStore } from '../state/store';
@@ -12,6 +13,19 @@ const hue = (s: string) => {
   let h = 0;
   for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360;
   return h;
+};
+// So'z plitkasi: emoji o'rniga — palitradan gradient va so'zning bosh harfi (artikllarsiz).
+const TILE: [string, string][] = [
+  ['#7FE3FF', '#B49CFF'],
+  ['#B49CFF', '#FF8FD0'],
+  ['#FFD23F', '#FF6B9A'],
+  ['#FF6B9A', '#9B5CFF'],
+  ['#7FE3FF', '#9B5CFF'],
+  ['#FF8FD0', '#FFD23F'],
+];
+const initial = (fr: string) => {
+  const w = fr.trim().replace(/^(l'|l’|le |la |les |un |une |des |du |d'|d’)/i, '');
+  return (w.match(/\p{L}/u)?.[0] ?? '?').toUpperCase();
 };
 
 export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
@@ -76,15 +90,15 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
             <small>So'zlar kuchi</small>
             <b>{avg >= 0.7 ? 'Zo\'r holat!' : avg >= 0.4 ? 'Takrorlash vaqti' : 'So\'zlar unutilyapti'}</b>
             <div className="pr-chips">
-              <span>📚 {`${rows.length} so'z`}</span>
-              <span className={weak ? 'warn' : ''}>🪫 {`${weak} ta zaif`}</span>
-              <span className={mistakes ? 'bad' : ''}>🩹 {`${mistakes} ta xato`}</span>
+              <span><Ic name="book" size={15} /> {`${rows.length} so'z`}</span>
+              <span className={weak ? 'warn' : ''}><Ic name="warning" size={15} /> {`${weak} ta zaif`}</span>
+              <span className={mistakes ? 'bad' : ''}><Ic name="target" size={15} /> {`${mistakes} ta xato`}</span>
             </div>
           </div>
         </section>
       )}
       <button type="button" className="pr-main" disabled={disabled} onClick={() => onStart({ kind: 'practice', mode: 'smart' })}>
-        <span className="pr-main-icon">🧠</span>
+        <span className="pr-main-icon"><Ic name="brain" size={34} /></span>
         <span className="pr-main-text">
           <b>Aqlli takrorlash</b>
           <small>Unutilayotgan so'zlarni mustahkamlang</small>
@@ -95,14 +109,14 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
         </span>
       </button>
       <div className="pr-grid">
-        <button type="button" className="pr-tile" style={{ ['--c' as string]: '#ef4444', ['--c2' as string]: '#fb7185' }} disabled={disabled || mistakes === 0} onClick={() => onStart({ kind: 'practice', mode: 'mistakes' })}>
-          <span className="pr-tile-icon">🩹</span>
+        <button type="button" className="pr-tile" style={{ ['--c' as string]: '#FF6B9A', ['--c2' as string]: '#FFD23F' }} disabled={disabled || mistakes === 0} onClick={() => onStart({ kind: 'practice', mode: 'mistakes' })}>
+          <span className="pr-tile-icon"><Ic name="target" size={30} /></span>
           {mistakes > 0 && <span className="pr-badge">{mistakes}</span>}
           <b>Xatolar ustida ishlash</b>
           <small>{mistakes ? `${mistakes} ta xato kutmoqda` : "Hozircha xato yo'q"}</small>
         </button>
-        <button type="button" className="pr-tile" style={{ ['--c' as string]: '#8b5cf6', ['--c2' as string]: '#22d3ee' }} disabled={disabled || !ttsSupported()} onClick={() => onStart({ kind: 'practice', mode: 'listening' })}>
-          <span className="pr-tile-icon">🎧</span>
+        <button type="button" className="pr-tile" style={{ ['--c' as string]: '#9B5CFF', ['--c2' as string]: '#7FE3FF' }} disabled={disabled || !ttsSupported()} onClick={() => onStart({ kind: 'practice', mode: 'listening' })}>
+          <span className="pr-tile-icon"><Ic name="headphones" size={30} /></span>
           <b>Tinglash mashqi</b>
           <small>{ttsSupported() ? "Quloqni fransuz nutqiga o'rgating" : "Brauzeringiz ovozni qo'llamaydi"}</small>
         </button>
@@ -118,8 +132,8 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
               const removable = w.emoji === '📝';
               const content = (
                 <div role="button" tabIndex={0} className="word-row" onClick={() => speak(w.fr, state.settings.ttsRate)}>
-                  <span className="wr-emoji" style={{ ['--h' as string]: hue(w.fr) }}>
-                    <span>{w.emoji ?? '🔤'}</span>
+                  <span className="wr-emoji wr-mono" style={{ ['--g1' as string]: TILE[hue(w.fr) % TILE.length][0], ['--g2' as string]: TILE[hue(w.fr) % TILE.length][1] }}>
+                    <span>{initial(w.fr)}</span>
                   </span>
                   <span className="wr-text">
                     <b>{w.fr}</b>
@@ -140,7 +154,7 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
                         removeWord(w.fr, i);
                       }}
                     >
-                      ✕
+                      <Ic name="close" size={14} />
                     </button>
                   )}
                 </div>
