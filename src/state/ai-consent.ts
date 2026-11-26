@@ -80,7 +80,7 @@ export const AI_SCOPE_OPTIONS: readonly {
     scope: 'live_session',
     provider: 'google-agent-platform',
     label: 'Jonli AI suhbat sessiyasi',
-    detail: 'Sessiya metama’lumotlari yuborilishi mumkin. Live hozir o‘chiq; bu checkbox uni yoqmaydi.',
+    detail: 'Jonli (real vaqtli) ovozli suhbat: mikrofon ovozi va Vivi javoblari suhbat davomida to‘g‘ridan-to‘g‘ri Gemini Live’ga uzatiladi.',
     providerLabel: 'Google Cloud Agent Platform',
   },
   {

@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 import { DEMOTE, LEAGUE_PRIZE_XP, LEAGUE_SIZE, LEAGUES, leagueStandings, PROMOTE } from '../engine/game';
 import { weekStart } from '../engine/time';
 import { useStore } from '../state/store';
+import { Folder } from '../components/Folder';
+import { QuestsCard, StreakRepair, useQuestSummary } from '../components/Quests';
 
 function timeLeft(wid: string): string {
   const end = weekStart(wid).getTime() + 7 * 86_400_000;
@@ -17,6 +19,7 @@ function timeLeft(wid: string): string {
 }
 
 export function Leagues() {
+  const quests = useQuestSummary();
   const { state, update } = useStore();
   const [, force] = useState(0);
   const badges = useRef<HTMLDivElement>(null);
@@ -52,6 +55,16 @@ export function Leagues() {
       <p className="muted center league-sub">
         {lg.tier + 1}-daraja / {LEAGUES.length} · 🇫🇷 {LEAGUES[lg.tier].city} shahri · ⏳ {timeLeft(lg.weekId)} qoldi
       </p>
+      {/* Darslar sahifasidan ko'chirildi: uzilgan seriya va kunlik vazifalar — ixcham ko'rinishda. */}
+      <StreakRepair compact />
+      <Folder
+        className="quests-folder"
+        icon="🎯"
+        title="Kunlik vazifalar"
+        summary={`${quests.done}/${quests.total} bajarildi · hammasiga +${quests.bonus} 🪙`}
+      >
+        <QuestsCard compact />
+      </Folder>
       <div className="league-stats">
         <div>
           <b>{lg.weeklyXp}</b>

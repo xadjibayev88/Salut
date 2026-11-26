@@ -69,7 +69,8 @@ export const DEFAULT_PREFS: VoicePrefs = {
   adultConfirmed: false,
   explicit: false,
   game: false,
-  live: false,
+  // Gemini Live qayta yoqildi — sukut bo'yicha jonli rejim (server ruxsat bergan bo'lsa).
+  live: true,
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -88,7 +89,20 @@ function write(key: string, value: unknown) {
   }
 }
 
-export const loadPrefs = (): VoicePrefs => ({ ...DEFAULT_PREFS, ...read<Partial<VoicePrefs>>(PREFS_KEY, {}) });
+const LIVE_ON_MIGRATION = 'salut.voice.liveOn.v2';
+
+/** Live o'chirilgan paytda saqlangan «live: false» bir marta yangi sukutga (yoqilgan) o'tkaziladi. */
+export function loadPrefs(): VoicePrefs {
+  const saved = read<Partial<VoicePrefs>>(PREFS_KEY, {});
+  let migrated = true;
+  try {
+    migrated = localStorage.getItem(LIVE_ON_MIGRATION) === '1';
+    if (!migrated) localStorage.setItem(LIVE_ON_MIGRATION, '1');
+  } catch {
+    /* saqlash bloklangan */
+  }
+  return { ...DEFAULT_PREFS, ...saved, ...(migrated ? {} : { live: true }) };
+}
 export const savePrefs = (p: VoicePrefs) => write(PREFS_KEY, p);
 
 export const loadHistory = (): SessionRecord[] => read<SessionRecord[]>(HISTORY_KEY, []);

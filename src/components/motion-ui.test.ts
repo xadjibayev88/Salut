@@ -32,10 +32,10 @@ describe('pull to refresh resistance', () => {
 });
 
 describe('liquid delete blob', () => {
-  it('grows with a left swipe and arms at 38% of the row width', () => {
+  it('grows with a left swipe and arms at 22% of the row width', () => {
     expect(blobAmount(10, 300)).toBe(0);
-    expect(blobAmount(-57, 300)).toBeCloseTo(0.5, 1);
-    expect(blobAmount(-114, 300)).toBe(1);
+    expect(blobAmount(-33, 300)).toBeCloseTo(0.5, 1);
+    expect(blobAmount(-66, 300)).toBe(1);
     expect(blobAmount(-400, 300)).toBe(1);
   });
 });

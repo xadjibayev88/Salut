@@ -20,6 +20,8 @@ import { createGoogleAdcTokenSource } from './google-auth.ts';
 import { createProviderCall, geminiApiProviderConfigFromEnv, googleProviderConfigFromEnv } from './ai-runtime.ts';
 import { createGeminiApiProvider } from './gemini-api-provider.ts';
 import { createAiKeyAlerter } from './ai-alerts.ts';
+import { createLiveTokenRoute, mintGeminiLiveToken } from './live-route.ts';
+import { liveInstruction, parseTutorRequest } from './tutor.ts';
 import { registerClientLogRoute, type RouteTable } from './client-log.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
@@ -54,6 +56,7 @@ const BUCKETS: Record<string, Bucket> = {
   reward: { perMinute: 6, perDay: 40 },
   auth: { perMinute: 10, perDay: 200 },
   billing: { perMinute: 10, perDay: 100 },
+  live: { perMinute: 4, perDay: num('LIVE_TOKENS_PER_DAY', 40) },
 };
 const hits = new Map<string, number[]>();
 const daily = new Map<string, { day: string; n: number }>();
@@ -192,6 +195,21 @@ const REWARD_MIN_WATCH_MS = num('REWARD_MIN_WATCH_SECONDS', 15) * 1000;
 function bonusMin(req: IncomingMessage): number {
   const r = adBonus.get(quotaKey(req));
   return r && r.day === tashkentDay() ? r.claims * REWARD_VIVI_MIN : 0;
+}
+// Jonli rejim (Gemini Live) uchun alohida kunlik bepul vaqt: birinchi sessiya boshlangan paytdan hisoblanadi.
+const FREE_LIVE_MIN = num('FREE_LIVE_MINUTES', 10);
+const liveUse = new Map<string, { day: string; start: number }>();
+function liveMinutesLeft(req: IncomingMessage): number {
+  const r = liveUse.get(quotaKey(req));
+  if (!r || r.day !== tashkentDay()) return FREE_LIVE_MIN + bonusMin(req);
+  return Math.max(0, Math.floor(FREE_LIVE_MIN + bonusMin(req) - (Date.now() - r.start) / 60_000));
+}
+function markLiveStarted(req: IncomingMessage) {
+  const k = quotaKey(req);
+  const day = tashkentDay();
+  const r = liveUse.get(k);
+  if (!r || r.day !== day) liveUse.set(k, { day, start: Date.now() });
+  if (liveUse.size > 50_000) for (const [key, v] of liveUse) if (v.day !== day) liveUse.delete(key);
 }
 function bonusClaimsLeft(req: IncomingMessage): number {
   const r = adBonus.get(quotaKey(req));
@@ -365,8 +383,8 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
       rewardsLeft: premium ? 0 : bonusClaimsLeft(req),
       cooldownMinutes: premium ? 0 : Math.max(COOLDOWN_MIN, minutesToTashkentMidnight()),
       messagesLeft: freeLeft(req),
-      live: false,
-      liveMinutes: 0,
+      live: liveReady(),
+      liveMinutes: liveReady() ? (premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : liveMinutesLeft(req)) : 0,
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
     });
@@ -648,6 +666,35 @@ const gatedAiRoutes = enabledAiRoutes(aiRouteHandlers, {
   providerEnabled: aiRoutesEffectivelyReady(),
   quotaReservationReady: AI_QUOTA_RESERVATION_MIDDLEWARE_READY,
 });
+// Gemini Live: faqat bepul Gemini API rejimida, AI to'liq yoqilganda va LIVE_DISABLED=1 bo'lmaganda.
+const LIVE_MODEL = env.GEMINI_LIVE_MODEL || 'gemini-3.8-live';
+// Kalit faqat AI sozlamalari modulidan olinadi (main.ts o'zi provayder kalitlarini o'qimaydi).
+const LIVE_API_KEY = geminiApiProviderConfigFromEnv(process.env).apiKey ?? '';
+function liveReady(): boolean {
+  return AI_PROVIDER_MODE === 'gemini-api' && env.LIVE_DISABLED !== '1' && !!LIVE_API_KEY && aiRoutesEffectivelyReady();
+}
+const liveTokenRoute = createLiveTokenRoute({
+  enabled: liveReady,
+  originAllowed: aiRequestOriginAllowed,
+  subject: currentAiSubject,
+  hasConsent: (subject) => hasAiConsent(subject, 'live_session', 'google-gemini-api'),
+  killSwitchActive: isAiQuotaKillSwitchActive,
+  rateLimited: (req) => take('live', clientIp(req)),
+  premium: isPremium,
+  minutesLeft: liveMinutesLeft,
+  markStarted: markLiveStarted,
+  premiumMinutes: Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)),
+  readBody,
+  instruction: (subject, body) => {
+    const raw = (body ?? {}) as Record<string, unknown>;
+    const parsed = parseTutorRequest(sanitizeTutorBodyForMemoryConsent(subject, { ...raw, message: typeof raw.message === 'string' && raw.message ? raw.message : 'jonli suhbat', mode: 'voice' }));
+    return typeof parsed === 'string' ? { text: parsed } : liveInstruction(parsed);
+  },
+  mintToken: (minutes, signal) => mintGeminiLiveToken(LIVE_API_KEY, minutes, signal),
+  model: LIVE_MODEL,
+  voice: GOOGLE_TTS_VOICE,
+  respond: json,
+});
 const routes = Object.freeze({ ...routeHandlers, ...consentRouteHandlers, ...gatedAiRoutes });
 
 // ---------- Statik fayllar ----------
@@ -678,8 +725,12 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse) {
 const server = createServer((req, res) => {
   const path = (req.url ?? '/').split('?')[0];
   const routeKey = `${req.method} ${path}`;
-  // Return the hard-disabled response without reading identity/body or minting a token/session.
-  if (routeKey === 'POST /api/live/token') return void aiRouteHandlers['POST /api/live/token'](req, res);
+  // Gemini Live: o'z darvozasi bor (rejim/rozilik/limit); shartlar bajarilmasa — token berilmaydi.
+  if (routeKey === 'POST /api/live/token') {
+    return void liveTokenRoute(req, res).catch(() => {
+      if (!res.headersSent) json(res, 500, { message: 'Server xatosi' });
+    });
+  }
   const route = routes[routeKey];
   if (route) {
     return void Promise.resolve(route(req, res)).catch(() => {
