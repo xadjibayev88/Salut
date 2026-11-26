@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { StoreProvider } from './state/store';
 import { AccountProvider } from './state/account';
+import { AppLockGate } from './components/AppLockGate';
 import './styles.css';
 import { initTheme } from './engine/theme';
 
@@ -22,7 +23,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <StoreProvider>
       <AccountProvider>
-        <App />
+        <AppLockGate>
+          <App />
+        </AppLockGate>
       </AccountProvider>
     </StoreProvider>
   </StrictMode>,

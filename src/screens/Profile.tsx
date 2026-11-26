@@ -1,4 +1,6 @@
 import { ReviewForm } from '../components/SocialProof';
+import { PinSetupSheet } from '../components/PinLock';
+import { clearPin, hasPin, setPin, verifyPin } from '../engine/applock';
 import { TAB_MOTIONS, saveTabMotion, useTabMotion } from '../components/TabBar';
 import { themePref, setThemePref, type ThemePref } from '../engine/theme';
 import { useState } from 'react';
@@ -142,6 +144,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       <div className="settings">
         <ThemeSetting />
         <TabMotionSetting />
+        <PinSetting />
         <label className="setting">
           <span>⚡ Yengil rejim (sekin telefonlar uchun)</span>
           <input
@@ -267,6 +270,45 @@ function TabMotionSetting() {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Shaxsiy PIN: qo'yilsa, ilova ochilganda «OTP» uslubidagi qulf ekrani PIN so'raydi. */
+function PinSetting() {
+  const [on, setOn] = useState(hasPin);
+  const [sheet, setSheet] = useState<null | 'set' | 'change' | 'off'>(null);
+  const verifyCurrent = async (pin: string): Promise<true | string> => {
+    const r = await verifyPin(pin);
+    return r.ok ? true : r.waitMs ? `Juda ko'p urinish. ${Math.ceil(r.waitMs / 1000)} soniya kuting.` : "Noto'g'ri PIN.";
+  };
+  return (
+    <div className="setting pin-setting">
+      <span>
+        🔒 Kirish paroli (PIN)
+        <br />
+        <small className="muted">{on ? 'Yoqilgan — ilova ochilganda PIN so‘raladi.' : 'O‘chiq. Shaxsiy 4 xonali PIN qo‘ying.'}</small>
+      </span>
+      {on ? (
+        <span className="pin-actions">
+          <button type="button" className="btn btn-ghost small" onClick={() => setSheet('change')}>O'zgartirish</button>
+          <button type="button" className="btn btn-text small" onClick={() => setSheet('off')}>O'chirish</button>
+        </span>
+      ) : (
+        <button type="button" className="btn btn-primary small" onClick={() => setSheet('set')}>PIN qo'yish</button>
+      )}
+      {sheet && (
+        <PinSetupSheet
+          mode={sheet}
+          verifyCurrent={verifyCurrent}
+          save={setPin}
+          remove={clearPin}
+          onClose={() => {
+            setSheet(null);
+            setOn(hasPin());
+          }}
+        />
+      )}
     </div>
   );
 }
