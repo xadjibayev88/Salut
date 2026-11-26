@@ -480,6 +480,43 @@ export function openChest(s: GameState, id: string): { state: GameState; gems: n
   return { state: { ...s, chests: [...s.chests, id], gems: s.gems + gems }, gems };
 }
 
+// ---------- Omad g'ildiragi (avvalgi «sovg'a bekati» o'rnida) ----------
+
+export type WheelPrize =
+  | { kind: 'gems'; amount: number }
+  | { kind: 'fish'; amount: number }
+  | { kind: 'boost'; minutes: number }
+  | { kind: 'freeze'; amount: number };
+
+/** G'ildirak sektorlari (soat yo'nalishida, 12 dan boshlab). Har bekatda tanga miqdori biroz farq qiladi. */
+export function wheelPrizes(id: string): WheelPrize[] {
+  const g = chestReward(id);
+  return [
+    { kind: 'gems', amount: g },
+    { kind: 'fish', amount: 2 },
+    { kind: 'boost', minutes: XP_BOOST_MINUTES },
+    { kind: 'gems', amount: g * 2 },
+    { kind: 'freeze', amount: 1 },
+    { kind: 'fish', amount: MAX_HEARTS },
+  ];
+}
+
+/** G'ildirakni aylantiradi: sektor tanlanadi (roll 0..1), mukofot beriladi, bekat «ochilgan» bo'ladi. */
+export function spinWheel(s: GameState, id: string, roll: number, now = Date.now()): { state: GameState; index: number; prize: WheelPrize } {
+  const prizes = wheelPrizes(id);
+  const index = Math.min(prizes.length - 1, Math.max(0, Math.floor(roll * prizes.length)));
+  let prize = prizes[index];
+  if (s.chests.includes(id)) return { state: s, index, prize };
+  let next: GameState = { ...s, chests: [...s.chests, id] };
+  // Soyabonlar to'la bo'lsa — o'rniga tanga (mukofot bekor ketmasin).
+  if (prize.kind === 'freeze' && s.streakFreezes >= MAX_FREEZES) prize = { kind: 'gems', amount: chestReward(id) };
+  if (prize.kind === 'gems') next = { ...next, gems: s.gems + prize.amount };
+  else if (prize.kind === 'fish') next = { ...next, hearts: Math.min(MAX_HEARTS, s.hearts + prize.amount) };
+  else if (prize.kind === 'boost') next = { ...next, xpBoostUntil: Math.max(now, s.xpBoostUntil) + prize.minutes * 60_000 };
+  else next = { ...next, streakFreezes: Math.min(MAX_FREEZES, s.streakFreezes + prize.amount) };
+  return { state: next, index, prize };
+}
+
 export function currentUnitIndex(s: GameState): number {
   for (let i = 0; i < COURSE.length; i++) {
     if (!COURSE[i].lessons.every((l) => s.lessonsDone[l.id]) || !s.lessonsDone[`${COURSE[i].id}-review`]) return i;

@@ -127,7 +127,7 @@ function ElasticString({ count, active, change }: { count: number; active: numbe
       <defs>
         <linearGradient id="tabStringGrad" x1="0" x2="1">
           <stop offset="0" stopColor="#6366f1" stopOpacity=".35" />
-          <stop offset=".5" stopColor="#818cf8" />
+          <stop offset=".5" stopColor="#B49CFF" />
           <stop offset="1" stopColor="#6366f1" stopOpacity=".35" />
         </linearGradient>
       </defs>

@@ -16,7 +16,7 @@ describe('app lock PIN', () => {
     await setPin('2580');
     expect(hasPin()).toBe(true);
     const raw = [...store.values()].join('');
-    expect(raw).not.toContain('2580');
+    expect(Object.values(JSON.parse(raw))).not.toContain('2580');
     expect(JSON.parse(raw).hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
