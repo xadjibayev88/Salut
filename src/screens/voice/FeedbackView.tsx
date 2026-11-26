@@ -1,5 +1,6 @@
 // Suhbat tahlili: hisoblagichlar, rekordlar, kuchli/zaif tomonlar va yangi so'zlarni lug'atga qo'shish.
 import { useEffect, useState } from 'react';
+import { Ic } from '../../components/Icons';
 import { compareStats, loadHistory, saveSession, type Feedback, type SessionRecord } from '../../engine/voice/prefs';
 import { speak } from '../../engine/audio';
 import { useStore } from '../../state/store';
@@ -113,7 +114,7 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
           {fb.summary && <p className="fb-summary">{fb.summary}</p>}
           {fb.strengths.length > 0 && (
             <div className="fb-card good">
-              <h3>✅ Yaxshi chiqdi</h3>
+              <h3><Ic name="check" size={20} /> Yaxshi chiqdi</h3>
               <ul>
                 {fb.strengths.map((x) => (
                   <li key={x}>{x}</li>
@@ -123,7 +124,7 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
           )}
           {fb.growth.length > 0 && (
             <div className="fb-card grow">
-              <h3>📈 Rivojlantirish kerak</h3>
+              <h3><Ic name="target" size={20} /> Rivojlantirish kerak</h3>
               <ul>
                 {fb.growth.map((g) => (
                   <li key={g.text}>
@@ -133,7 +134,7 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
                         <s>{g.example}</s>
                         {g.better && (
                           <button type="button" className="fr-chip" onClick={() => speak(g.better, state.settings.ttsRate)}>
-                            {g.better} <span className="fr-chip-icon">🔊</span>
+                            {g.better} <span className="fr-chip-icon"><Ic name="speaker" size={14} /></span>
                           </button>
                         )}
                       </div>
@@ -145,12 +146,12 @@ export function FeedbackView({ record, lang, onBack, onAgain, onExam }: { record
           )}
           {fb.words.length > 0 && (
             <div className="fb-card">
-              <h3>📝 Suhbatingizdagi so'zlar</h3>
+              <h3><Ic name="book" size={20} /> Suhbatingizdagi so'zlar</h3>
               <div className="fb-words">
                 {fb.words.map((w) => (
                   <div key={w.fr} className="fb-word">
                     <button type="button" className="fb-word-fr" onClick={() => speak(w.fr, state.settings.ttsRate)}>
-                      🔊 {w.fr}
+                      <Ic name="speaker" size={14} /> {w.fr}
                     </button>
                     <span className="muted">{w.uz}</span>
                     <button type="button" className={`btn btn-ghost small-btn ${added.has(w.fr.toLowerCase()) ? 'done' : ''}`} onClick={() => (added.has(w.fr.toLowerCase()) ? removeWord(w.fr) : addWord(w))}>

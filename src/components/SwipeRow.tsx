@@ -3,6 +3,7 @@
 //  • yetarli surilsa — qator uzilib, tomchi «pop» qiladi va o'rnida «Qaytarish» tasmasi qoladi;
 //  • ro'yxat birinchi marta ochilganda birinchi qator chapga ikki marta «ko'z qisib» imkoniyatni ko'rsatadi.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Ic } from './Icons';
 import { motionAllowed } from '../engine/motion';
 
 // Qator kengligining 22% i yetadi; tez siltanganda (flick) bundan ham kam masofa kifoya.
@@ -71,7 +72,7 @@ export function SwipeRow({
       <div className="swipe-goo" aria-hidden="true">
         <span className="goo-blob" />
         <span className="goo-drop" />
-        <span className="goo-icon">🗑️</span>
+        <span className="goo-icon"><Ic name="trash" size={22} /></span>
       </div>
       <div
         ref={row}
@@ -142,7 +143,7 @@ export function UndoStrip({ label, onUndo, onExpire }: { label: string; onUndo: 
   return (
     <div className="swipe-undo" role="status">
       <span className="undo-timer" aria-hidden="true" />
-      <span>🗑️ «{label}» o'chirildi</span>
+      <span><Ic name="trash" size={16} /> «{label}» o'chirildi</span>
       <button type="button" onClick={onUndo}>
         Qaytarish
       </button>

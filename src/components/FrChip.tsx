@@ -1,6 +1,7 @@
 // Chatdagi yashil fransuzcha ibora: bosilganda o'qiladi va ustida o'zbekcha tarjimasi chiqadi.
 // Avval kurs lug'atidan qidiriladi, topilmasa — serverdan (Gemini) so'raladi va keshlanadi.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Ic } from './Icons';
 import { createPortal } from 'react-dom';
 import { ALL_LESSONS } from '../data/course';
 import { speak, ttsSupported } from '../engine/audio';
@@ -115,7 +116,7 @@ export function FrChip({ text, context, rate }: { text: string; context: string;
     <span className="fr-chip-wrap" ref={ref}>
       <button type="button" className={`fr-chip ${open ? 'open' : ''}`} onClick={() => void tap()} title="Tarjima va talaffuz">
         {text}
-        {ttsSupported() && <span className="fr-chip-icon">🔊</span>}
+        {ttsSupported() && <span className="fr-chip-icon"><Ic name="speaker" size={14} /></span>}
       </button>
       {open && createPortal(
         <span

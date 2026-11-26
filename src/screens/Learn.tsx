@@ -7,6 +7,8 @@ import { motionAllowed } from '../engine/motion';
 import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
 import { AdSlot } from '../components/AdSlot';
+import { Ic, type IconName } from '../components/Icons';
+import { CoinIcon, FishIcon } from '../components/TopBarIcons';
 import type { SessionConfig } from './Session';
 
 // Darslar xaritasi — «Candy Crush» uslubida PASTDAN TEPAGA: 1-dars eng pastda, keyingilari yuqorida.
@@ -55,7 +57,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
           <section key={u.id} className={`lunit ${locked ? 'locked' : ''}`} style={{ ['--unit' as string]: u.color }}>
             {far ? (
               <button type="button" className="line-peek" onClick={() => setPeek((p) => new Set(p).add(u.id))}>
-                {`🔒 ${u.lessons.length} ta dars — ko'rish`}
+                <Ic name="lock" size={18} /> {`${u.lessons.length} ta dars — ko'rish`}
               </button>
             ) : (
               <PathMap nodes={buildPath(ui)} onOpen={setSheet} onWheel={setWheel} onStart={onStart} activeRef={activeRef} />
@@ -68,10 +70,10 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
               </div>
               <div className="lunit-actions">
                 <button type="button" className="lunit-btn" onClick={() => setGuide(u)} aria-label="Qo'llanma">
-                  📘
+                  <Ic name="book" size={22} />
                 </button>
                 <button type="button" className="lunit-btn" onClick={() => (location.hash = '#/tutor')} aria-label="Vivi bilan gaplashish">
-                  💬
+                  <Ic name="chat" size={22} />
                 </button>
               </div>
               <div className="lunit-progress" aria-label={`${done} / ${u.lessons.length}`}>
@@ -90,7 +92,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
                 </div>
                 {locked && ui > 0 && (
                   <button type="button" className="btn btn-jump" onClick={() => onStart({ kind: 'jump', level: lvl })}>
-                    ⚡ {lvl} ga sakrash
+                    <Ic name="bolt" size={16} /> {lvl} ga sakrash
                   </button>
                 )}
               </div>
@@ -168,8 +170,7 @@ function PathMap({
         const times = n.type === 'lesson' ? state.lessonsDone[n.id] ?? 0 : 0;
         const stars = n.type === 'lesson' ? Math.min(3, times) : n.type === 'review' && st === 'done' ? 3 : 0;
         const isNext = st === 'active' && n.type === 'lesson';
-        const unit = COURSE[n.unitIndex];
-        const emoji = n.type === 'lesson' ? unit.lessons[n.lessonIndex].words[0]?.emoji ?? '📘' : n.type === 'review' ? '🏆' : '🎡';
+        const icon: IconName = n.type === 'lesson' ? LESSON_ICONS[(n.unitIndex + n.lessonIndex) % LESSON_ICONS.length] : n.type === 'review' ? 'trophy' : 'wheel';
         const title = n.type === 'lesson' ? n.title : n.type === 'review' ? 'Yakuniy takrorlash' : "Omad g'ildiragi";
         const side = WAVE[i % WAVE.length] >= 0 ? 'left' : 'right';
         return (
@@ -181,7 +182,7 @@ function PathMap({
               onClick={() => (n.type === 'chest' && st === 'active' ? onWheel(n) : onOpen(n))}
               aria-label={title}
             >
-              <span className="lnode-face">{st === 'locked' ? <span className="lnode-lock">🔒</span> : emoji}</span>
+              <span className="lnode-face">{st === 'locked' ? <Ic name="lock" size={28} className="lnode-lock" /> : n.type === 'chest' ? <Ic name="gift" size={20} /> : <Ic name={icon} size={n.type === 'review' ? 38 : 32} />}</span>
             </button>
             {n.type !== 'chest' && (
               <span className="lnode-stars" aria-label={`${stars} yulduz`}>
@@ -226,11 +227,11 @@ function NodeSheet({ node, onClose, onStart }: { node: PathNode; onClose: () => 
               <p className="muted">Bu bekatga yetish uchun oldingi darslarni tugating.</p>
             ) : (
               <>
-                {times > 0 && <p className="muted">{`O'tilgan · ${times} marta — takrorlab yulduz yig'ing ⭐`}</p>}
+                {times > 0 && <p className="muted">{`O'tilgan · ${times} marta — takrorlab yulduz yig'ing`}</p>}
                 <div className="pop-words">
                   {unit.lessons[node.lessonIndex].words.map((w) => (
                     <button key={w.fr} type="button" onClick={() => speak(w.fr, state.settings.ttsRate)}>
-                      {w.emoji} {w.fr}
+                      <Ic name="speaker" size={15} /> {w.fr}
                     </button>
                   ))}
                 </div>
@@ -243,7 +244,7 @@ function NodeSheet({ node, onClose, onStart }: { node: PathNode; onClose: () => 
         )}
         {node.type === 'review' && (
           <>
-            <span className="lsheet-badge">🏆</span>
+            <span className="lsheet-badge"><Ic name="trophy" size={22} /></span>
             <h3>Yakuniy takrorlash</h3>
             <p className="muted">{st === 'locked' ? 'Avval liniyadagi barcha darslarni tugating.' : "Bo'limdagi hamma so'z va gaplarni mustahkamlang."}</p>
             {st !== 'locked' && (
@@ -255,7 +256,7 @@ function NodeSheet({ node, onClose, onStart }: { node: PathNode; onClose: () => 
         )}
         {node.type === 'chest' && (
           <>
-            <span className="lsheet-badge">🎡</span>
+            <span className="lsheet-badge"><Ic name="wheel" size={22} /></span>
             <h3>Omad g'ildiragi</h3>
             <p className="muted">{st === 'done' ? "Bu g'ildirak allaqachon aylantirilgan." : "G'ildirakni aylantirish uchun oldingi bekatlardan o'ting."}</p>
           </>
@@ -269,12 +270,13 @@ function NodeSheet({ node, onClose, onStart }: { node: PathNode; onClose: () => 
   );
 }
 
-const PRIZE_FACE: Record<WheelPrize['kind'], { icon: string; color: string }> = {
-  gems: { icon: '🪙', color: '#FFD23F' },
-  fish: { icon: '🐟', color: '#7FE3FF' },
-  boost: { icon: '⚡', color: '#9B5CFF' },
-  freeze: { icon: '⛱️', color: '#FF6B9A' },
+const PRIZE_FACE: Record<WheelPrize['kind'], { icon: React.ReactNode; color: string }> = {
+  gems: { icon: <CoinIcon />, color: '#FFD23F' },
+  fish: { icon: <FishIcon />, color: '#7FE3FF' },
+  boost: { icon: <Ic name="bolt" size={26} />, color: '#9B5CFF' },
+  freeze: { icon: <Ic name="shield" size={26} />, color: '#FF6B9A' },
 };
+const LESSON_ICONS: IconName[] = ['chat', 'book', 'headphones', 'pencil', 'mic', 'letters', 'puzzle', 'speaker'];
 const prizeText = (p: WheelPrize) =>
   p.kind === 'gems' ? `+${p.amount} tanga` : p.kind === 'fish' ? `+${p.amount} baliqcha` : p.kind === 'boost' ? `2x XP · ${p.minutes} daqiqa` : '+1 seriya soyaboni';
 
@@ -336,7 +338,7 @@ function WheelModal({ node, onClose }: { node: PathNode; onClose: () => void }) 
           </div>
         ) : (
           <button type="button" className="btn btn-primary btn-lg btn-beam" onClick={spin} disabled={spinning}>
-            {spinning ? 'Aylanmoqda…' : "🎡 G'ildirakni aylantirish"}
+            {spinning ? 'Aylanmoqda…' : "G'ildirakni aylantirish"}
           </button>
         )}
       </div>
@@ -350,9 +352,9 @@ function GuideModal({ unit, onClose }: { unit: Unit; onClose: () => void }) {
     <div className="modal-back" onClick={onClose}>
       <div className="sheet guide" onClick={(e) => e.stopPropagation()} style={{ ['--unit' as string]: unit.color }}>
         <div className="guide-head">
-          <h3>📘 {unit.title}: qo'llanma</h3>
+          <h3><Ic name="book" size={22} /> {unit.title}: qo'llanma</h3>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Yopish">
-            ✕
+            <Ic name="close" size={18} />
           </button>
         </div>
         <div className="guide-body">
@@ -365,7 +367,7 @@ function GuideModal({ unit, onClose }: { unit: Unit; onClose: () => void }) {
                   {g.examples.map(([fr, uz]) => (
                     <li key={fr}>
                       <button type="button" className="ex-fr" onClick={() => speak(fr)}>
-                        🔊 {fr}
+                        <Ic name="speaker" size={16} /> {fr}
                       </button>
                       <span>{uz}</span>
                     </li>
@@ -380,7 +382,6 @@ function GuideModal({ unit, onClose }: { unit: Unit; onClose: () => void }) {
               .flatMap((l) => l.words)
               .map((w) => (
                 <button key={w.fr + w.uz} type="button" className="vocab" onClick={() => speak(w.fr)}>
-                  <span>{w.emoji}</span>
                   <b>{w.fr}</b>
                   <small>{w.uz}</small>
                 </button>

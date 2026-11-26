@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from '../state/account';
+import { Ic } from './Icons';
 import { useStore } from '../state/store';
 import {
   AI_CONSENT_POLICY_VERSION,
@@ -121,14 +122,14 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="sheet ai-consent-sheet" style={{ overflowY: 'auto', alignItems: 'stretch' }} role="dialog" aria-modal="true" aria-labelledby="ai-consent-title" onClick={(e) => e.stopPropagation()}>
-        <div className="big-emoji" aria-hidden="true">🔐</div>
+        <div className="big-emoji" aria-hidden="true"><Ic name="shield" size={48} /></div>
         <h3 id="ai-consent-title">Vivi AI — rozilik va maxfiylik</h3>
         <p className="muted">Har bir tur alohida ixtiyoriy. Belgilar sukut bo‘yicha tanlanmaydi. Rozilik serverda hisobingizga bog‘lanadi va istalgan payt bekor qilinadi.</p>
         {policyVersion && <p><b>Siyosat versiyasi:</b> {policyVersion}</p>}
         {loading ? <p className="muted">Rozilik holati yuklanmoqda…</p> : (
           <div className="ai-consent-options">
             {options.some((o) => o.provider === 'google-gemini-api') && (
-              <p className="muted small" role="note">⚠️ {GEMINI_API_FREE_TIER_NOTICE}</p>
+              <p className="muted small" role="note"><Ic name="warning" size={16} /> {GEMINI_API_FREE_TIER_NOTICE}</p>
             )}
             {options.map((option) => (
               <label className="setting" key={option.scope}>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Ic } from '../components/Icons';
 import { applyChatTurn } from '../engine/game';
 import { playSfx, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio';
 import { askTutor, updateMemory, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, tutorFailureMessage, type ChatMessage, type Scenario } from '../engine/tutor';
@@ -291,7 +292,7 @@ function TextChat() {
           title="Fransuzcha qismlarni avtomatik o'qish"
           onClick={() => update((s) => ({ ...s, settings: { ...s.settings, tutorVoice: !s.settings.tutorVoice } }))}
         >
-          {state.settings.tutorVoice ? '🔊' : '🔇'}
+          <Ic name={state.settings.tutorVoice ? 'speaker' : 'mute'} size={20} />
         </button>
         <button type="button" className="icon-btn" title="Yangi suhbat" disabled={busy || !messages.length} onClick={() => setMessages(() => [])}>
           🗑️
@@ -314,12 +315,12 @@ function TextChat() {
               {m.role === 'tutor' ? <RichText text={m.text} /> : m.text}
               {m.role === 'tutor' && !m.error && frenchParts(m.text).length > 0 && ttsSupported() && (
                 <button type="button" className="msg-play" onClick={() => speakQueue(frenchParts(m.text), state.settings.ttsRate)} title="Fransuzcha qismlarni tinglash">
-                  ▶︎ fransuzcha
+                  <Ic name="play" size={12} /> fransuzcha
                 </button>
               )}
               {m.upsell && (
                 <button type="button" className="btn btn-primary msg-upsell" onClick={() => (location.hash = '#/shop')}>
-                  ⭐ Super — cheksiz suhbat
+                  <Ic name="crown" size={16} /> Super — cheksiz suhbat
                 </button>
               )}
               {m.error && !m.upsell && m === messages[messages.length - 1] && (
@@ -366,7 +367,7 @@ function TextChat() {
               title={listening ? "To'xtatish va yuborish" : 'Ovoz bilan yozish (o\'zbekcha yoki fransuzcha)'}
               disabled={busy || transcribing}
             >
-              {transcribing ? '…' : listening ? '■' : '🎤'}
+              {transcribing ? '…' : listening ? '■' : <Ic name="mic" size={22} />}
             </button>
             {!cloudMic && (
             <button type="button" className="mic-lang" onClick={() => setMicLang(micLang === 'uz-UZ' ? 'fr-FR' : 'uz-UZ')} title="Mikrofon tili (Vivi javobiga qarab o'zi almashadi)">
@@ -449,13 +450,13 @@ function ViviPaywall() {
         <h2>Vivi AI — Super a'zolari uchun</h2>
         <p className="muted">Vivi bilan jonli ovozda va yozishib fransuzcha gaplashish faqat Super obunada. Darslar esa bepul qoladi.</p>
         <ul className="vpay-perks">
-          <li><span>⚡</span>Gemini Live — real vaqtda ovozli suhbat</li>
-          <li><span>💬</span>Cheksiz matnli suhbat va xatolar tahlili</li>
-          <li><span>🧠</span>Vivi sizni eslab qoladi va darajangizga moslashadi</li>
-          <li><span>🌐</span>Tushuntirish o'z tilingizda</li>
+          <li><span><Ic name="bolt" size={20} /></span>Gemini Live — real vaqtda ovozli suhbat</li>
+          <li><span><Ic name="chat" size={20} /></span>Cheksiz matnli suhbat va xatolar tahlili</li>
+          <li><span><Ic name="brain" size={20} /></span>Vivi sizni eslab qoladi va darajangizga moslashadi</li>
+          <li><span><Ic name="globe" size={20} /></span>Tushuntirish o'z tilingizda</li>
         </ul>
         <button type="button" className="btn btn-primary btn-lg btn-beam vpay-cta" onClick={() => go('shop')}>
-          💎 Super olish{cheapest ? ` · ${fmt(cheapest.uzs)} so'mdan` : ''}
+          Super olish{cheapest ? ` · ${fmt(cheapest.uzs)} so'mdan` : ''}
         </button>
         <button type="button" className="btn btn-text" onClick={() => go('learn')}>
           Hozircha darslarni davom ettiraman
@@ -487,10 +488,10 @@ export function Tutor() {
     <div className="tutor-wrap">
       <div className="seg tutor-mode-toggle" role="tablist">
         <button type="button" role="tab" aria-selected={mode === 'voice'} className={mode === 'voice' ? 'on' : ''} onClick={() => pick('voice')}>
-          🎙️ Ovozli
+          <Ic name="mic" size={16} /> Ovozli
         </button>
         <button type="button" role="tab" aria-selected={mode === 'text'} className={mode === 'text' ? 'on' : ''} onClick={() => pick('text')}>
-          💬 Matn
+          <Ic name="chat" size={16} /> Matn
         </button>
       </div>
       {mode === 'voice' ? <VoiceHub /> : <TextChat />}

@@ -1,5 +1,6 @@
 // Profil: hisob kartasi (kirish holati, Super, chiqish, hisobni o'chirish).
 import { useState } from 'react';
+import { Ic } from './Icons';
 import { useAccount } from '../state/account';
 import { AuthScreen } from '../screens/Auth';
 
@@ -14,7 +15,7 @@ export function AccountCard() {
     <>
       {u ? (
         <div className="acc-line">
-          <span className="acc-line-ico" aria-hidden="true">☁️</span>
+          <span className="acc-line-ico" aria-hidden="true"><Ic name="user" size={18} /></span>
           <span className="acc-line-text">
             <b>{u.email}</b>
             <small>{u.provider === 'google' ? 'Google' : 'Email'} · progress bulutda saqlanadi</small>
@@ -25,7 +26,7 @@ export function AccountCard() {
         </div>
       ) : (
         <div className="acc-line guest">
-          <span className="acc-line-ico" aria-hidden="true">👤</span>
+          <span className="acc-line-ico" aria-hidden="true"><Ic name="user" size={18} /></span>
           <span className="acc-line-text">
             <b>Mehmon rejimi</b>
             <small>Progress faqat shu qurilmada</small>
@@ -66,7 +67,7 @@ export function AccountCard() {
       {confirm && (
         <div className="modal-back" onClick={() => setConfirm(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="big-emoji">⚠️</div>
+            <div className="big-emoji"><Ic name="warning" size={48} /></div>
             <h3>Hisob butunlay o'chirilsinmi?</h3>
             <p className="muted">Hisob, bulutdagi progress va obuna ma'lumotlari serverdan o'chiriladi. Bu amalni qaytarib bo'lmaydi.</p>
             <button

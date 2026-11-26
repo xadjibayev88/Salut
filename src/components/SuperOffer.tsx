@@ -1,12 +1,14 @@
 // Super taklifi: Vivi ustozga kirganda (bepul foydalanuvchilar) va bepul ovozli suhbat tugaganda.
 import { createPortal } from 'react-dom';
+import { Ic } from './Icons';
+import { FishIcon } from './TopBarIcons';
 import { Mascot } from './Mascot';
 
-const PERKS = [
-  ['🎙️', 'Vivi bilan cheksiz ovozli suhbat', "30 daqiqalik sessiyalar, kunlik limit yo'q"],
-  ['💬', 'Cheksiz xabarlar', "Kuniga 30 ta emas — xohlagancha"],
-  ['🚫', 'Reklamasiz', "Darslar va suhbat orasida reklama yo'q"],
-  ['🐟', 'Cheksiz baliqcha', "Xato qilsangiz ham darsdan chiqmaysiz"],
+const PERKS: [React.ReactNode, string, string][] = [
+  [<Ic key="a" name="mic" size={20} />, 'Vivi bilan cheksiz ovozli suhbat', "30 daqiqalik sessiyalar, kunlik limit yo'q"],
+  [<Ic key="b" name="chat" size={20} />, 'Cheksiz xabarlar', "Kuniga 30 ta emas — xohlagancha"],
+  [<Ic key="c" name="shield" size={20} />, 'Reklamasiz', "Darslar va suhbat orasida reklama yo'q"],
+  [<FishIcon key="d" />, 'Cheksiz baliqcha', "Xato qilsangiz ham darsdan chiqmaysiz"],
 ];
 
 export function SuperBanner({ onOpen }: { onOpen: () => void }) {

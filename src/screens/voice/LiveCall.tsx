@@ -1,5 +1,6 @@
 // Jonli rejim (Gemini Live) ekrani: qo'lsiz suhbat, Vivi gapini istalgan payt bo'lish mumkin.
 import { useEffect, useMemo, useState } from 'react';
+import { Ic } from '../../components/Icons';
 import { CHARACTERS } from '../../data/characters';
 import { LiveSession, type LiveOptions, type LiveSnap } from '../../engine/voice/live';
 import { KruaLive } from '../../components/KruaLive';
@@ -80,7 +81,7 @@ export function LiveCallScreen({ options, subtitles, onEnded }: { options: LiveO
       <footer className="call-bottom">
         <div className="call-actions live-actions">
           <button type="button" className={`round-btn ${s.muted ? 'off' : ''}`} onClick={() => session.toggleMute()} disabled={s.phase === 'ended' || s.phase === 'connecting'} aria-label={s.muted ? 'Mikrofonni yoqish' : "Mikrofonni o'chirish"}>
-            {s.muted ? '🔇' : '🎤'}
+            <Ic name={s.muted ? 'mute' : 'mic'} size={26} />
           </button>
           {ptt && (
             <button

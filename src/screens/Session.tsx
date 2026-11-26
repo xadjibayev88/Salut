@@ -1,4 +1,6 @@
 import { FishIcon } from '../components/TopBarIcons';
+import { Ic } from '../components/Icons';
+import { CoinIcon } from '../components/TopBarIcons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ALL_LESSONS, CEFR, COURSE, findLesson, type Cefr, type Sentence, type Word } from '../data/course';
 import { buildLesson, buildPractice, type Exercise } from '../engine/exercises';
@@ -225,13 +227,13 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
     <div className="session" style={{ ['--accent' as string]: accent }}>
       <header className="session-top">
         <button type="button" className="icon-btn" aria-label="Chiqish" onClick={() => setShowQuit(true)}>
-          ✕
+          <Ic name="close" size={20} />
         </button>
         <div className="progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
           <div className="progress-fill" style={{ width: `${Math.max(3, progress * 100)}%` }}>
             <div className="progress-shine" />
           </div>
-          {combo >= 3 && <span className="combo">⚡ {combo}x</span>}
+          {combo >= 3 && <span className="combo"><Ic name="bolt" size={14} /> {combo}x</span>}
         </div>
         {usesHearts ? (
           <div className="stat heart">
@@ -267,7 +269,7 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
         <div className="foot-inner">
           {evaluation ? (
             <div className="feedback">
-              <div className="fb-icon">{evaluation.correct ? '✓' : '✕'}</div>
+              <div className="fb-icon"><Ic name={evaluation.correct ? 'check' : 'close'} size={22} /></div>
               <div className="fb-text">
                 <div className="fb-title">{evaluation.correct ? praise : "Noto'g'ri"}</div>
                 {!evaluation.correct && evaluation.solution && (
@@ -350,7 +352,7 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
                 else setPos(pos + 1);
               }}
             >
-              Akvariumni to'ldirish — 🪙 {HEART_REFILL_COST}
+              Akvariumni to'ldirish — <CoinIcon /> {HEART_REFILL_COST}
             </button>
             <button type="button" className="btn btn-text" onClick={() => onExit()}>
               Chiqish

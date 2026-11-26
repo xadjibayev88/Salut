@@ -1,5 +1,8 @@
 import { currentLang } from '../i18n';
 import { useEffect, useState } from 'react';
+import { Ic } from '../components/Icons';
+import { CoinIcon } from '../components/TopBarIcons';
+import { FishIcon } from '../components/TopBarIcons';
 import { ACHIEVEMENTS, type Reward } from '../engine/game';
 import { dayKey, addDays, WEEKDAYS_SHORT, parseDay } from '../engine/time';
 import { useStore } from '../state/store';
@@ -56,26 +59,26 @@ export function Result({ reward, config, onDone }: { reward: Reward; config: Ses
           <div className="result-cards">
             <div className="rcard" style={{ ['--c' as string]: '#F5B400' }}>
               <div className="rcard-h">JAMI BALL</div>
-              <div className="rcard-v">⭐ {xp}</div>
+              <div className="rcard-v"><Ic name="star" size={20} /> {xp}</div>
             </div>
             <div className="rcard" style={{ ['--c' as string]: '#22C55E' }}>
               <div className="rcard-h">ANIQLIK</div>
-              <div className="rcard-v">🎯 {reward.accuracy}%</div>
+              <div className="rcard-v"><Ic name="target" size={20} /> {reward.accuracy}%</div>
             </div>
             <div className="rcard" style={{ ['--c' as string]: '#2B3A9B' }}>
               <div className="rcard-h">TANGA</div>
-              <div className="rcard-v">🪙 +{reward.gems}</div>
+              <div className="rcard-v"><CoinIcon /> +{reward.gems}</div>
             </div>
           </div>
           {(reward.bonus.length > 0 || reward.heartBack || reward.goalReachedNow) && (
             <ul className="bonus-list">
               {reward.bonus.map((b) => (
                 <li key={b.label}>
-                  ✨ {b.label} <b>+{b.xp} XP</b>
+                  <Ic name="sparkle" size={16} /> {b.label} <b>+{b.xp} XP</b>
                 </li>
               ))}
-              {reward.heartBack && <li>🐟 Mashq uchun +1 baliqcha</li>}
-              {reward.goalReachedNow && <li>🎯 Kunlik maqsad bajarildi!</li>}
+              {reward.heartBack && <li><FishIcon /> Mashq uchun +1 baliqcha</li>}
+              {reward.goalReachedNow && <li><Ic name="target" size={16} /> Kunlik maqsad bajarildi!</li>}
             </ul>
           )}
         </>
@@ -83,7 +86,7 @@ export function Result({ reward, config, onDone }: { reward: Reward; config: Ses
 
       {step === 'streak' && (
         <div className="result-hero">
-          <div className="flame-big">☀️</div>
+          <div className="flame-big"><Ic name="flame" size={64} /></div>
           <div className="streak-num">{state.streak}</div>
           <h1>kunlik seriya!</h1>
           <WeekStrip />

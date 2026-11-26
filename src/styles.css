@@ -1151,7 +1151,7 @@ html.lite .vivi * { animation: none !important; }
 .tab-ico { display: block; overflow: visible; }
 /* Har bir ikonkaning o'z harakati */
 .tab.tapped .ti-m { animation: ti-m 0.6s ease-out; }
-@keyframes ti-m { 0% { stroke-dasharray: 30; stroke-dashoffset: 30; } 100% { stroke-dasharray: 30; stroke-dashoffset: 0; } }
+@keyframes ti-m { 0% { stroke-dasharray: 44; stroke-dashoffset: 44; } 100% { stroke-dasharray: 44; stroke-dashoffset: 0; } }
 .tab.tapped .ti-ear-l { animation: ti-ear 0.5s ease-in-out; transform-origin: 6px 9px; }
 .tab.tapped .ti-ear-r { animation: ti-ear 0.5s ease-in-out reverse; transform-origin: 18px 9px; }
 @keyframes ti-ear { 30% { transform: rotate(-14deg); } 70% { transform: rotate(10deg); } }
@@ -2751,7 +2751,7 @@ html:not([data-theme='light']) .pr-chips span.bad { color: #fca5a5; }
 .pf-id .name-input { font-size: 24px; }
 .pf-id .muted { margin: 2px 0 6px; font-size: 13px; }
 .pf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.pf-chip { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: nowrap; }
+.pf-chip { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
 .pf-chip.super { color: #1e1b4b; background: linear-gradient(120deg, #7FE3FF, #a5b4fc 55%, #FF8FD0); }
 /* ixcham hisob qatori */
 .acc-line { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 9px 8px 9px 12px; border-radius: 16px; background: color-mix(in srgb, var(--text) 5%, transparent); border: 1px solid var(--line); }
@@ -3011,6 +3011,54 @@ html[data-theme='light'] .vh2-card, html[data-theme='light'] .vh2-mem { backgrou
 @media (prefers-reduced-motion: reduce) { .vh2-avatar { animation: none; } }
 html.lite .vh2-avatar { animation: none; }
 
+.ic { display: inline-block; vertical-align: -0.2em; flex: none; overflow: visible; }
+.lnode-face .ic { color: #fff; filter: drop-shadow(0 2px 2px rgba(60, 20, 120, .35)); }
+.lnode-face .ic [fill^='url'] { fill: rgba(255, 255, 255, .28); }
+.lnode.locked .lnode-face .ic { color: color-mix(in srgb, var(--text) 55%, transparent); filter: none; }
+.lnode.locked .lnode-face .ic [fill^='url'] { fill: color-mix(in srgb, var(--text) 12%, transparent); }
+.lnode.t-chest .lnode-face .ic { color: #9B5CFF; filter: none; }
+.lnode.t-chest .lnode-face .ic [fill^='url'] { fill: url(#ic-sunset); }
+.lunit-btn .ic { color: #fff; }
+.lunit-btn .ic [fill^='url'] { fill: rgba(255, 255, 255, .3); }
+.lsheet-badge .ic { color: #fff; }
+.wheel-label b { display: grid; place-items: center; }
+.wheel-label b .tbi { width: 28px; height: 28px; }
+.line-peek .ic, .btn-jump .ic { vertical-align: -0.25em; }
+.vh2-icon .ic, .vh2-live-ic .ic { color: #fff; }
+.vh2-icon .ic [fill^='url'] { fill: rgba(255, 255, 255, .25); }
+.vh2-icon .ic [fill='#fff'] { fill: #fff; }
+.vh2-sample .ic { color: #6b2fd6; vertical-align: -0.15em; }
+.vh2-sample .ic [fill^='url'] { fill: #6b2fd6; }
+.vh2-live-ic .ic [fill^='url'] { fill: #fff; }
+.pr-main-icon .ic, .pr-tile-icon .ic { color: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,.2)); }
+.pr-main-icon .ic [fill^='url'], .pr-tile-icon .ic [fill^='url'] { fill: rgba(255,255,255,.3); }
+.pr-tile-icon .ic [fill='#fff'], .pr-main-icon .ic [fill='#fff'] { fill: #fff; }
+.pr-chips .ic { vertical-align: -0.2em; }
+.hang-icon .ic, .item-icon .ic { color: #3b1d7a; }
+.item-icon .ic { width: 54px; height: 54px; }
+.hang-icon .tbi, .item-icon .tbi { width: 34px; height: 30px; }
+.item-icon .tbi { width: 56px; height: 50px; }
+.item-dots .ic, .item-dots .tbi { width: 20px; height: 20px; }
+.fb-icon .ic { color: currentColor; }
+.super-perks .ic, .super-perks .tbi { width: 22px; height: 22px; }
+.big-emoji .ic { color: var(--text); }
+.lg-timer .ic, .acc-line-ico .ic { vertical-align: -0.2em; }
+.word-list .wr-emoji.wr-mono, html:not([data-theme='light']) .word-list .wr-emoji.wr-mono { background: linear-gradient(140deg, var(--g1), var(--g2)); box-shadow: inset 0 -3px 0 rgba(40, 10, 90, .18), 0 6px 14px -6px var(--g2); }
+.word-list .wr-mono span { font-family: var(--font-display); font-weight: 800; font-size: 21px; color: #fff; text-shadow: 0 1px 2px rgba(60, 20, 120, .35); filter: none; }
+.pop-words .ic { vertical-align: -0.2em; color: var(--primary); }
+/* Matn ichidagi SVG ikonkalar (tanga, baliqcha va h.k.) — shrift o'lchamida */
+:not(.topbar *):not(.wheel-label *):not(.hang-icon):not(.item-icon):not(.item-dots *) > .tbi { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; }
+:not(.topbar *) > .tbi-coin { animation: none; }
+.ic.medal-2 { filter: grayscale(1) brightness(1.25); }
+.ic.medal-3 { filter: sepia(.6) hue-rotate(-25deg) saturate(1.4) brightness(.85); }
+.brank .ic { vertical-align: middle; }
+.lb-lock .ic { color: var(--muted); }
+.flame-big .ic { filter: drop-shadow(0 6px 16px rgba(255, 107, 154, .5)); }
+.panel-big .ic, .sr-icon .ic { vertical-align: middle; }
+.goo-icon .ic { color: #fff; }
+.goo-icon .ic [fill^='url'] { fill: rgba(255,255,255,.3); }
+.fr-chip-icon .ic { vertical-align: -0.15em; }
+.vpay li > span .ic, .super-perks .ic { vertical-align: middle; }
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }
