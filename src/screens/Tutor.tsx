@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ViviPeek } from '../components/ViviPeek';
 import { Ic } from '../components/Icons';
 import { applyChatTurn } from '../engine/game';
 import { playSfx, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio';
@@ -352,7 +353,7 @@ function TextChat() {
       </div>
 
       <form
-        className="composer"
+        className="composer has-peek"
         onSubmit={(e) => {
           e.preventDefault();
           void send(input);
@@ -377,6 +378,7 @@ function TextChat() {
             )}
           </div>
         )}
+        <ViviPeek mode={busy ? 'thinking' : input ? 'typing' : 'idle'} len={input.length} className="composer-peek" />
         <textarea
           ref={inputRef}
           value={input}

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { COURSE, type Cefr, type Unit } from '../data/course';
-import { buildPath, isLessonUnlocked, nodeState, spinWheel, wheelPrizes, type PathNode, type WheelPrize } from '../engine/game';
+import { buildPath, isLessonUnlocked, nodeState, spinWheel, type PathNode, type WheelPrize } from '../engine/game';
 import { playSfx, speak } from '../engine/audio';
 import { motionAllowed } from '../engine/motion';
 import { useStore } from '../state/store';
@@ -13,7 +13,7 @@ import type { SessionConfig } from './Session';
 
 // Darslar xaritasi — «Candy Crush» uslubida PASTDAN TEPAGA: 1-dars eng pastda, keyingilari yuqorida.
 // Har bir bo'lim: ilon izi yo'l (nuqtali egri chiziq), yumaloq bekatlar, yulduzchalar; pastida binafsha sarlavha kartasi.
-// Avvalgi «sovg'a bekati» o'rnida — Omad g'ildiragi.
+// Avvalgi «sovg'a bekati» o'rnida — Sirli quti.
 
 const SP = 118; // bekatlar orasidagi vertikal masofa (px)
 const WAVE = [0, 0.72, 1, 0.55, -0.2, -0.85, -1, -0.5];
@@ -101,7 +101,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
         );
       })}
       {sheet && <NodeSheet node={sheet} onClose={() => setSheet(null)} onStart={onStart} />}
-      {wheel && <WheelModal node={wheel} onClose={() => setWheel(null)} />}
+      {wheel && <BoxModal node={wheel} onClose={() => setWheel(null)} />}
       {guide && <GuideModal unit={guide} onClose={() => setGuide(null)} />}
     </div>
   );
@@ -170,8 +170,8 @@ function PathMap({
         const times = n.type === 'lesson' ? state.lessonsDone[n.id] ?? 0 : 0;
         const stars = n.type === 'lesson' ? Math.min(3, times) : n.type === 'review' && st === 'done' ? 3 : 0;
         const isNext = st === 'active' && n.type === 'lesson';
-        const icon: IconName = n.type === 'lesson' ? LESSON_ICONS[(n.unitIndex + n.lessonIndex) % LESSON_ICONS.length] : n.type === 'review' ? 'trophy' : 'wheel';
-        const title = n.type === 'lesson' ? n.title : n.type === 'review' ? 'Yakuniy takrorlash' : "Omad g'ildiragi";
+        const icon: IconName = n.type === 'lesson' ? LESSON_ICONS[(n.unitIndex + n.lessonIndex) % LESSON_ICONS.length] : n.type === 'review' ? 'trophy' : 'gift';
+        const title = n.type === 'lesson' ? n.title : n.type === 'review' ? 'Yakuniy takrorlash' : 'Sirli quti';
         const side = WAVE[i % WAVE.length] >= 0 ? 'left' : 'right';
         return (
           <div key={n.id} className={`lnode ${st} t-${n.type} ${isNext ? 'next' : ''}`} style={{ left: p.x, top: p.y, ['--i' as string]: i } as CSSProperties}>
@@ -256,9 +256,9 @@ function NodeSheet({ node, onClose, onStart }: { node: PathNode; onClose: () => 
         )}
         {node.type === 'chest' && (
           <>
-            <span className="lsheet-badge"><Ic name="wheel" size={22} /></span>
-            <h3>Omad g'ildiragi</h3>
-            <p className="muted">{st === 'done' ? "Bu g'ildirak allaqachon aylantirilgan." : "G'ildirakni aylantirish uchun oldingi bekatlardan o'ting."}</p>
+            <span className="lsheet-badge"><Ic name="gift" size={22} /></span>
+            <h3>Sirli quti</h3>
+            <p className="muted">{st === 'done' ? 'Bu quti allaqachon ochilgan.' : "Qutini ochish uchun oldingi bekatlardan o'ting."}</p>
           </>
         )}
         <button type="button" className="btn btn-text" onClick={onClose}>
@@ -270,76 +270,113 @@ function NodeSheet({ node, onClose, onStart }: { node: PathNode; onClose: () => 
   );
 }
 
-const PRIZE_FACE: Record<WheelPrize['kind'], { icon: React.ReactNode; color: string }> = {
-  gems: { icon: <CoinIcon />, color: '#FFD23F' },
-  fish: { icon: <FishIcon />, color: '#7FE3FF' },
-  boost: { icon: <Ic name="bolt" size={26} />, color: '#9B5CFF' },
-  freeze: { icon: <Ic name="shield" size={26} />, color: '#FF6B9A' },
+const PRIZE_FACE: Record<WheelPrize['kind'], { icon: React.ReactNode }> = {
+  gems: { icon: <CoinIcon /> },
+  fish: { icon: <FishIcon /> },
+  boost: { icon: <Ic name="bolt" size={26} /> },
+  freeze: { icon: <Ic name="shield" size={26} /> },
 };
 const LESSON_ICONS: IconName[] = ['chat', 'book', 'headphones', 'pencil', 'mic', 'letters', 'puzzle', 'speaker'];
 const prizeText = (p: WheelPrize) =>
   p.kind === 'gems' ? `+${p.amount} tanga` : p.kind === 'fish' ? `+${p.amount} baliqcha` : p.kind === 'boost' ? `2x XP · ${p.minutes} daqiqa` : '+1 seriya soyaboni';
 
-/** Omad g'ildiragi: 6 sektor; mukofot avval tanlanadi, g'ildirak o'sha sektorga to'xtaydi. */
-function WheelModal({ node, onClose }: { node: PathNode; onClose: () => void }) {
-  const { state, update } = useStore();
-  const prizes = wheelPrizes(node.id);
-  const [angle, setAngle] = useState(0);
-  const [result, setResult] = useState<WheelPrize | null>(null);
-  const [spinning, setSpinning] = useState(false);
-  const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const seg = 360 / prizes.length;
+/** Oltin sirli quti (SVG): korpus va qopqoq alohida — qopqoq ochilishda uchib ketadi. */
+function GoldBox() {
+  return (
+    <svg className="gbox" viewBox="0 0 160 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="gb-body" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFE7A3" />
+          <stop offset="1" stopColor="#E9A93A" />
+        </linearGradient>
+        <linearGradient id="gb-side" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#F7C966" />
+          <stop offset="1" stopColor="#D08A22" />
+        </linearGradient>
+        <linearGradient id="gb-gem" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFD23F" />
+          <stop offset=".55" stopColor="#FF6B9A" />
+          <stop offset="1" stopColor="#9B5CFF" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="80" cy="140" rx="56" ry="7" fill="rgba(0,0,0,.25)" />
+      <g className="gbox-body">
+        <path d="M22 62h116v66a10 10 0 0 1-10 10H32a10 10 0 0 1-10-10z" fill="url(#gb-body)" />
+        <path d="M22 62h116v12H22z" fill="#C98320" opacity=".35" />
+        <path d="M70 62h20v76H70z" fill="url(#gb-side)" opacity=".9" />
+        <path d="M80 82l16 16-16 16-16-16z" fill="url(#gb-gem)" stroke="#fff" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M80 86l5 5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity=".8" />
+      </g>
+      <g className="gbox-lid">
+        <path d="M14 44a8 8 0 0 1 8-8h116a8 8 0 0 1 8 8v14a6 6 0 0 1-6 6H20a6 6 0 0 1-6-6z" fill="url(#gb-body)" />
+        <path d="M68 36h24v28H68z" fill="url(#gb-side)" />
+        <path d="M80 36c-10-20-34-22-34-10 0 9 18 10 34 10zM80 36c10-20 34-22 34-10 0 9-18 10-34 10z" fill="none" stroke="#FFF3CF" strokeWidth="5" strokeLinejoin="round" />
+        <path d="M20 40h120" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".55" />
+      </g>
+    </svg>
+  );
+}
 
-  const spin = () => {
-    if (spinning || result) return;
+const SPARKS = Array.from({ length: 18 }, (_, i) => {
+  const a = (i / 18) * Math.PI * 2;
+  const d = 90 + (i % 3) * 26;
+  return { x: Math.round(Math.cos(a) * d), y: Math.round(Math.sin(a) * d - 30), d: (i % 6) * 40, s: 4 + (i % 4) * 2 };
+});
+
+/** Sirli quti: bosiladi → silkinadi → qopqoq otilib chiqadi, nurlar va uchqunlar → sovg'a ko'tariladi. Faqat transform/opacity. */
+function BoxModal({ node, onClose }: { node: PathNode; onClose: () => void }) {
+  const { state, update } = useStore();
+  const [stage, setStage] = useState<'idle' | 'shake' | 'open'>('idle');
+  const [result, setResult] = useState<WheelPrize | null>(null);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  const open = () => {
+    if (stage !== 'idle') return;
     const r = spinWheel(state, node.id, Math.random());
-    const target = 360 * 6 - (r.index * seg + seg / 2);
-    setSpinning(true);
-    setAngle(target);
-    const ms = motionAllowed() ? 3800 : 50;
-    timer.current = window.setTimeout(() => {
-      update(() => r.state);
-      setResult(r.prize);
-      setSpinning(false);
-      playSfx('chest', state.settings.sound);
-      if (navigator.vibrate) navigator.vibrate([20, 40, 30]);
-    }, ms);
+    const fast = !motionAllowed();
+    setStage('shake');
+    if (navigator.vibrate) navigator.vibrate([10, 60, 10, 60, 10]);
+    timers.current.push(
+      window.setTimeout(() => {
+        update(() => r.state);
+        setResult(r.prize);
+        setStage('open');
+        playSfx('chest', state.settings.sound);
+        if (navigator.vibrate) navigator.vibrate([25, 40, 40]);
+      }, fast ? 30 : 750),
+    );
   };
 
-  // Sektorlar (conic-gradient) — soat yo'nalishida 12 dan
-  const conic = prizes.map((p, i) => `${PRIZE_FACE[p.kind].color} ${i * seg}deg ${(i + 1) * seg}deg`).join(', ');
   return createPortal(
-    <div className="modal-back wheel-back" onClick={() => !spinning && onClose()}>
-      <div className="sheet wheel-sheet" onClick={(e) => e.stopPropagation()}>
-        <h3>Omad g'ildiragi</h3>
-        <p className="muted">Aylantiring — tanga, baliqcha, 2x XP yoki soyabon yutib oling!</p>
-        <div className="wheel-stage">
-          <span className="wheel-pointer" aria-hidden="true" />
-          <div className="wheel" style={{ background: `conic-gradient(${conic})`, transform: `rotate(${angle}deg)` }}>
-            {prizes.map((p, i) => (
-              <span key={i} className="wheel-label" style={{ transform: `rotate(${i * seg + seg / 2}deg)` }}>
-                <b>{PRIZE_FACE[p.kind].icon}</b>
-                <small>{p.kind === 'gems' || p.kind === 'fish' ? `+${p.amount}` : p.kind === 'boost' ? '2x' : '+1'}</small>
-              </span>
+    <div className="modal-back box-back" onClick={() => stage !== 'shake' && onClose()}>
+      <div className={`sheet box-sheet bx-${stage}`} onClick={(e) => e.stopPropagation()}>
+        <small className="box-kicker">{result ? 'SOVG\'A OCHILDI' : 'SIRLI QUTI'}</small>
+        <div className="box-stage" onClick={open}>
+          <span className="box-rays" aria-hidden="true" />
+          <span className="box-glow" aria-hidden="true" />
+          <span className="box-sparks" aria-hidden="true">
+            {SPARKS.map((p, k) => (
+              <i key={k} style={{ ['--x' as string]: `${p.x}px`, ['--y' as string]: `${p.y}px`, ['--d' as string]: `${p.d}ms`, width: p.s, height: p.s }} />
             ))}
-          </div>
-          <button type="button" className="wheel-hub" onClick={spin} disabled={spinning || !!result}>
-            {spinning ? '…' : result ? '✓' : 'Aylantir'}
-          </button>
+          </span>
+          {result && <span className="box-prize">{PRIZE_FACE[result.kind].icon}</span>}
+          <GoldBox />
         </div>
         {result ? (
-          <div className="wheel-result">
-            <span>{PRIZE_FACE[result.kind].icon}</span>
+          <div className="box-result">
             <b>{prizeText(result)}</b>
             <button type="button" className="btn btn-primary btn-lg" onClick={onClose}>
               Merci !
             </button>
           </div>
         ) : (
-          <button type="button" className="btn btn-primary btn-lg btn-beam" onClick={spin} disabled={spinning}>
-            {spinning ? 'Aylanmoqda…' : "G'ildirakni aylantirish"}
-          </button>
+          <>
+            <p className="muted">Ichida — tanga, baliqcha, 2x XP yoki seriya soyaboni.</p>
+            <button type="button" className="btn btn-primary btn-lg btn-beam" onClick={open} disabled={stage !== 'idle'}>
+              {stage === 'idle' ? 'Qutini ochish' : 'Ochilmoqda…'}
+            </button>
+          </>
         )}
       </div>
     </div>,

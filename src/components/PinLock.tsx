@@ -10,6 +10,19 @@ import { Mascot } from './Mascot';
 
 type Stage = 'input' | 'checking' | 'grid' | 'link' | 'collapse' | 'burst' | 'error';
 
+/** PIN katakchasidagi belgi — mushuk panjasi izi. */
+function Paw() {
+  return (
+    <svg className="pin-paw" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <ellipse cx="12" cy="15.6" rx="5.2" ry="4.4" fill="currentColor" />
+      <ellipse cx="5.6" cy="10.4" rx="2.1" ry="2.6" fill="currentColor" transform="rotate(-18 5.6 10.4)" />
+      <ellipse cx="9.6" cy="6.6" rx="2.1" ry="2.7" fill="currentColor" transform="rotate(-6 9.6 6.6)" />
+      <ellipse cx="14.4" cy="6.6" rx="2.1" ry="2.7" fill="currentColor" transform="rotate(6 14.4 6.6)" />
+      <ellipse cx="18.4" cy="10.4" rx="2.1" ry="2.6" fill="currentColor" transform="rotate(18 18.4 10.4)" />
+    </svg>
+  );
+}
+
 export function PinPad({
   title,
   subtitle,
@@ -21,6 +34,8 @@ export function PinPad({
   resetKey,
   instant = false,
   onResult,
+  onLength,
+  quick = false,
 }: {
   title: string;
   subtitle: string;
@@ -36,6 +51,10 @@ export function PinPad({
   instant?: boolean;
   /** Natija ma'lum bo'lganda (maskot kayfiyati uchun). */
   onResult?: (ok: boolean) => void;
+  /** Kiritilgan raqamlar soni o'zgarganda (Vivi ko'zini yopishi uchun). */
+  onLength?: (n: number) => void;
+  /** Qisqa muvaffaqiyat (~0,4 s) — qulf ochilishida keyingi «tomchi» animatsiyasi bilan jami ~1 s. */
+  quick?: boolean;
 }) {
   const [pin, setPin] = useState('');
   const [stage, setStage] = useState<Stage>('input');
@@ -71,6 +90,7 @@ export function PinPad({
       if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
       at(520, () => {
         setPin('');
+        onLength?.(0);
         setStage('input');
         input.current?.focus();
       });
@@ -81,9 +101,9 @@ export function PinPad({
       onSuccess();
       return;
     }
-    if (!motionAllowed()) {
+    if (!motionAllowed() || quick) {
       setStage('burst');
-      at(500, onSuccess);
+      at(quick ? 260 : 500, onSuccess);
       return;
     }
     setStage('grid');
@@ -98,6 +118,7 @@ export function PinPad({
     if (stage !== 'input' && stage !== 'error') return;
     const v = next.replace(/\D/g, '').slice(0, PIN_LENGTH);
     setPin(v);
+    onLength?.(v.length);
     if (stage === 'error') setStage('input');
     if (v.length > 0) setMessage(''); // eski xato matni yangi urinishda qolmasin
     if (v.length === PIN_LENGTH) void submit(v);
@@ -148,7 +169,7 @@ export function PinPad({
               style={{ '--rx': `${(i - (PIN_LENGTH - 1) / 2) * 58}px`, '--gx': `${gx}px`, '--gy': `${gy}px`, '--i': i } as CSSProperties}
             >
               {/* PIN hech qachon ochiq ko'rsatilmaydi (yonidagilar ko'rmasin) — faqat nuqta. */}
-              {pin[i] ? <b>•</b> : active ? <i className="pin-caret" /> : null}
+              {pin[i] ? <Paw /> : active ? <i className="pin-caret" /> : null}
             </span>
           );
         })}
@@ -237,14 +258,19 @@ export function LockScreen({
   onForgot: () => void;
 }) {
   const [mood, setMood] = useState<'think' | 'sad' | 'cheer'>('think');
+  const [typed, setTyped] = useState(0);
   const moodTimer = useRef(0);
   useEffect(() => () => clearTimeout(moodTimer.current), []);
+  // Vivi PIN terilayotganda panjalari bilan ko'zini yopadi (qaramaydi!), 3-raqamda bir panjasi bilan mo'ralaydi.
+  const cover = mood === 'think' && typed > 0 ? (typed >= 3 ? 'peek' : 'cover') : '';
   return (
     <div className="lock-screen" role="dialog" aria-modal="true" aria-label="Ilova qulfi">
       <span className="lock-aurora a1" aria-hidden="true" />
       <span className="lock-aurora a2" aria-hidden="true" />
-      <div className={`lock-vivi m-${mood}`} aria-hidden="true">
+      <div className={`lock-vivi m-${mood} ${cover}`} aria-hidden="true">
         <Mascot mood={mood} size={92} />
+        <span className="lock-paw l" />
+        <span className="lock-paw r" />
         <span className="lock-badge">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             {mood === 'cheer' ? <path d="M7 10.5V8a5 5 0 0 1 9.6-2" /> : <path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" />}
@@ -254,7 +280,9 @@ export function LockScreen({
       </div>
       <PinPad
         title="PIN kodni kiriting"
-        subtitle="Voilà! shaxsiy PIN bilan himoyalangan."
+        subtitle="Vivi ko'zini yumdi — bemalol tering."
+        quick
+        onLength={setTyped}
         onSubmit={verify}
         onSuccess={onUnlock}
         onResult={(ok) => {
@@ -268,6 +296,27 @@ export function LockScreen({
           </button>
         }
       />
+    </div>
+  );
+}
+
+/** Qulf ochilgach: Vivi rangidagi «tomchi» parda tepaga ko'tarilib, ilovani ochadi (~0,6 s, faqat transform). */
+export function DripReveal({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onDone, motionAllowed() ? 580 : 10);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="drip-reveal" aria-hidden="true">
+      <div className="drip-sheet">
+        <span className="drip-eyes">
+          <i />
+          <i />
+        </span>
+        <svg className="drip-edge" viewBox="0 0 400 60" preserveAspectRatio="none">
+          <path d="M0 0H400V14C392 14 390 30 384 30S376 14 368 14 352 44 342 44 330 14 320 14 306 24 298 24 288 14 276 14 262 52 250 52 238 14 226 14 214 22 206 22 196 14 186 14 172 40 162 40 150 14 140 14 128 26 120 26 110 14 100 14 86 48 74 48 62 14 52 14 40 22 32 22 22 14 14 14 8 34 4 34 0 14 0 14Z" />
+        </svg>
+      </div>
     </div>
   );
 }
