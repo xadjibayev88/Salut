@@ -1,3 +1,4 @@
+import { DrawLine } from '../components/StripeFx';
 import { ReviewForm } from '../components/SocialProof';
 import { PinSetupSheet } from '../components/PinLock';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -98,6 +99,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
               </div>
             );
           })}
+          <DrawLine values={days.map((d) => state.xpByDay[d] ?? 0)} max={max} />
           <div className="xp-goal" style={{ bottom: `${(state.dailyGoal / max) * 100}%` }}>
             <span>maqsad {state.dailyGoal}</span>
           </div>
