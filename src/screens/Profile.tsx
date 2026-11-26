@@ -1,5 +1,6 @@
 import { ReviewForm } from '../components/SocialProof';
 import { PinSetupSheet } from '../components/PinLock';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { clearPin, hasPin, setPin, verifyPin } from '../engine/applock';
 import { TAB_MOTIONS, saveTabMotion, useTabMotion } from '../components/TabBar';
 import { themePref, setThemePref, type ThemePref } from '../engine/theme';
@@ -220,30 +221,28 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
 
 function ThemeSetting() {
   const [pref, setPref] = useState<ThemePref>(themePref());
-  const opts: { id: ThemePref; label: string }[] = [
-    { id: 'auto', label: '🌗 Avto' },
-    { id: 'light', label: '☀️ Kunduzgi' },
-    { id: 'dark', label: '🌙 Tungi' },
-  ];
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme !== 'light');
+  const apply = (p: ThemePref) => {
+    // Mavzu almashganda ranglar keskin emas, yumshoq o'tadi.
+    const html = document.documentElement;
+    html.classList.add('theme-anim');
+    setPref(p);
+    setThemePref(p);
+    setDark(html.dataset.theme !== 'light');
+    window.setTimeout(() => html.classList.remove('theme-anim'), 700);
+  };
   return (
     <div className="setting theme-setting">
-      <span>🎨 Ko'rinish</span>
-      <div className="seg" role="radiogroup" aria-label="Ko'rinish">
-        {opts.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            role="radio"
-            aria-checked={pref === o.id}
-            className={pref === o.id ? 'on' : ''}
-            onClick={() => {
-              setPref(o.id);
-              setThemePref(o.id);
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
+      <span>
+        🎨 Ko'rinish
+        <br />
+        <small className="muted">{pref === 'auto' ? 'Avto — telefon sozlamasiga qarab' : dark ? 'Tungi rejim' : 'Kunduzgi rejim'}</small>
+      </span>
+      <div className="theme-controls">
+        <ThemeToggle dark={dark} onToggle={(next) => apply(next ? 'dark' : 'light')} />
+        <button type="button" className={`theme-auto ${pref === 'auto' ? 'on' : ''}`} aria-pressed={pref === 'auto'} onClick={() => apply('auto')}>
+          🌗 Avto
+        </button>
       </div>
     </div>
   );
