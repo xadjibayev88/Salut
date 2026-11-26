@@ -3279,6 +3279,28 @@ html:not([data-theme='light']) .save-mark.on { color: #C9B8FF; }
 .range-val:hover .rv-bubble, .range-val.active .rv-bubble, .range-val:focus-within .rv-bubble { opacity: 1; transform: translateX(-50%) scale(1); }
 .vh2-sheet .range-val { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .roll-new, .roll-old, .save-mark.on .sm-ico svg, .sm-ring, .hb-hold .hb-ico, .hb-done { animation: none !important; } }
+/* Tanishuv: ilova imkoniyatlari va daraja so'rovi */
+.ob-intro { gap: 14px; }
+.ob-features { display: flex; flex-direction: column; gap: 10px; }
+.ob-feature { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 20px; background: var(--surface); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-1); text-align: left;
+  animation: ob-in .5s cubic-bezier(.2, .9, .3, 1.15) calc(var(--i) * 90ms + 80ms) backwards; }
+@keyframes ob-in { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+.ob-f-ico { flex: none; width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 8px 18px -8px var(--c2); }
+.ob-f-ico .ic { color: #fff; } .ob-f-ico .ic [fill^='url'] { fill: rgba(255, 255, 255, .3); } .ob-f-ico .ic [fill='#fff'] { fill: #fff; }
+.ob-feature b { display: block; font-size: 15.5px; }
+.ob-feature small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+.ob-levels { gap: 8px; }
+.ob-level { justify-content: flex-start !important; align-items: center; gap: 14px; text-align: left; padding: 12px 14px; }
+.ob-level-text { display: flex; flex-direction: column; gap: 1px; }
+.ob-level-text b { font-size: 15px; }
+.ob-level-text .muted { font-size: 12.5px; font-weight: 500; }
+.ob-bars { flex: none; display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; }
+.ob-bars i { width: 5px; border-radius: 3px; background: color-mix(in srgb, var(--text) 16%, transparent); }
+.ob-bars i:nth-child(1) { height: 7px; } .ob-bars i:nth-child(2) { height: 12px; } .ob-bars i:nth-child(3) { height: 17px; } .ob-bars i:nth-child(4) { height: 22px; }
+.ob-bars i.on { background: linear-gradient(180deg, #FF8FD0, #9B5CFF); }
+.ob-level.selected .ob-bars i.on { background: linear-gradient(180deg, #FFD23F, #FF6B9A); }
+.ob-note { margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.4; background: color-mix(in srgb, #FFD23F 14%, transparent); border: 1px solid color-mix(in srgb, #FFD23F 40%, transparent); animation: pop .3s; text-align: left; }
+@media (prefers-reduced-motion: reduce) { .ob-feature { animation: none; } }
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }
