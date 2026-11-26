@@ -23,7 +23,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
   const [confirmReset, setConfirmReset] = useState(false);
   const [name, setName] = useState(state.name);
   const [picking, setPicking] = useState(false);
-  const { me } = useAccount();
+  const { me, premium } = useAccount();
   const words = Object.keys(state.words).length;
   const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
   const c = new Date(state.createdAt);
@@ -35,20 +35,29 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
   const today = dayKey();
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13));
   const max = Math.max(state.dailyGoal, ...days.map((d) => state.xpByDay[d] ?? 0));
+  const weekXp = state.league.weeklyXp; // dushanbadan beri (turnir haftasi bilan bir xil)
 
   return (
     <div className="page">
-      <AccountCard />
-      <div className="profile-head">
-        <button type="button" className="avatar-big" onClick={() => setPicking(true)} aria-label="Avatarni o'zgartirish">
-          <Avatar value={state.avatar} size={72} />
-          <span className="avatar-edit">✎</span>
-        </button>
-        <div>
-          <input className="name-input" value={name} placeholder="Ismingiz" onChange={(e) => setName(e.target.value)} onBlur={() => update((s) => ({ ...s, name: name.trim() }))} />
-          <p className="muted">{sinceLabel} · 🇺🇿 → 🇫🇷</p>
+      {/* Profil kartasi: avatar, ism, chiplar; pastida ixcham hisob qatori */}
+      <section className="pf-hero">
+        <div className="pf-top">
+          <button type="button" className="avatar-big pf-avatar" onClick={() => setPicking(true)} aria-label="Avatarni o'zgartirish">
+            <Avatar value={state.avatar} size={76} />
+            <span className="avatar-edit">✎</span>
+          </button>
+          <div className="pf-id">
+            <input className="name-input" value={name} placeholder="Ismingiz" onChange={(e) => setName(e.target.value)} onBlur={() => update((s) => ({ ...s, name: name.trim() }))} />
+            <p className="muted">{sinceLabel} · 🇺🇿 → 🇫🇷</p>
+            <div className="pf-chips">
+              {premium && <span className="pf-chip super">💎 SUPER</span>}
+              <span className="pf-chip">{`${LEAGUES[state.league.tier].icon} ${LEAGUES[state.league.tier].name} liga`}</span>
+              <span className="pf-chip">⭐ {`${state.xp} XP`}</span>
+            </div>
+          </div>
         </div>
-      </div>
+        <AccountCard />
+      </section>
 
       {picking && <AvatarPicker value={state.avatar} googlePhoto={me.user?.avatar} onPick={(v) => update((s) => ({ ...s, avatar: v }))} onClose={() => setPicking(false)} />}
 
@@ -59,41 +68,33 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       )}
 
       <h2 className="section-title">Statistika</h2>
-      <div className="stats-grid">
-        <div className="scard">
-          <span>☀️</span>
-          <b>{state.streak}</b>
-          <small>Kunlik seriya</small>
-        </div>
-        <div className="scard">
-          <span>⭐</span>
-          <b>{state.xp}</b>
-          <small>Jami XP</small>
-        </div>
-        <div className="scard">
-          <span>{LEAGUES[state.league.tier].icon}</span>
-          <b>{LEAGUES[state.league.tier].name}</b>
-          <small>Turnir ligasi</small>
-        </div>
-        <div className="scard">
-          <span>📚</span>
-          <b>{words}</b>
-          <small>O'rganilgan so'z</small>
-        </div>
-        <div className="scard">
-          <span>🏅</span>
-          <b>{state.longestStreak}</b>
-          <small>Eng uzun seriya</small>
-        </div>
-        <div className="scard">
-          <span>💯</span>
-          <b>{state.perfectLessons}</b>
-          <small>Xatosiz dars</small>
-        </div>
+      <div className="pf-stats">
+        {[
+          ['☀️', state.streak, 'Kunlik seriya', '#f59e0b'],
+          ['⭐', state.xp, 'Jami XP', '#eab308'],
+          ['📚', words, "O'rganilgan so'z", '#6366f1'],
+          ['🏅', state.longestStreak, 'Eng uzun seriya', '#f97316'],
+          ['💯', state.perfectLessons, 'Xatosiz dars', '#ef4444'],
+          [LEAGUES[state.league.tier].icon, LEAGUES[state.league.tier].name, 'Turnir ligasi', '#22c55e'],
+        ].map(([ico, val, label, c]) => (
+          <div key={String(label)} className="pf-stat" style={{ ['--c' as string]: String(c) }}>
+            <span className="pf-stat-ico">{ico}</span>
+            <b>{val}</b>
+            <small>{label}</small>
+          </div>
+        ))}
       </div>
 
       <h2 className="section-title">Shu hafta</h2>
-      <WeekStrip />
+      <section className="pf-week">
+        <div className="pf-week-head">
+          <span>
+            <b>{weekXp}</b> XP
+            <small>bu hafta</small>
+          </span>
+          <span className="pf-goal">🎯 {`Kunlik maqsad: ${state.dailyGoal} XP`}</span>
+        </div>
+        <WeekStrip />
       <div className="xp-chart" aria-label="So'nggi 14 kunlik XP">
         <div className="xp-bars">
           {days.map((d) => {
@@ -115,6 +116,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
           ))}
         </div>
       </div>
+      </section>
 
       <Folder
         className="ach-folder"

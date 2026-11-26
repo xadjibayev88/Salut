@@ -4,6 +4,7 @@ import { playSfx, speakQueue, stopSpeaking, ttsSupported } from '../engine/audio
 import { askTutor, updateMemory, frenchParts, learnerContext, parseRich, SCENARIOS, TutorError, tutorFailureMessage, type ChatMessage, type Scenario } from '../engine/tutor';
 import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
+import { useAccount } from '../state/account';
 import { FrChip } from '../components/FrChip';
 import { VoiceHub } from './voice/VoiceHub';
 import { loadPrefs } from '../engine/voice/prefs';
@@ -421,7 +422,51 @@ function TextChat() {
 
 const MODE_KEY = 'salut.tutor.mode';
 
+/** Vivi AI faqat Super uchun: obunasiz kirilganda chiroyli taklif ekrani. */
+function ViviPaywall() {
+  const { me } = useAccount();
+  const plans = me.billing.plans;
+  const cheapest = plans.length ? plans.reduce((a, b) => (b.uzs < a.uzs ? b : a)) : null;
+  const fmt = (n: number) => n.toLocaleString('ru-RU').replace(/[\s,]/g, ' ');
+  const go = (tab: string) => {
+    location.hash = `#/${tab}`;
+  };
+  return (
+    <div className="vpay">
+      <div className="vpay-preview" aria-hidden="true">
+        <div className="vpay-msg in">Bonjour ! Comment tu t'appelles ?</div>
+        <div className="vpay-msg out">Je m'appelle Ali 😊</div>
+        <div className="vpay-msg in">Enchantée, Ali ! Tu viens d'où ?</div>
+        <div className="vpay-wave">
+          {Array.from({ length: 18 }, (_, i) => <i key={i} style={{ animationDelay: `${(i % 6) * 0.12}s` }} />)}
+        </div>
+      </div>
+      <div className="vpay-card">
+        <div className="vpay-mascot">
+          <Mascot mood="cheer" size={110} />
+          <span className="vpay-badge">SUPER</span>
+        </div>
+        <h2>Vivi AI — Super a'zolari uchun</h2>
+        <p className="muted">Vivi bilan jonli ovozda va yozishib fransuzcha gaplashish faqat Super obunada. Darslar esa bepul qoladi.</p>
+        <ul className="vpay-perks">
+          <li><span>⚡</span>Gemini Live — real vaqtda ovozli suhbat</li>
+          <li><span>💬</span>Cheksiz matnli suhbat va xatolar tahlili</li>
+          <li><span>🧠</span>Vivi sizni eslab qoladi va darajangizga moslashadi</li>
+          <li><span>🌐</span>Tushuntirish o'z tilingizda</li>
+        </ul>
+        <button type="button" className="btn btn-primary btn-lg btn-beam vpay-cta" onClick={() => go('shop')}>
+          💎 Super olish{cheapest ? ` · ${fmt(cheapest.uzs)} so'mdan` : ''}
+        </button>
+        <button type="button" className="btn btn-text" onClick={() => go('learn')}>
+          Hozircha darslarni davom ettiraman
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Tutor() {
+  const { premium, me } = useAccount();
   const [mode, setMode] = useState<'voice' | 'text'>(() => {
     try {
       return localStorage.getItem(MODE_KEY) === 'text' ? 'text' : 'voice';
@@ -437,6 +482,7 @@ export function Tutor() {
       /* e'tiborsiz */
     }
   };
+  if (!premium && !me.admin) return <ViviPaywall />;
   return (
     <div className="tutor-wrap">
       <div className="seg tutor-mode-toggle" role="tablist">

@@ -9,42 +9,51 @@ export function AccountCard() {
   const [confirm, setConfirm] = useState(false);
   const u = me.user;
 
+  const [menu, setMenu] = useState(false);
   return (
     <>
-      <div className="account-card">
-        {u ? (
-          <>
+      {u ? (
+        <div className="acc-line">
+          <span className="acc-line-ico" aria-hidden="true">☁️</span>
+          <span className="acc-line-text">
+            <b>{u.email}</b>
+            <small>{u.provider === 'google' ? 'Google' : 'Email'} · progress bulutda saqlanadi</small>
+          </span>
+          <button type="button" className="acc-more" aria-label="Hisob sozlamalari" onClick={() => setMenu(true)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+          </button>
+        </div>
+      ) : (
+        <div className="acc-line guest">
+          <span className="acc-line-ico" aria-hidden="true">👤</span>
+          <span className="acc-line-text">
+            <b>Mehmon rejimi</b>
+            <small>Progress faqat shu qurilmada</small>
+          </span>
+          <button type="button" className="btn btn-primary small" onClick={() => setAuth(true)}>
+            Profil yaratish
+          </button>
+        </div>
+      )}
+      {menu && u && (
+        <div className="modal-back" onClick={() => setMenu(false)}>
+          <div className="sheet acc-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="acc-avatar">{u.avatar ? <img src={u.avatar} alt="" referrerPolicy="no-referrer" /> : (u.name || u.email || '?').slice(0, 1).toUpperCase()}</div>
-            <div className="acc-body">
-              <b>
-                {u.name || 'Foydalanuvchi'} {premium && <span className="super-chip">SUPER</span>}
-              </b>
-              <small className="muted">
-                {u.email} · {u.provider === 'google' ? 'Google' : 'Email'}
-              </small>
-              <small className="acc-sync">☁️ Progress bulutda saqlanadi</small>
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={() => void signOut()}>
-              Chiqish
+            <h3>
+              {u.name || 'Foydalanuvchi'} {premium && <span className="super-chip">SUPER</span>}
+            </h3>
+            <p className="muted">{u.email}</p>
+            <button type="button" className="btn btn-ghost btn-lg" onClick={() => { setMenu(false); void signOut(); }}>
+              Hisobdan chiqish
             </button>
-          </>
-        ) : (
-          <>
-            <div className="acc-avatar guest">👤</div>
-            <div className="acc-body">
-              <b>Mehmon rejimi</b>
-              <small className="muted">Progress faqat shu qurilmada. Profil yarating — yo'qolib qolmaydi.</small>
-            </div>
-            <button type="button" className="btn btn-primary" onClick={() => setAuth(true)}>
-              Profil yaratish
+            <button type="button" className="btn btn-text danger" onClick={() => { setMenu(false); setConfirm(true); }}>
+              Hisobni o'chirish
             </button>
-          </>
-        )}
-      </div>
-      {u && (
-        <button type="button" className="btn btn-text danger small-link" onClick={() => setConfirm(true)}>
-          Hisobni o'chirish
-        </button>
+            <button type="button" className="btn btn-text" onClick={() => setMenu(false)}>
+              Yopish
+            </button>
+          </div>
+        </div>
       )}
 
       {auth && (

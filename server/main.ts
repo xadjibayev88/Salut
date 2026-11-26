@@ -387,6 +387,7 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
       liveMinutes: liveReady() ? (premium ? Math.max(SESSION_MIN, num('VOICE_SESSION_MINUTES_SUPER', 30)) : liveMinutesLeft(req)) : 0,
       messagesPerDay: premium ? null : FREE_MSGS,
       premium,
+      superRequired: superOnly() && !superAllowed(req),
     });
   },
 
@@ -722,9 +723,23 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+// Vivi AI (suhbat, ovoz, tarjima chiplari, xotira) va Gemini Live — faqat Super obunachilar va adminlar uchun.
+// AI_SUPER_ONLY=0 bilan o'chirish mumkin. Darslar AI ishlatmaydi — ular bepul qoladi.
+const SUPER_ONLY_ROUTES = new Set([
+  'POST /api/tutor', 'POST /api/tutor/feedback', 'POST /api/tutor/memory', 'POST /api/stt', 'POST /api/tts', 'POST /api/translate', 'POST /api/live/token',
+]);
+const superOnly = () => (process.env.AI_SUPER_ONLY ?? '1').trim() !== '0';
+function superAllowed(req: IncomingMessage): boolean {
+  const uid = currentUserId(req);
+  return isPremium(req) || (!!uid && isAdmin(uid));
+}
+
 const server = createServer((req, res) => {
   const path = (req.url ?? '/').split('?')[0];
   const routeKey = `${req.method} ${path}`;
+  if (SUPER_ONLY_ROUTES.has(routeKey) && superOnly() && !superAllowed(req)) {
+    return json(res, 402, { code: 'super_required', message: 'Vivi AI faqat Super obunachilar uchun. Super oling 💎' });
+  }
   // Gemini Live: o'z darvozasi bor (rejim/rozilik/limit); shartlar bajarilmasa — token berilmaydi.
   if (routeKey === 'POST /api/live/token') {
     return void liveTokenRoute(req, res).catch(() => {

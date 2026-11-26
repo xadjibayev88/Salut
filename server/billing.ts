@@ -9,9 +9,9 @@ export type Provider = 'payme' | 'click' | 'card' | 'visa';
 
 // Narxlar muhitdan o'zgartiriladi: PRICE_UZS_<PLAN> (hozirgi) va PRICE_OLD_<PLAN> (chizilgan eski narx).
 export const PLANS: Record<PlanId, { id: PlanId; name: string; label: string; days: number; defaultUzs: number; defaultOld: number; period: string }> = {
-  week: { id: 'week', name: 'Super — 1 hafta', label: '1 hafta', days: 7, defaultUzs: 19_000, defaultOld: 29_000, period: 'hafta' },
-  month: { id: 'month', name: 'Super — 1 oy', label: '1 oy', days: 30, defaultUzs: 49_000, defaultOld: 79_000, period: 'oy' },
-  quarter: { id: 'quarter', name: 'Super — 3 oy', label: '3 oy', days: 90, defaultUzs: 119_000, defaultOld: 237_000, period: '3 oy' },
+  week: { id: 'week', name: 'Super — 1 hafta', label: '1 hafta', days: 7, defaultUzs: 39_000, defaultOld: 59_000, period: 'hafta' },
+  month: { id: 'month', name: 'Super — 1 oy', label: '1 oy', days: 30, defaultUzs: 69_000, defaultOld: 99_000, period: 'oy' },
+  quarter: { id: 'quarter', name: 'Super — 3 oy', label: '3 oy', days: 90, defaultUzs: 139_000, defaultOld: 207_000, period: '3 oy' },
   year: { id: 'year', name: 'Super — 1 yil', label: '1 yil', days: 365, defaultUzs: 399_000, defaultOld: 948_000, period: 'yil' },
 };
 const isPlan = (v: unknown): v is PlanId => typeof v === 'string' && v in PLANS;

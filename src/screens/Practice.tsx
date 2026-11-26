@@ -19,6 +19,8 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
     .map((w) => ({ w, r: state.words[w.fr] ? wordRecall(state.words[w.fr], now) : 0 }))
     .sort((a, b) => a.r - b.r);
   const disabled = learned.length === 0;
+  const avg = rows.length ? rows.reduce((a, x) => a + x.r, 0) / rows.length : 0;
+  const weak = rows.filter((x) => x.r < 0.35).length;
 
   // O'chirilgan so'z «Qaytarish» uchun asl joyi bilan eslab qolinadi (Inline Undo).
   type Custom = (typeof state.customWords)[number];
@@ -53,27 +55,49 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
           <p>Mashq qilish uchun avval kamida bitta darsni tugating.</p>
         </div>
       )}
-      <div className="practice-grid">
-        <button type="button" className="pcard" style={{ ['--c' as string]: '#2B3A9B' }} disabled={disabled} onClick={() => onStart({ kind: 'practice', mode: 'smart' })}>
-          <span className="pcard-icon">🧠</span>
+      {/* So'zlar kuchi: o'rtacha eslab qolish + qisqa ko'rsatkichlar */}
+      {rows.length > 0 && (
+        <section className="pr-hero">
+          <span className="pr-ring" style={{ ['--p' as string]: avg }} aria-label={`O'rtacha kuch ${Math.round(avg * 100)}%`}>
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="27" className="pr-ring-bg" />
+              <circle cx="32" cy="32" r="27" className="pr-ring-fg" pathLength={100} style={{ strokeDashoffset: 100 - avg * 100 }} />
+            </svg>
+            <b>{Math.round(avg * 100)}%</b>
+          </span>
+          <div className="pr-hero-text">
+            <small>So'zlar kuchi</small>
+            <b>{avg >= 0.7 ? 'Zo\'r holat!' : avg >= 0.4 ? 'Takrorlash vaqti' : 'So\'zlar unutilyapti'}</b>
+            <div className="pr-chips">
+              <span>📚 {`${rows.length} so'z`}</span>
+              <span className={weak ? 'warn' : ''}>🪫 {`${weak} ta zaif`}</span>
+              <span className={mistakes ? 'bad' : ''}>🩹 {`${mistakes} ta xato`}</span>
+            </div>
+          </div>
+        </section>
+      )}
+      <button type="button" className="pr-main" disabled={disabled} onClick={() => onStart({ kind: 'practice', mode: 'smart' })}>
+        <span className="pr-main-icon">🧠</span>
+        <span className="pr-main-text">
           <b>Aqlli takrorlash</b>
-          <small>Unutilayotgan so'zlarni mustahkamlang · +1 ☕</small>
-        </button>
-        <button type="button" className="pcard" style={{ ['--c' as string]: '#E5484D' }} disabled={disabled || mistakes === 0} onClick={() => onStart({ kind: 'practice', mode: 'mistakes' })}>
-          <span className="pcard-icon">🩹</span>
+          <small>Unutilayotgan so'zlarni mustahkamlang</small>
+        </span>
+        <span className="pr-main-go">
+          <em>+1 ☕</em>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+        </span>
+      </button>
+      <div className="pr-grid">
+        <button type="button" className="pr-tile" style={{ ['--c' as string]: '#ef4444', ['--c2' as string]: '#fb7185' }} disabled={disabled || mistakes === 0} onClick={() => onStart({ kind: 'practice', mode: 'mistakes' })}>
+          <span className="pr-tile-icon">🩹</span>
+          {mistakes > 0 && <span className="pr-badge">{mistakes}</span>}
           <b>Xatolar ustida ishlash</b>
           <small>{mistakes ? `${mistakes} ta xato kutmoqda` : "Hozircha xato yo'q"}</small>
         </button>
-        <button
-          type="button"
-          className="pcard"
-          style={{ ['--c' as string]: '#8B5CF6' }}
-          disabled={disabled || !ttsSupported()}
-          onClick={() => onStart({ kind: 'practice', mode: 'listening' })}
-        >
-          <span className="pcard-icon">🎧</span>
+        <button type="button" className="pr-tile" style={{ ['--c' as string]: '#8b5cf6', ['--c2' as string]: '#22d3ee' }} disabled={disabled || !ttsSupported()} onClick={() => onStart({ kind: 'practice', mode: 'listening' })}>
+          <span className="pr-tile-icon">🎧</span>
           <b>Tinglash mashqi</b>
-          <small>{ttsSupported() ? 'Quloqni fransuz nutqiga o\'rgating' : 'Brauzeringiz ovozni qo\'llamaydi'}</small>
+          <small>{ttsSupported() ? "Quloqni fransuz nutqiga o'rgating" : "Brauzeringiz ovozni qo'llamaydi"}</small>
         </button>
       </div>
 
@@ -92,7 +116,7 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
                     <b>{w.fr}</b>
                     <small>{w.uz}</small>
                   </span>
-                  <span className="strength" title={`${Math.round(r * 100)}%`}>
+                  <span className={`strength ${r < 0.35 ? 's-weak' : r < 0.7 ? 's-mid' : 's-strong'}`} title={`${Math.round(r * 100)}%`}>
                     {[0, 1, 2, 3].map((k) => (
                       <i key={k} className={r > k * 0.25 + 0.05 ? 'on' : ''} />
                     ))}
