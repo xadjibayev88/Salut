@@ -6,7 +6,8 @@ import { randomBytes } from 'node:crypto';
 import { db } from './db.ts';
 import { decideReview } from './social.ts';
 import { getUser, upsertSocialUser } from './accounts.ts';
-import { PLANS, activePlan, toUsd, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
+import { cardBrand, groupCardNumber } from '../src/shared/card.ts';
+import { PLANS, activePlan, toUsd, usdRate, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
 
 type Tg = (method: string, body: Record<string, unknown>) => Promise<any>;
 type From = { id: number; first_name?: string; last_name?: string; username?: string };
@@ -155,20 +156,44 @@ function methodsKb(plan: PlanId, userId: string) {
   return { inline_keyboard: rows };
 }
 
+/** Karta ma'lumoti ilovadagi shisha karta bilan bir xil: 4 talik guruhlar, karta turi, bank, egasi. */
 function payText(plan: PlanId, kind: Kind = 'card'): string {
   const c = kind === 'visa' ? plansPayload().visa : plansPayload().card;
+  const num = c?.number ? groupCardNumber(c.number) : '—';
   return [
     `🧾 <b>${PLANS[plan].name}</b>`,
     kind === 'visa' ? `To'lov summasi: <b>${'$'}${toUsd(priceUzs(plan))}</b> (${som(priceUzs(plan))} so'm)` : `To'lov summasi: <b>${som(priceUzs(plan))} so'm</b>`,
+    ...(kind === 'visa' ? [`<i>Kurs: 1$ = ${som(usdRate())} so'm</i>`] : []),
     '',
     kind === 'visa' ? '🌍 Quyidagi Visa kartaga o\'tkazing:' : '💳 Quyidagi kartaga o\'tkazing:',
-    `<code>${esc(c?.number ?? '—')}</code>`,
-    ...(c?.owner ? [`👤 ${esc(c.owner)}${c.bank ? ` · ${esc(c.bank)}` : ''}`] : []),
     '',
+    `<b>${c?.number ? cardBrand(c.number, kind) : 'KARTA'}</b>${c?.bank ? ` · ${esc(c.bank)}` : ''}`,
+    `<code>${esc(num)}</code>`,
+    ...(c?.owner ? [`👤 ${esc(c.owner)}`] : []),
+    '',
+    '📋 Raqamni pastdagi tugma bilan nusxalang.',
     '📸 To\'lovdan so\'ng <b>chek rasmini (skrinshot yoki PDF)</b> shu yerga yuboring.',
     '⏱ Admin 5–30 daqiqada tekshiradi va Super avtomatik yoqiladi.',
   ].join('\n');
 }
+
+/** «Nusxalash» tugmasi (Telegram copy_text) — raqam bo'sh joysiz nusxalanadi. */
+function payKb(plan: PlanId, kind: Kind) {
+  const c = kind === 'visa' ? plansPayload().visa : plansPayload().card;
+  const digits = (c?.number ?? '').replace(/\D/g, '');
+  return {
+    inline_keyboard: [
+      ...(digits ? [[{ text: `📋 Karta raqamini nusxalash`, copy_text: { text: digits } }]] : []),
+      [{ text: '⬅️ Boshqa usul', callback_data: `plan:${plan}` }],
+    ],
+  };
+}
+
+/** Matnli «progress» chizig'i: ▰▰▱ */
+const bar = (step: number, of = 3) => '▰'.repeat(step) + '▱'.repeat(of - step);
+
+/** Super yoqilganda Telegram'ning o'rnatilgan 🎉 konfetti effekti (faqat shaxsiy chatlarda). */
+export const CONFETTI_EFFECT_ID = '5046509860389126442';
 
 function meText(userId: string): string {
   const p = activePlan(userId);
@@ -216,13 +241,14 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
   async function notifyDecision(userId: string, approve: boolean) {
     const chat = chatOfUser(userId);
     if (!chat) return;
-    await send(
-      chat,
-      approve
-        ? `🎉 <b>To'lov tasdiqlandi!</b>\n💎 Super faollashdi — ${esc(meText(userId).split('\n').slice(2).join(' '))}\n\nIlovani oching va Vivi bilan cheksiz gaplashing!`
-        : "❌ Chek tasdiqlanmadi. Summa yoki chek noto'g'ri bo'lishi mumkin. Savol bo'lsa shu yerga yozing.",
-      { reply_markup: approve ? { inline_keyboard: [[{ text: '📱 Ilovani ochish', url: appUrl() }]] } : mainKb() },
-    ).catch(() => {});
+    const text = approve
+      ? `🎉 <b>To'lov tasdiqlandi!</b>\n💎 Super faollashdi — ${esc(meText(userId).split('\n').slice(2).join(' '))}\n\nIlovani oching va Vivi bilan cheksiz gaplashing!`
+      : "❌ Chek tasdiqlanmadi. Summa yoki chek noto'g'ri bo'lishi mumkin. Savol bo'lsa shu yerga yozing.";
+    const extra = { reply_markup: approve ? { inline_keyboard: [[{ text: '📱 Ilovani ochish', url: appUrl() }]] } : mainKb() };
+    if (!approve) return void (await send(chat, text, extra).catch(() => {}));
+    // Ilovadagi «Confetti → burst» ning Telegram'dagi muqobili: xabar 🎉 effekti bilan keladi.
+    // Effekt qo'llab-quvvatlanmasa — oddiy xabar.
+    await send(chat, text, { ...extra, message_effect_id: CONFETTI_EFFECT_ID }).catch(() => send(chat, text, extra).catch(() => {}));
   }
 
   async function onMessage(msg: any) {
@@ -252,14 +278,22 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
       const st = planOf(chat);
       if (!st) return send(chat, '📸 Chekni yuborishdan oldin tarifni tanlang 👇', { reply_markup: plansKb() });
       if (!/^(image\/(png|jpe?g|webp|heic)|application\/pdf)$/.test(file.mime)) return send(chat, '⚠️ Chekni rasm yoki PDF ko\'rinishida yuboring.');
+      // Ilovadagi yuklash zonasi kabi: bitta xabar bosqichma-bosqich yangilanadi (▰▱▱ → ▰▰▱ → ✅).
+      void tg('sendChatAction', { chat_id: chat, action: 'upload_photo' }).catch(() => {});
+      const progress = (await send(chat, `⏳ Chek yuklanmoqda… ${bar(1)}`).catch(() => null)) as { message_id?: number } | null;
+      const update = (text: string, extra: Record<string, unknown> = {}) =>
+        progress?.message_id
+          ? tg('editMessageText', { chat_id: chat, message_id: progress.message_id, text, parse_mode: 'HTML', ...extra }).catch(() => send(chat, text, extra))
+          : send(chat, text, extra);
       const got = await download(file.id).catch(() => null);
-      if (!got || got.data.length > 2_900_000) return send(chat, '⚠️ Faylni yuklab bo\'lmadi (3 MB gacha bo\'lsin). Qayta yuboring.');
+      if (!got || got.data.length > 2_900_000) return update('⚠️ Faylni yuklab bo\'lmadi (3 MB gacha bo\'lsin). Qayta yuboring.');
+      if (progress?.message_id) await update(`⏳ Chek tekshirilmoqda… ${bar(2)}`);
       const uid = userOf(from);
       const receipt = `data:${file.mime === 'image/jpg' ? 'image/jpeg' : file.mime || got.mime};base64,${got.data.toString('base64')}`;
       const r = createCardOrder(uid, st.plan, receipt, st.kind);
-      if ('error' in r) return send(chat, `⚠️ ${esc(r.error)}`);
+      if ('error' in r) return update(`⚠️ ${esc(r.error)}`);
       setPlan(chat, null);
-      await send(chat, `✅ Chek qabul qilindi (#${r.id}).\n⏱ Admin tekshirgach, Super avtomatik yoqiladi va sizga xabar beraman.`);
+      await update(`✅ Chek qabul qilindi (#${r.id}) ${bar(3)}\n⏱ Admin tekshirgach, Super avtomatik yoqiladi va sizga xabar beraman.`);
       const who = [from.first_name, from.last_name].filter(Boolean).join(' ') + (from.username ? ` @${from.username}` : '') + ` (tg ${from.id})`;
       await notifyReceipt(r.id, r.plan, r.amountUzs, `${who}${st.kind === 'visa' ? ' · VISA' : ''}`, receipt);
       return;
@@ -289,7 +323,10 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
       if (!(plan in PLANS) || !providers().includes(kind)) return ack("Bu usul yoqilmagan", true);
       setPlan(chat, `${plan}:${kind}`);
       await ack();
-      return send(chat, payText(plan, kind), { reply_markup: { inline_keyboard: [[{ text: '⬅️ Boshqa usul', callback_data: `plan:${plan}` }]] } });
+      // Nusxalash tugmasi rad etilsa ham karta ma'lumoti albatta yetib boradi.
+      return send(chat, payText(plan, kind), { reply_markup: payKb(plan, kind) }).catch(() =>
+        send(chat, payText(plan, kind), { reply_markup: { inline_keyboard: [[{ text: '⬅️ Boshqa usul', callback_data: `plan:${plan}` }]] } }),
+      );
     }
     const rv = /^rv(ok|no):(\d+)$/.exec(data);
     if (rv) {
