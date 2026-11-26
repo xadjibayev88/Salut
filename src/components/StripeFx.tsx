@@ -126,6 +126,65 @@ export function PayButton({ stage, progress, disabled, onClick, children, doneLa
   );
 }
 
+/* ---------------- Send money: pul uchib chiqadigan yuborish tugmasi ---------------- */
+
+/** Har bir pul qog'ozi uchun oldindan hisoblangan (deterministik) traektoriya — har renderda tasodif emas. */
+const BILLS = Array.from({ length: 14 }, (_, i) => {
+  const a = Math.sin(i * 12.9898) * 43758.5453;
+  const r = a - Math.floor(a);
+  const b = Math.sin(i * 78.233) * 12345.678;
+  const r2 = b - Math.floor(b);
+  return {
+    x: -(70 + r * 230), // chapga qancha uchadi (px)
+    y: (r2 - 0.5) * 70, // yuqori/pastga
+    rot: (r - 0.5) * 300,
+    s: 0.75 + r2 * 0.45,
+    d: (i % 7) * 0.13 + r * 0.05, // kechikish
+  };
+});
+
+/**
+ * Videodagi «Send money» effekti: to'q tabletka, o'ngda oq doira strelka bilan. Bosilganda doira ichidan
+ * yashil pul qog'ozlari aylanib uchib chiqadi va tugma bo'ylab tarqaladi, yozuv «Yuborilmoqda… N%».
+ * Tugagach doira yashil «✓» bo'ladi. Faqat transform/opacity.
+ */
+export function SendButton({ stage, progress, disabled, onClick, label, busyLabel, doneLabel }: { stage: PayBtnStage; progress: number; disabled?: boolean; onClick: () => void; label: string; busyLabel: string; doneLabel: string }) {
+  const pct = Math.round(Math.max(0, Math.min(1, progress)) * 100);
+  return (
+    <button type="button" className={`sendbtn sb-${stage}`} disabled={disabled || stage !== 'idle'} onClick={onClick} aria-busy={stage === 'busy'}>
+      <span className="sb-fill" style={{ transform: `scaleX(${stage === 'idle' ? 0 : stage === 'done' ? 1 : Math.max(0.08, progress)})` }} aria-hidden="true" />
+      {stage === 'busy' && motionAllowed() && (
+        <span className="sb-bills" aria-hidden="true">
+          {BILLS.map((b, i) => (
+            <i key={i} style={{ '--x': `${b.x}px`, '--y': `${b.y}px`, '--r': `${b.rot}deg`, '--s': b.s, animationDelay: `${b.d}s` } as CSSProperties}>
+              <svg viewBox="0 0 30 16" width="30" height="16">
+                <rect x=".5" y=".5" width="29" height="15" rx="2.2" fill="#22c55e" stroke="#15803d" />
+                <rect x="3" y="3" width="24" height="10" rx="1.4" fill="none" stroke="#bbf7d0" strokeWidth=".9" />
+                <circle cx="15" cy="8" r="3.2" fill="#bbf7d0" />
+                <rect x="13.6" y="0.5" width="2.8" height="15" fill="#f0fdf4" opacity=".9" />
+              </svg>
+            </i>
+          ))}
+        </span>
+      )}
+      <span className="sb-text" aria-live="polite">
+        {stage === 'idle' ? label : stage === 'busy' ? (pct >= 3 && pct < 100 ? `${busyLabel} ${pct}%` : busyLabel) : doneLabel}
+      </span>
+      <span className="sb-knob" aria-hidden="true">
+        {stage === 'done' ? (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+            <path className="sb-tick" d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        ) : (
+          <svg className="sb-arrow" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h13M13 6l6 6-6 6" />
+          </svg>
+        )}
+      </span>
+    </button>
+  );
+}
+
 /* ---------------- Number → roll ---------------- */
 
 /** Har bir raqam o'z ustunida «aylanib» yangi qiymatga to'xtaydi (odometr). */

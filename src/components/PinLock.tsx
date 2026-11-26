@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom';
 import { motionAllowed } from '../engine/motion';
 import { PIN_LENGTH } from '../engine/applock';
+import { Mascot } from './Mascot';
 
 type Stage = 'input' | 'checking' | 'grid' | 'link' | 'collapse' | 'burst' | 'error';
 
@@ -19,6 +20,7 @@ export function PinPad({
   footer,
   resetKey,
   instant = false,
+  onResult,
 }: {
   title: string;
   subtitle: string;
@@ -32,6 +34,8 @@ export function PinPad({
   resetKey?: string | number;
   /** Oraliq qadam (masalan, yangi PIN birinchi marta): muvaffaqiyat animatsiyasisiz darhol onSuccess. */
   instant?: boolean;
+  /** Natija ma'lum bo'lganda (maskot kayfiyati uchun). */
+  onResult?: (ok: boolean) => void;
 }) {
   const [pin, setPin] = useState('');
   const [stage, setStage] = useState<Stage>('input');
@@ -60,6 +64,7 @@ export function PinPad({
   const submit = async (value: string) => {
     setStage('checking');
     const res = await onSubmit(value);
+    onResult?.(res === true);
     if (res !== true) {
       setMessage(res);
       setStage('error');
@@ -88,6 +93,21 @@ export function PinPad({
     at(2500, onSuccess);
   };
 
+  // Raqam qo'shish/o'chirish — ekrandagi klaviatura va jismoniy klaviatura uchun umumiy.
+  const type = (next: string) => {
+    if (stage !== 'input' && stage !== 'error') return;
+    const v = next.replace(/\D/g, '').slice(0, PIN_LENGTH);
+    setPin(v);
+    if (stage === 'error') setStage('input');
+    if (v.length > 0) setMessage(''); // eski xato matni yangi urinishda qolmasin
+    if (v.length === PIN_LENGTH) void submit(v);
+  };
+  const press = (k: string) => {
+    if (navigator.vibrate) navigator.vibrate(6);
+    if (k === 'del') type(pin.slice(0, -1));
+    else type(pin + k);
+  };
+
   const done = stage === 'burst';
   const busy = stage !== 'input' && stage !== 'error';
   return (
@@ -101,20 +121,14 @@ export function PinPad({
           ref={input}
           className="pin-input"
           value={pin}
-          inputMode="numeric"
+          inputMode="none"
           autoComplete="one-time-code"
           pattern="\d*"
           maxLength={PIN_LENGTH}
           aria-label="PIN kod"
           autoFocus
           disabled={busy}
-          onChange={(e) => {
-            const v = e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH);
-            setPin(v);
-            if (stage === 'error') setStage('input');
-            if (v.length > 0) setMessage(''); // eski xato matni yangi urinishda qolmasin
-            if (v.length === PIN_LENGTH) void submit(v);
-          }}
+          onChange={(e) => type(e.target.value)}
         />
         <svg className="pin-links" viewBox="-70 -70 140 140" aria-hidden="true">
           <path d="M-40 -40 H40" />
@@ -155,6 +169,8 @@ export function PinPad({
         </span>
       </div>
 
+      {!done && <Keypad disabled={busy} canDelete={pin.length > 0} onPress={press} />}
+
       {done ? (
         <p className="pin-secure">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="10.5" width="14" height="10" rx="2.5" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></svg>
@@ -162,6 +178,49 @@ export function PinPad({
         </p>
       ) : (
         <div className="pin-foot">{footer}</div>
+      )}
+    </div>
+  );
+}
+
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'] as const;
+
+/** Ekrandagi raqamli klaviatura: telefon klaviaturasi ochilishini kutmasdan bir bosishda kiritiladi. */
+function Keypad({ onPress, disabled, canDelete }: { onPress: (k: string) => void; disabled: boolean; canDelete: boolean }) {
+  const [hit, setHit] = useState<{ k: string; n: number } | null>(null);
+  return (
+    <div className="pin-pad" role="group" aria-label="Raqamlar">
+      {KEYS.map((k, i) =>
+        k === '' ? (
+          <span key={i} aria-hidden="true" />
+        ) : (
+          <button
+            key={k}
+            type="button"
+            className={`pin-key ${k === 'del' ? 'del' : ''} ${hit?.k === k ? 'hit' : ''}`}
+            disabled={disabled || (k === 'del' && !canDelete)}
+            aria-label={k === 'del' ? "O'chirish" : k}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.preventDefault(); // fokus yashirin inputdan ketmasin
+              setHit((h) => ({ k, n: (h?.n ?? 0) + 1 }));
+              onPress(k);
+            }}
+            onClick={(e) => {
+              if (e.detail === 0) onPress(k); // klaviatura (Enter/Space) bilan bosilganda
+            }}
+          >
+            {hit?.k === k && <span key={hit.n} className="pin-ripple" aria-hidden="true" />}
+            {k === 'del' ? (
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" />
+                <path d="M17 9.5l-5 5M12 9.5l5 5" />
+              </svg>
+            ) : (
+              <b>{k}</b>
+            )}
+          </button>
+        ),
       )}
     </div>
   );
@@ -177,13 +236,32 @@ export function LockScreen({
   verify: (pin: string) => Promise<true | string>;
   onForgot: () => void;
 }) {
+  const [mood, setMood] = useState<'think' | 'sad' | 'cheer'>('think');
+  const moodTimer = useRef(0);
+  useEffect(() => () => clearTimeout(moodTimer.current), []);
   return (
     <div className="lock-screen" role="dialog" aria-modal="true" aria-label="Ilova qulfi">
+      <span className="lock-aurora a1" aria-hidden="true" />
+      <span className="lock-aurora a2" aria-hidden="true" />
+      <div className={`lock-vivi m-${mood}`} aria-hidden="true">
+        <Mascot mood={mood} size={92} />
+        <span className="lock-badge">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            {mood === 'cheer' ? <path d="M7 10.5V8a5 5 0 0 1 9.6-2" /> : <path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" />}
+            <rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor" stroke="none" />
+          </svg>
+        </span>
+      </div>
       <PinPad
         title="PIN kodni kiriting"
         subtitle="Voilà! shaxsiy PIN bilan himoyalangan."
         onSubmit={verify}
         onSuccess={onUnlock}
+        onResult={(ok) => {
+          clearTimeout(moodTimer.current);
+          setMood(ok ? 'cheer' : 'sad');
+          if (!ok) moodTimer.current = window.setTimeout(() => setMood('think'), 1400);
+        }}
         footer={
           <button type="button" className="pin-forgot" onClick={onForgot}>
             PINni unutdingizmi?
