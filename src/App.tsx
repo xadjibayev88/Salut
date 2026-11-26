@@ -319,13 +319,13 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
         </span>
       )}
       <button type="button" className={`stat streak ${active ? 'on' : ''}`} title="Kunlik seriya" onClick={onProfile}>
-        <StreakFlame on={active} /> <b><CountUp value={state.streak} /></b>
+        <span className={`ico-anim ico-flame ${active ? 'on' : ''}`}><StreakFlame on={active} /></span> <b><CountUp value={state.streak} /></b>
       </button>
       <button type="button" className="stat gems" title="Tangalar" onClick={onShop}>
-        <CoinIcon /> <b><CountUp value={state.gems} /></b>
+        <span className="ico-anim ico-coin"><CoinIcon /></span> <b><CountUp value={state.gems} /></b>
       </button>
       <button type="button" className="stat heart" title="Baliqchalar (xato qilsangiz kamayadi)" onClick={onShop}>
-        <FishIcon full={state.unlimitedHearts || premium || state.hearts > 0} /> <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>
+        <span className={`ico-anim ico-fish ${state.unlimitedHearts || premium || state.hearts > 0 ? 'on' : ''}`}><FishIcon full={state.unlimitedHearts || premium || state.hearts > 0} /></span> <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>
       </button>
     </header>
   );

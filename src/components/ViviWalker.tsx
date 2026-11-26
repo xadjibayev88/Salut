@@ -50,7 +50,7 @@ export function ViviWalker({ cheerKey }: { cheerKey: number }) {
         return;
       }
       set('sit');
-      timer.current = window.setTimeout(next, rand(2200, 5200));
+      timer.current = window.setTimeout(next, rand(6000, 12000));
       return;
     }
     let to = rand(0, free);
@@ -148,7 +148,9 @@ export function ViviWalker({ cheerKey }: { cheerKey: number }) {
           </span>
         )}
         <span className="vw-flip" style={{ transform: `scaleX(${dir})` }}>
-          <CatSide />
+          <span className="vw-wad">
+            <CatSide />
+          </span>
         </span>
       </button>
     </div>
