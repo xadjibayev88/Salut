@@ -1377,5 +1377,13 @@
  "Vivi AI va maxfiylik shartlariga roziman": "Я согласен с условиями Vivi AI и конфиденциальности",
  "Vivi bilan suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profil → «Vivi AI va maxfiylik»da istalgan payt o'zgartirasiz.": "Для чата, голоса, перевода и памяти Vivi текст/аудио отправляются в Google Gemini. Изменить можно в любое время: Профиль → «Vivi AI и конфиденциальность».",
  "Voilà! shaxsiy PIN bilan himoyalangan.": "Voilà! защищено вашим личным PIN-кодом.",
- "Yuklanmoqda…": "Загрузка…"
+ "Yuklanmoqda…": "Загрузка…",
+ "Hisobingiz bormi? Kirib, progressni davom ettiring.": "Уже есть аккаунт? Войдите и продолжайте.",
+ "Hisobingiz yo'qmi? Bir daqiqada yarating.": "Нет аккаунта? Создайте за минуту.",
+ "Parol (kamida 8 ta belgi)": "Пароль (минимум 8 символов)",
+ "Profil yarating": "Создайте профиль",
+ "Ro'yxatdan o'tish": "Регистрация",
+ "Salut, do'stim!": "Salut, друг!",
+ "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Для чата, голоса, перевода и памяти текст/аудио отправляются в Google Gemini. Изменить можно в профиле.",
+ "Yana salom!": "С возвращением!"
 }

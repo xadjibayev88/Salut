@@ -58,11 +58,7 @@ export function AccountCard() {
       )}
 
       {auth && (
-        <div className="modal-back" onClick={() => setAuth(false)}>
-          <div className="sheet auth-sheet" onClick={(e) => e.stopPropagation()}>
-            <AuthScreen initial="register" onDone={() => setAuth(false)} onSkip={() => setAuth(false)} />
-          </div>
-        </div>
+        <AuthScreen initial="register" onDone={() => setAuth(false)} onSkip={() => setAuth(false)} />
       )}
       {confirm && (
         <div className="modal-back" onClick={() => setConfirm(false)}>
