@@ -368,6 +368,9 @@ p { margin: 0; }
 @media (min-width: 640px) { .modal-back { align-items: center; } }
 .sheet { background: var(--bg); width: 100%; max-width: 480px; border-radius: 28px 28px 0 0; padding: 26px 20px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; animation: slide-up 0.22s ease-out; max-height: 92dvh; }
 @media (min-width: 640px) { .sheet { border-radius: 28px; } }
+/* Kichik ekranda oyna ichidagilar siqilmaydi (tugma yo'qolib qolmasin) — oyna o'zi aylantiriladi. */
+.sheet { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.sheet > * { flex-shrink: 0; }
 .sheet h3 { font-size: 22px; }
 .sheet .btn-lg { margin-top: 8px; }
 .big-emoji { font-size: 68px; }
@@ -2174,7 +2177,8 @@ html.lite .gcard, html.lite .gcard-blob, html.lite .gcard-shine, html.lite .supe
 .vw-cat { display: block; overflow: visible; }
 
 .vw-leg { transform-box: fill-box; transform-origin: 50% 12%; }
-.vw-sitlegs { display: none; }
+.vw-sitpose { display: none; }
+.vw-tail2 { transform-box: view-box; transform-origin: 13px 26.8px; animation: vw-tail 2.2s ease-in-out infinite alternate; }
 .vw-eye-shut { display: none; }
 .vw-tail { transform-box: view-box; transform-origin: 9.5px 17.5px; animation: vw-tail 1.8s ease-in-out infinite alternate; }
 .vw-eye { transform-box: fill-box; transform-origin: center; animation: vw-blink 4.6s infinite; }
@@ -2190,17 +2194,16 @@ html.lite .gcard, html.lite .gcard-blob, html.lite .gcard-shine, html.lite .supe
 @keyframes vw-step { from { transform: rotate(26deg); } to { transform: rotate(-26deg); } }
 @keyframes vw-bob { from { transform: translateY(0); } to { transform: translateY(-1px); } }
 
-/* o'tirish: tana orqaga qiyalanadi, oldingi oyoqlar tik */
-.vw-sit .vw-legs, .vw-sleep .vw-legs, .vw-jump .vw-legs { display: none; }
-.vw-sit .vw-sitlegs, .vw-sleep .vw-sitlegs, .vw-jump .vw-sitlegs { display: inline; }
-.vw-sit .vw-bodyg, .vw-sleep .vw-bodyg, .vw-jump .vw-bodyg { transform-origin: 8px 27px; transform: rotate(-24deg) translate(2px, 1px); }
-.vw-sit .vw-head, .vw-jump .vw-head { transform-origin: 30px 16px; transform: translate(-4.5px, -2.5px); }
+/* o'tirish: yurish tanasi o'rniga alohida chizilgan o'tirgan siluet, bosh ko'krak ustida */
+.vw-sit .vw-bodyg, .vw-sleep .vw-bodyg, .vw-jump .vw-bodyg { display: none; }
+.vw-sit .vw-sitpose, .vw-sleep .vw-sitpose, .vw-jump .vw-sitpose { display: inline; }
+.vw-sit .vw-head, .vw-jump .vw-head { transform-origin: 30px 16px; transform: translate(-5.5px, -2.6px); }
 
 /* uyqu: bosh egiladi, ko'z yumiq, «z» uchadi, nafas */
-.vw-sleep .vw-head { transform-origin: 30px 16px; transform: translate(-5px, 1.5px) rotate(16deg); }
+.vw-sleep .vw-head { transform-origin: 30px 16px; transform: translate(-6px, 0.5px) rotate(14deg); }
 .vw-sleep .vw-eye, .vw-sleep .vw-eye + circle { display: none; }
 .vw-sleep .vw-eye-shut { display: inline; }
-.vw-sleep .vw-tail { animation-duration: 3.2s; }
+.vw-sleep .vw-tail2 { animation-duration: 3.6s; }
 .vw-sleep .vw-cat { animation: vw-breathe 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
 @keyframes vw-breathe { 50% { transform: scale(1.03, .97); } }
 .vw-z { position: absolute; left: 22px; top: -10px; font: 800 10px/1 var(--font-display, sans-serif); color: #a5b4fc; pointer-events: none; animation: vw-z 2.4s ease-in-out infinite; }
@@ -2226,10 +2229,10 @@ html[data-theme='light'] .tbi-cup { color: #a8a29e; }
 html[data-theme='light'] .vw-z { color: #6366f1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .vw-tail, .vw-eye, .vw-cat, .vw-leg, .vw-z, .tbi-coin-shine, .tbi-steam path, .vw-heart { animation: none !important; }
+  .vw-tail2, .vw-tail, .vw-eye, .vw-cat, .vw-leg, .vw-z, .tbi-coin-shine, .tbi-steam path, .vw-heart { animation: none !important; }
   .vw-pos { transition: none !important; }
 }
-html.lite .vw-tail, html.lite .vw-eye, html.lite .tbi-coin-shine, html.lite .tbi-steam path { animation: none !important; }
+html.lite .vw-tail, html.lite .vw-tail2, html.lite .vw-eye, html.lite .tbi-coin-shine, html.lite .tbi-steam path { animation: none !important; }
 
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }

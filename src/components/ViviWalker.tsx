@@ -178,12 +178,20 @@ function CatSide() {
           <rect className="vw-leg a" x="23.2" y="19.5" width="3.2" height="9" rx="1.6" fill={FUR} stroke={LINE} strokeWidth="1.2" />
         </g>
       </g>
-      {/* o'tirganda: tana qiyalanadi, oldingi oyoqlar esa tik turadi, orqa son yerda yumaloq */}
-      <g className="vw-sitlegs">
-        <rect x="26.6" y="15.5" width="3" height="13" rx="1.5" fill={FUR_SHADE} stroke={LINE} strokeWidth="1.1" />
-        <rect x="23.4" y="15" width="3.3" height="13.5" rx="1.65" fill={FUR} stroke={LINE} strokeWidth="1.2" />
-        <ellipse cx="13.5" cy="23.6" rx="6.4" ry="4.8" fill={FUR} stroke={LINE} strokeWidth="1.3" />
-        <path d="M17 27.6 h4" stroke={LINE} strokeWidth="1.1" strokeLinecap="round" />
+      {/* O'tirgan Vivi — alohida chizilgan siluet: tik ko'krak, yumaloq son, oldingi panjalar yerda,
+          dum orqada jingalak. Yurish tanasi o'tirganda yashiriladi (qiyalatilmaydi). */}
+      <g className="vw-sitpose">
+        <g className="vw-tail2">
+          <path d="M13 26.8 C5.5 27.4 3.2 19.5 6.8 15.2" fill="none" stroke={LINE} strokeWidth="4.6" strokeLinecap="round" />
+          <path d="M13 26.8 C5.5 27.4 3.2 19.5 6.8 15.2" fill="none" stroke={FUR} strokeWidth="2.6" strokeLinecap="round" />
+        </g>
+        <rect x="27.3" y="17" width="3" height="11.6" rx="1.5" fill={FUR_SHADE} stroke={LINE} strokeWidth="1.1" />
+        <path d="M24.5 10.8 C30.4 12 31 20 29.8 28.5 L14.2 28.5 C9.2 28.5 8.6 21.8 11.2 17.6 C13.6 13.8 18.2 11 24.5 10.8 Z" fill={FUR} stroke={LINE} strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M26.6 15.5 Q24.8 19 26.4 22.5" fill="none" stroke={FUR_SHADE} strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M11.8 26.6 C10.8 20.4 18.8 18.6 20.8 25.4" fill="none" stroke={LINE} strokeWidth="1.2" strokeLinecap="round" />
+        <ellipse cx="17.4" cy="28.5" rx="3.4" ry="1.25" fill={FUR} stroke={LINE} strokeWidth="1.1" />
+        <rect x="23.9" y="17.6" width="3.3" height="11" rx="1.65" fill={FUR} stroke={LINE} strokeWidth="1.2" />
+        <ellipse cx="26" cy="28.6" rx="2.5" ry="1.15" fill={FUR} stroke={LINE} strokeWidth="1.1" />
       </g>
       <g className="vw-head">
         <path d="M26 7.5 L26.8 0.8 Q27.2 -0.2 28 0.6 L31.6 4.6 Z" fill={FUR} stroke={LINE} strokeWidth="1.3" strokeLinejoin="round" />
