@@ -140,7 +140,7 @@ export function ReviewForm() {
       </div>
       <textarea className="text-input" rows={3} maxLength={400} placeholder="Voilà va Vivi haqida fikringiz…" value={text} onChange={(e) => setText(e.target.value)} />
       {err && <p className="auth-error">{err}</p>}
-      <button type="button" className="btn btn-primary" disabled={state === 'busy' || text.trim().length < 10} onClick={() => void submit()}>
+      <button type="button" className="btn btn-primary btn-beam" disabled={state === 'busy' || text.trim().length < 10} onClick={() => void submit()}>
         {state === 'busy' ? 'Yuborilmoqda…' : 'Yuborish'}
       </button>
     </div>
