@@ -34,6 +34,7 @@ export function Onboarding() {
           </button>
         </div>
         <AuthScreen
+          backdrop
           initial={auth}
           onDone={() => {
             // Serverdagi progress yuklansa, ilova o'zi asosiy ekranga o'tadi; yangi hisob bo'lsa — onboarding davom etadi.

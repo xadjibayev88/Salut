@@ -1,8 +1,8 @@
 // Kirish / ro'yxatdan o'tish: Google, email + parol, yoki mehmon sifatida davom etish.
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '../state/account';
-import { Mascot } from '../components/Mascot';
 import { SocialLogin } from '../components/SocialLogin';
+import { motionAllowed } from '../engine/motion';
 
 type GoogleId = {
   initialize: (o: { client_id: string; callback: (r: { credential: string }) => void; ux_mode?: string; auto_select?: boolean; itp_support?: boolean }) => void;
@@ -45,9 +45,62 @@ function androidGoogle(clientId: string): Promise<string> {
   });
 }
 
-export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { initial?: 'login' | 'register'; onDone: () => void; onSkip?: () => void; title?: string }) {
+type Phase = 'idle' | 'out' | 'core' | 'in';
+// Morf vaqtlari (ms): forma yo'qoladi → bo'laklar markazda birlashib aylanadi → yangi forma ochiladi.
+const OUT_MS = 340;
+const CORE_MS = 640;
+const IN_MS = 460;
+
+const Icon = {
+  user: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8" r="3.6" /><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6" /></svg>,
+  mail: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5" /><path d="m4.5 7 7.5 6 7.5-6" /></svg>,
+  lock: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2.5" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></svg>,
+  eye: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.8" /></svg>,
+  eyeOff: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 3l18 18M10.6 5.6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-3.2 3.9M6.4 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1" /></svg>,
+  arrow: <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
+};
+
+export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdrop = false }: { initial?: 'login' | 'register'; onDone: () => void; onSkip?: () => void; title?: string; backdrop?: boolean }) {
   const { me, signIn, signInGoogle } = useAccount();
   const [mode, setMode] = useState(initial);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [height, setHeight] = useState<number | null>(null);
+  const [showPass, setShowPass] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  /** Glassy morph: forma xiralashib yo'qoladi, karta kvadratga siqiladi, bo'laklar birlashadi, so'ng yangi forma ochiladi. */
+  const switchMode = () => {
+    const next = mode === 'register' ? 'login' : 'register';
+    setError(null);
+    const el = card.current;
+    if (!el || !motionAllowed() || phase !== 'idle') {
+      if (phase === 'idle') setMode(next);
+      return;
+    }
+    const h0 = el.offsetHeight;
+    const square = Math.min(h0, Math.round(el.offsetWidth * 0.86));
+    setHeight(h0);
+    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
+    requestAnimationFrame(() => {
+      setPhase('out');
+      setHeight(square);
+    });
+    at(OUT_MS, () => {
+      setPhase('core');
+      setMode(next);
+    });
+    at(OUT_MS + CORE_MS, () => {
+      setPhase('in');
+      setHeight(content.current?.offsetHeight ?? null);
+    });
+    at(OUT_MS + CORE_MS + IN_MS, () => {
+      setPhase('idle');
+      setHeight(null);
+    });
+  };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -108,53 +161,99 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { in
     else onDone();
   };
 
+  const login = mode === 'login';
+  const hasSocial = !!(clientId || me.auth?.facebookAppId || me.auth?.appleClientId || me.auth?.telegramBot);
   return (
-    <div className="auth">
-      <div className="auth-hero">
-        <Mascot mood="cheer" size={110} />
-        <h1>{title ?? (mode === 'register' ? 'Profil yarating' : 'Xush kelibsiz!')}</h1>
-        <p className="muted">{mode === 'register' ? "Progressingiz saqlanadi va istalgan qurilmada davom etasiz." : 'Hisobingizga kiring va o\'qishni davom ettiring.'}</p>
-      </div>
+    <div className={`auth glassy-auth ${backdrop ? 'with-backdrop' : ''}`}>
+      {backdrop && (
+        <div className="ga-backdrop" aria-hidden="true">
+          <i /><i /><i /><i />
+        </div>
+      )}
+      <div className={`ga-shell ga-${phase}`}>
+      {/* Plitka, bo'laklar va halqalar kartadan tashqarida — kartaning qiya kesimi ularni qirqmasin. */}
+      <span className="ga-chip" aria-hidden="true" />
+      <span className="ga-piece tl" aria-hidden="true" />
+      <span className="ga-piece br" aria-hidden="true" />
+      <span className="ga-rings" aria-hidden="true"><i /><i /><i /></span>
+      <div ref={card} className="ga-card" style={height === null ? undefined : { height }}>
+        <div ref={content} className="ga-content" aria-busy={phase !== 'idle'}>
+          <header className="ga-head">
+            <h1>
+              {title ?? (login ? <>Xush <span>kelibsiz</span></> : <>Profil <span>yarating</span></>)}
+            </h1>
+            <p>{login ? "Hisobingizga kiring va o'qishni davom ettiring." : 'Progressingiz saqlanadi va istalgan qurilmada davom etasiz.'}</p>
+          </header>
 
-      <div className="auth-card">
-        {clientId &&
-          (native ? (
-            <button type="button" className="btn btn-google btn-lg" disabled={busy} onClick={nativeGoogle}>
-              <span className="g-logo">G</span> Google bilan davom etish
-            </button>
-          ) : (
-            <div className="gis-wrap" ref={gBtn} />
-          ))}
-        <SocialLogin onDone={onDone} onError={setError} />
-        {(clientId || me.auth?.facebookAppId || me.auth?.appleClientId || me.auth?.telegramBot) && <div className="auth-or"><span>yoki email bilan</span></div>}
-        <form onSubmit={submit} className="auth-form">
-          {mode === 'register' && (
-            <input className="text-input" placeholder="Ismingiz" autoComplete="given-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+          {hasSocial && (
+            <div className="ga-social">
+              {clientId &&
+                (native ? (
+                  <button type="button" className="ga-social-btn" disabled={busy} onClick={nativeGoogle}>
+                    <span className="g-logo">G</span> Google
+                  </button>
+                ) : (
+                  <div className="ga-slot gis-wrap" ref={gBtn} />
+                ))}
+              <SocialLogin onDone={onDone} onError={setError} />
+            </div>
           )}
-          <input className="text-input" type="email" placeholder="Email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input
-            className="text-input"
-            type="password"
-            placeholder={mode === 'register' ? 'Parol (kamida 8 ta belgi)' : 'Parol'}
-            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-            required
-            minLength={mode === 'register' ? 8 : 1}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {error && <p className="auth-error" role="alert">{error}</p>}
-          <button type="submit" className="btn btn-primary btn-lg" disabled={busy}>
-            {busy ? 'Kuting…' : mode === 'register' ? 'Profil yaratish' : 'Kirish'}
-          </button>
-        </form>
-        <button type="button" className="btn btn-text" onClick={() => { setMode(mode === 'register' ? 'login' : 'register'); setError(null); }}>
-          {mode === 'register' ? 'Menda hisob bor — kirish' : "Hisobim yo'q — profil yaratish"}
-        </button>
-        {onSkip && (
-          <button type="button" className="btn btn-text muted-btn" onClick={onSkip}>
-            Keyinroq
-          </button>
-        )}
+          {hasSocial && <div className="ga-or"><span>yoki email bilan</span></div>}
+
+          <form onSubmit={submit} className="ga-form">
+            {!login && (
+              <label className="ga-field">
+                <span className="ga-label">Ismingiz</span>
+                <span className="ga-input">
+                  {Icon.user}
+                  <input placeholder="Ali" autoComplete="given-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+                </span>
+              </label>
+            )}
+            <label className="ga-field">
+              <span className="ga-label">Email manzil</span>
+              <span className="ga-input">
+                {Icon.mail}
+                <input type="email" placeholder="ism@pochta.uz" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </span>
+            </label>
+            <label className="ga-field">
+              <span className="ga-label">Parol</span>
+              <span className="ga-input">
+                {Icon.lock}
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  placeholder={login ? '••••••••' : 'Kamida 8 ta belgi'}
+                  autoComplete={login ? 'current-password' : 'new-password'}
+                  required
+                  minLength={login ? 1 : 8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button type="button" className="ga-eye" aria-label={showPass ? 'Parolni yashirish' : "Parolni ko'rsatish"} onClick={() => setShowPass((v) => !v)}>
+                  {showPass ? Icon.eyeOff : Icon.eye}
+                </button>
+              </span>
+            </label>
+            {error && <p className="auth-error" role="alert">{error}</p>}
+            <button type="submit" className="ga-submit" disabled={busy}>
+              {busy ? 'Kuting…' : login ? 'Kirish' : 'Profil yaratish'} {!busy && Icon.arrow}
+            </button>
+          </form>
+
+          <p className="ga-switch">
+            {login ? "Hisobingiz yo'qmi?" : 'Hisobingiz bormi?'}{' '}
+            <button type="button" onClick={switchMode} disabled={phase !== 'idle'}>
+              {login ? 'Profil yaratish' : 'Kirish'}
+            </button>
+          </p>
+          {onSkip && (
+            <button type="button" className="btn btn-text muted-btn" onClick={onSkip}>
+              Keyinroq
+            </button>
+          )}
+        </div>
+      </div>
       </div>
       <p className="auth-legal">
         Davom etish orqali siz{' '}
