@@ -1,4 +1,5 @@
 import { ReviewForm } from '../components/SocialProof';
+import { TAB_MOTIONS, saveTabMotion, useTabMotion } from '../components/TabBar';
 import { themePref, setThemePref, type ThemePref } from '../engine/theme';
 import { useState } from 'react';
 import { ACHIEVEMENTS, LEAGUES } from '../engine/game';
@@ -140,6 +141,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
       </div>
       <div className="settings">
         <ThemeSetting />
+        <TabMotionSetting />
         <label className="setting">
           <span>⚡ Yengil rejim (sekin telefonlar uchun)</span>
           <input
@@ -237,6 +239,31 @@ function ThemeSetting() {
             }}
           >
             {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Pastki menyu o'tish animatsiyasi (videodagi 6 uslub). Tanlansa — menyu darhol namoyish qiladi. */
+function TabMotionSetting() {
+  const current = useTabMotion();
+  return (
+    <div className="setting tab-motion-setting">
+      <span>✨ Menyu animatsiyasi</span>
+      <div className="tm-grid" role="radiogroup" aria-label="Menyu animatsiyasi">
+        {TAB_MOTIONS.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            role="radio"
+            aria-checked={current === m.id}
+            className={`tm-chip tm-chip-${m.id} ${current === m.id ? 'on' : ''}`}
+            onClick={() => saveTabMotion(m.id)}
+          >
+            <b>{m.name}</b>
+            <small>{m.note}</small>
           </button>
         ))}
       </div>

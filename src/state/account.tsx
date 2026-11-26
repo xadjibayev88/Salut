@@ -39,6 +39,8 @@ interface AccountCtx {
   online: boolean;
   premium: boolean;
   refresh: () => Promise<void>;
+  /** Pull-to-refresh: hisob holatini yangilaydi va serverdagi progressni oladi (kirgan bo'lsa). */
+  sync: () => Promise<void>;
   signIn: (kind: 'login' | 'register', email: string, password: string, name?: string) => Promise<string | null>;
   signInGoogle: (credential: string) => Promise<string | null>;
   /** Facebook / Apple / Telegram: tayyor payload server yo'liga yuboriladi. */
@@ -194,7 +196,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent('salut:premium', { detail: premium }));
   }, [premium]);
 
-  return <Ctx.Provider value={{ me, loaded, online, premium, refresh, signIn, signInGoogle, signInSocial, signOut, deleteAccount }}>{children}</Ctx.Provider>;
+  const sync = useCallback(async () => {
+    await refresh();
+    if (me.user) await pull();
+  }, [refresh, pull, me.user]);
+
+  return <Ctx.Provider value={{ me, loaded, online, premium, refresh, sync, signIn, signInGoogle, signInSocial, signOut, deleteAccount }}>{children}</Ctx.Provider>;
 }
 
 export function useAccount(): AccountCtx {

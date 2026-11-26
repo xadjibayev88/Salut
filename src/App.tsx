@@ -14,6 +14,8 @@ import { RewardedButton } from './components/RewardedButton';
 import { QuestsCard } from './components/Quests';
 import { AiConsentDialog } from './components/AiConsentDialog';
 import { CountUp } from './components/CountUp';
+import { TabBar, type TabItem } from './components/TabBar';
+import { PullToRefresh } from './components/PullToRefresh';
 import { startScrollReveal } from './engine/motion';
 // Og'ir sahifalar alohida yuklanadi (birinchi ochilish tezroq), bo'sh paytda oldindan olib qo'yiladi.
 const loaders = {
@@ -90,6 +92,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profil', icon: '👤' },
 ];
 
+const TAB_ITEMS: readonly TabItem<Tab>[] = TABS.map((t) => ({ id: t.id, label: t.label, icon: (on: boolean) => <TabIcon id={t.id} on={on} /> }));
+
 function readTab(): Tab {
   const h = location.hash.replace('#/', '').split('?')[0] as Tab;
   return TABS.some((t) => t.id === h) || h === 'about' || h === 'admin' ? h : 'learn';
@@ -97,7 +101,7 @@ function readTab(): Tab {
 
 export function App() {
   const { state } = useStore();
-  const { premium } = useAccount();
+  const { premium, sync } = useAccount();
   const [tab, setTab] = useState<Tab>(readTab);
   // Bir marta ochilgan sahifalar xotirada qoladi (qayta chizilmaydi) — qaytib o'tish bir zumda.
   const [visited, setVisited] = useState<Tab[]>(() => [readTab()]);
@@ -130,9 +134,7 @@ export function App() {
   }, [premium, state.onboarded, update]);
 
   const wide = useMedia('(min-width: 1180px)');
-  const [tapped, setTapped] = useState<{ id: Tab; n: number } | null>(null);
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
-  const [comet, setComet] = useState<{ from: number; to: number; n: number } | null>(null);
   useEffect(() => startScrollReveal(), []);
   const go = (t: Tab) => {
     if (t === tab) {
@@ -143,7 +145,6 @@ export function App() {
     const from = TABS.findIndex((x) => x.id === tab);
     const to = TABS.findIndex((x) => x.id === t);
     setDir(to >= from ? 'fwd' : 'back');
-    if (from >= 0 && to >= 0) setComet((c) => ({ from, to, n: (c?.n ?? 0) + 1 }));
     history.replaceState(null, '', `#/${t}`);
     setVisited((v) => (v.includes(t) ? v : [...v, t]));
     setTab(t);
@@ -207,43 +208,12 @@ export function App() {
         </aside>
       )}
 
-      <nav className="bottombar" style={{ ['--tabs' as string]: TABS.length, ['--i' as string]: Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
-        {/* Faol bo'lim ostidagi «shisha linza» — bo'limlar orasida suzib o'tadi */}
-        <span className={`tab-lens ${TABS.some((t) => t.id === tab) ? '' : 'hidden'}`} aria-hidden="true" />
-        {/* Glow Trail: bo'lim almashganda eski joydan yangisiga nurli kometa uchib o'tadi */}
-        {comet && (
-          <span
-            key={comet.n}
-            className="tab-comet"
-            aria-hidden="true"
-            style={{ ['--from' as string]: comet.from, ['--to' as string]: comet.to, ['--dir' as string]: comet.to > comet.from ? 1 : -1 }}
-          />
-        )}
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`tab ${tab === t.id ? 'active' : ''} ${tapped?.id === t.id ? 'tapped' : ''}`}
-            // Barmoq tekkan zahoti o'tadi (qo'yib yuborishni kutmaydi); klaviatura uchun — onClick.
-            onPointerDown={(e) => {
-              if (e.button !== 0) return;
-              setTapped({ id: t.id, n: (tapped?.n ?? 0) + 1 });
-              if (navigator.vibrate) navigator.vibrate(8);
-              go(t.id);
-            }}
-            onClick={(e) => {
-              if (e.detail === 0) go(t.id);
-            }}
-            aria-label={t.label}
-            aria-current={tab === t.id ? 'page' : undefined}
-          >
-            <span className="tab-ico-wrap" key={tapped?.id === t.id ? tapped.n : 0}>
-              <TabIcon id={t.id} on={tab === t.id} />
-            </span>
-            <small>{t.label}</small>
-          </button>
-        ))}
-      </nav>
+      <TabBar
+        tabs={TAB_ITEMS}
+        active={tab}
+        onSelect={go}
+      />
+      <PullToRefresh onRefresh={sync} disabled={tab === 'tutor' || !!blocked || aiConsentOpen} />
 
       {blocked && (
         <div className="modal-back" onClick={() => setBlocked(false)}>
@@ -266,12 +236,31 @@ export function App() {
   );
 }
 
+/** Shrink header: sahifa pastga surilganda yuqori panel ixchamlashadi. */
+function useScrolledPast(px: number): boolean {
+  const [past, setPast] = useState(() => typeof window !== 'undefined' && window.scrollY > px);
+  useEffect(() => {
+    let raf = 0;
+    const on = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setPast(window.scrollY > px));
+    };
+    window.addEventListener('scroll', on, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', on);
+    };
+  }, [px]);
+  return past;
+}
+
 function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => void }) {
   const { state } = useStore();
   const { premium } = useAccount();
   const active = streakActiveToday(state);
+  const compact = useScrolledPast(28);
   return (
-    <header className="topbar">
+    <header className={`topbar ${compact ? 'compact' : ''}`}>
       <button type="button" className="stat flag" title="Fransuz tili" onClick={onProfile}>
         🇫🇷
       </button>
