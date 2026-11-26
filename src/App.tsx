@@ -246,7 +246,8 @@ function useScrolledPast(px: number): boolean {
     let raf = 0;
     const on = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setPast(window.scrollY > px));
+      // Gisterezis: chegarada (px atrofida) panel ixcham ↔ oddiy bo'lib qaltiramasin.
+      raf = requestAnimationFrame(() => setPast((was) => (was ? window.scrollY > px * 0.55 : window.scrollY > px * 1.45)));
     };
     window.addEventListener('scroll', on, { passive: true });
     return () => {

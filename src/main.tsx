@@ -44,13 +44,9 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     // Versiya sw.js manzilida — har build'da yangi service worker o'rnatiladi va eski kesh o'chadi.
     navigator.serviceWorker.register(`./sw.js?v=${__BUILD__}`).catch(() => undefined);
   });
-  // Yangi service worker boshqaruvni olganda sahifani bir marta yangilaymiz.
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded) return;
-    reloaded = true;
-    location.reload();
-  });
+  // Eslatma: yangi service worker boshqaruvni olganda sahifani QAYTA YUKLAMAYMIZ — sahifa (index.html) har doim
+  // tarmoqdan yangi olinadi, ya'ni allaqachon yangi versiyada. Avval bu yerdagi reload birinchi kirishda va har
+  // deploydan keyin ilovani ikki marta ochardi (PIN ekrani ikki marta chiqardi).
 }
 
 // Yangi versiya chiqdimi? Ochilganda, ekranga qaytganda va har 5 daqiqada tekshiriladi.
@@ -64,7 +60,8 @@ if (import.meta.env.PROD) {
       const v = (await r.json()) as { build?: string };
       if (v.build && v.build !== __BUILD__) {
         // Dars yoki suhbat o'rtasida bo'lmasa — darhol yangilaymiz.
-        const busy = document.querySelector('.call, .session');
+        // PIN ekrani ochiq bo'lsa ham kutamiz — aks holda qulf ekrani ikki marta chiqadi.
+        const busy = document.querySelector('.call, .session, .lock-screen');
         if (!busy) {
           const reg = await navigator.serviceWorker?.getRegistration();
           await reg?.update().catch(() => undefined);
