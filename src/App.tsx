@@ -1,3 +1,4 @@
+import { GlassRefraction, useLiquidGlassOn } from './components/LiquidGlass';
 import { BoltIcon, CoinIcon, CupIcon, FlagIcon } from './components/TopBarIcons';
 import { ViviWalker } from './components/ViviWalker';
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -261,8 +262,10 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
   const { premium } = useAccount();
   const active = streakActiveToday(state);
   const compact = useScrolledPast(28);
+  const glass = useLiquidGlassOn();
   return (
-    <header className={`topbar ${compact ? 'compact' : ''}`}>
+    <header className={`topbar ${compact ? 'compact' : ''} ${glass ? 'lg-on' : ''}`}>
+      {glass && <GlassRefraction radius={30} />}
       <button type="button" className="stat flag" title="Fransuz tili" aria-label="Fransuz tili" onClick={onProfile}>
         <FlagIcon />
       </button>

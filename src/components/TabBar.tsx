@@ -9,6 +9,7 @@
 //             cho'zilib yangi bo'limga oqib o'tadi (prujina fizikasi), bosilgan ikonkadan halqa to'lqini chiqadi
 //  drop     — Liquid Drop: bosilgan ikonka shisha pufakda suyuq «poya» bilan menyudan ko'tariladi, poya
 //             ingichkalashib uziladi, pufak tomchidek qaytib tushadi; menyu rangi bo'limga qarab almashadi
+import { GlassRefraction, useLiquidGlassOn } from './LiquidGlass';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { motionAllowed } from '../engine/motion';
 
@@ -311,6 +312,7 @@ export function TabBar<T extends string>({
   motionOverride?: TabMotion;
 }) {
   const saved = useTabMotion();
+  const glass = useLiquidGlassOn();
   const motion = motionOverride ?? saved;
   const index = tabs.findIndex((t) => t.id === active);
   const [change, setChange] = useState<Change | null>(null);
@@ -348,7 +350,8 @@ export function TabBar<T extends string>({
   } as CSSProperties;
 
   return (
-    <nav className={`bottombar tm-${motion}${change ? ` ss-${change.n % 2}` : ''}`} style={style}>
+    <nav className={`bottombar tm-${motion}${change ? ` ss-${change.n % 2}` : ''}${glass ? ' lg-on' : ''}`} style={style}>
+      {glass && <GlassRefraction radius={32} />}
       <span className="tab-clip" aria-hidden="true">
         {motion === 'drop' && <span className="drop-tint" />}
         <span className={`tab-lens ${index >= 0 ? '' : 'hidden'}`} />
