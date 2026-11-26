@@ -1411,6 +1411,84 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
 html[data-theme='light'] .tm-slot .tab-ico-wrap { background: rgba(99, 102, 241, .08); box-shadow: inset 0 1px 2px rgba(30, 27, 75, .12); }
 html[data-theme='light'] .tab-bulge { filter: drop-shadow(0 8px 18px rgba(76, 106, 255, .35)); }
 
+/* Floating Notch — botiq o'yiqli menyu va ustida suzuvchi gradient shar */
+.bottombar.tm-notch { background: none !important; border-color: transparent !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.tm-notch::before, .tm-notch .tab-clip { display: none; }
+.tab-bulge.is-notch { filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .45)) drop-shadow(0 0 0.5px rgba(255, 255, 255, .35)); }
+.notch-ball {
+  position: absolute; left: 0; top: -22px; width: 46px; height: 46px; margin-left: -23px; border-radius: 50%; z-index: 2; pointer-events: none;
+  display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #7c5cff, #38bdf8);
+  box-shadow: 0 8px 20px rgba(76, 106, 255, .55), inset 0 1px 0 rgba(255, 255, 255, .45); will-change: transform;
+}
+.notch-ball-ico { display: grid; place-items: center; animation: notch-ico .35s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes notch-ico { from { transform: scale(.3) rotate(-30deg); opacity: 0; } }
+.tm-notch .tab { color: rgba(226, 232, 255, .62); }
+.tm-notch .tab.active .tab-ico-wrap { opacity: 0; }
+.tm-notch .tab small { opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; }
+.tm-notch .tab.active small { opacity: 1; transform: none; color: #c7d2fe; }
+.tm-notch .tab.tapped .tab-ico-wrap { animation: none; }
+
+/* Sliding Pill — gradient tabletka cho'zilib sirpanadi */
+.tm-pill .tab-lens { opacity: 0; }
+.tab-pill {
+  position: absolute; top: 6px; bottom: 6px; z-index: -1; pointer-events: none;
+  left: calc(6px + (100% - 12px) / var(--tabs) * var(--i)); width: calc((100% - 12px) / var(--tabs));
+  transition: left .48s cubic-bezier(.3, 1.35, .45, 1);
+}
+.tab-pill-body {
+  position: absolute; inset: 0 4px; border-radius: 24px; background: linear-gradient(135deg, #7c5cff, #38bdf8);
+  box-shadow: 0 6px 18px rgba(76, 106, 255, .45), inset 0 1px 0 rgba(255, 255, 255, .4);
+  transform-origin: calc(50% - var(--dir) * 50%) 50%; animation: pill-stretch .48s cubic-bezier(.3, 1.2, .45, 1);
+}
+@keyframes pill-stretch { 0% { transform: scaleX(1); } 35% { transform: scaleX(1.55) scaleY(.88); } 100% { transform: scaleX(1); } }
+.tm-pill .tab.active { color: #fff; }
+
+/* Icon Fill — ikonka markazidan binafsha→feruza rangga to'ladi, «pop» va nuqta */
+.tm-fill .tab-lens { opacity: 0; }
+.tm-fill .tab-ico-wrap::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 31px; height: 31px; margin: -15.5px 0 0 -15.5px; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, #a78bfa 0%, #7c5cff 45%, #38bdf8 100%); transform: scale(0); transition: transform .35s cubic-bezier(.3, 1.5, .5, 1);
+}
+.tm-fill .tab.active .tab-ico-wrap::before { transform: scale(1); }
+.tm-fill .tab.active { color: #fff; }
+.tm-fill .tab.tapped .tab-ico-wrap { animation: fill-pop .45s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes fill-pop { 0% { transform: scale(.85); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.fill-dot { position: absolute; bottom: 2px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8; transform: scale(0); transition: transform .3s cubic-bezier(.3, 1.8, .5, 1) .12s; }
+.tab.active .fill-dot { transform: scale(1); }
+.tm-fill .tab small { opacity: .75; }
+.tm-fill .tab.active small { color: #818cf8; opacity: 1; }
+html[data-theme='light'] .tm-fill .tab.active small { color: #5458d6; }
+
+/* Expanding Label — faol bo'lim tabletkaga aylanib kengayadi, yozuvi yonidan chiqadi */
+.tm-label .tab-lens { opacity: 0; }
+.tm-label .tab { flex: 1 1 0; transition: flex-grow .45s cubic-bezier(.3, 1.2, .45, 1), color .25s; }
+.tm-label .tab.active { flex-grow: 2.6; flex-direction: row; gap: 6px; color: #fff; }
+.tm-label .tab::before {
+  content: ''; position: absolute; inset: 4px 2px; border-radius: 22px; z-index: -1; opacity: 0; transform: scale(.6);
+  background: linear-gradient(135deg, rgba(124, 92, 255, .85), rgba(56, 189, 248, .75)); box-shadow: 0 6px 16px rgba(76, 106, 255, .35);
+  transition: opacity .3s, transform .4s cubic-bezier(.3, 1.4, .45, 1);
+}
+.tm-label .tab.active::before { opacity: 1; transform: none; }
+.tm-label .tab small { max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; transition: max-width .4s cubic-bezier(.3, 1.2, .45, 1), opacity .25s; }
+.tm-label .tab.active small { max-width: 90px; opacity: 1; font-size: 12.5px; }
+
+/* Bubble Float — ikonka ko'tarilib nurlanadi, pufakchalar uchib yoriladi */
+.tm-bubble .tab.active { color: #7dd3fc; }
+html[data-theme='light'] .tm-bubble .tab.active { color: #0284c7; }
+.tm-bubble .tab.active .tab-ico-wrap { transform: translateY(-3px); filter: drop-shadow(0 0 8px rgba(56, 189, 248, .85)); transition: transform .35s cubic-bezier(.3, 1.6, .5, 1); }
+.bubbles { position: absolute; left: 50%; top: 10px; width: 0; height: 0; pointer-events: none; }
+.bubbles i {
+  position: absolute; left: calc((var(--k) - 2.5) * 5px); top: 0; width: calc(5px + (var(--k) % 3) * 2px); height: calc(5px + (var(--k) % 3) * 2px);
+  border-radius: 50%; border: 1.5px solid #38bdf8; background: rgba(56, 189, 248, .25); box-shadow: 0 0 6px rgba(56, 189, 248, .6);
+  animation: bubble-up .9s cubic-bezier(.2, .6, .3, 1) calc(var(--k) * 70ms) both;
+}
+@keyframes bubble-up {
+  0% { transform: translate(0, 0) scale(.3); opacity: 0; }
+  20% { opacity: 1; }
+  80% { transform: translate(calc((var(--k) - 2.5) * 4px), -34px) scale(1); opacity: 1; }
+  100% { transform: translate(calc((var(--k) - 2.5) * 4px), -40px) scale(1.6); opacity: 0; }
+}
+
 /* 2 · Glow Trail — nurli kometa */
 .tab-comet {
   position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / var(--tabs)); pointer-events: none;
@@ -1510,7 +1588,8 @@ html[data-theme='light'] .tab-bulge { filter: drop-shadow(0 8px 18px rgba(76, 10
 @keyframes slot-spin { 0% { transform: translateY(0); } 100% { transform: translateY(-75%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .tab-comet, .tab-particles, .seesaw-pivot, .bulge-ripple { display: none; }
+  .tab-comet, .tab-particles, .seesaw-pivot, .bulge-ripple, .bubbles { display: none; }
+  .tab-pill-body, .notch-ball-ico { animation: none !important; }
   .tm-seesaw, .tab.tapped .tab-ico-wrap, .tab.tapped .tab-ico-face, .tab.tapped .slot-reel, .count-up.bumped { animation: none !important; }
 }
 html.lite .tab-comet, html.lite .tab-particles { display: none; }

@@ -10,10 +10,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { motionAllowed } from '../engine/motion';
 
-export type TabMotion = 'bulge' | 'flip' | 'glow' | 'particle' | 'string' | 'seesaw' | 'slot';
+export type TabMotion = 'bulge' | 'notch' | 'pill' | 'fill' | 'label' | 'bubble' | 'flip' | 'glow' | 'particle' | 'string' | 'seesaw' | 'slot';
 
 export const TAB_MOTIONS: readonly { id: TabMotion; name: string; note: string }[] = [
   { id: 'bulge', name: 'Suyuq bo‘rtiq', note: 'Menyu faol bo‘lim ustida bo‘rtib, oqib o‘tadi' },
+  { id: 'notch', name: 'Suzuvchi shar', note: 'Shar o‘yiq ustida sakrab o‘tadi' },
+  { id: 'pill', name: 'Sirpanuvchi tabletka', note: 'Tabletka cho‘zilib sirpanadi' },
+  { id: 'fill', name: 'Ikonka to‘lishi', note: 'Ikonka markazidan rangga to‘ladi' },
+  { id: 'label', name: 'Ochiladigan yozuv', note: 'Faol bo‘lim yozuvi bilan kengayadi' },
+  { id: 'bubble', name: 'Pufakchalar', note: 'Ikonkadan pufakchalar uchadi' },
   { id: 'string', name: 'Elastik tor', note: 'Tor chertiladi, munchoq sirg‘aladi' },
   { id: 'glow', name: 'Nurli kometa', note: 'Kometa yangi bo‘limga uchadi' },
   { id: 'flip', name: '3D aylanish', note: 'Ikonka 3D da aylanadi' },
@@ -130,7 +135,8 @@ function ElasticString({ count, active, change }: { count: number; active: numbe
   );
 }
 
-const BUMP = 19; // bo'rtiq balandligi (px)
+const BUMP = 19;
+const NOTCH_DEPTH = 15; // bo'rtiq balandligi (px)
 
 /** Bo'rtiqli menyu shakli: pastki to'rtburchak (yumaloq burchakli) + faol bo'lim ustida silliq do'mboq. */
 export function bulgePath(W: number, H: number, cx: number, w: number, h: number, r = 26): string {
@@ -158,7 +164,7 @@ export function bulgePath(W: number, H: number, cx: number, w: number, h: number
 }
 
 /** Liquid Bulge: prujina fizikasi bilan bo'rtiq markazi yangi bo'limga oqadi; tezlikda cho'zilib pasayadi. */
-function LiquidBulge({ count, active }: { count: number; active: number }) {
+function LiquidBulge({ count, active, notch = false, onFrame }: { count: number; active: number; notch?: boolean; onFrame?: (x: number, v: number) => void }) {
   const svg = useRef<SVGSVGElement>(null);
   const path = useRef<SVGPathElement>(null);
   const shine = useRef<SVGPathElement>(null);
@@ -178,9 +184,12 @@ function LiquidBulge({ count, active }: { count: number; active: number }) {
     const tabW = () => (s.W - 12) / count;
     const target = () => 6 + tabW() * (Math.max(0, active) + 0.5);
     const draw = () => {
-      const base = tabW() * 0.74;
+      const base = tabW() * (notch ? 0.6 : 0.74);
       const stretch = Math.min(0.9, Math.abs(s.v) / 1400);
-      const d = bulgePath(s.W, s.H, s.x, base * (1 + stretch), BUMP * (1 - stretch * 0.45));
+      // Floating Notch: xuddi shu shakl teskari — faol bo'lim ustida botiq o'yiq (shar uchun joy).
+      const depth = notch ? -NOTCH_DEPTH * (1 - stretch * 0.35) : BUMP * (1 - stretch * 0.45);
+      const d = bulgePath(s.W, s.H, s.x, base * (1 + stretch), depth);
+      onFrame?.(s.x, s.v);
       p.setAttribute('d', d);
       shine.current?.setAttribute('d', d);
     };
@@ -229,19 +238,23 @@ function LiquidBulge({ count, active }: { count: number; active: number }) {
   }, [active, count]);
 
   return (
-    <svg ref={svg} className="tab-bulge" preserveAspectRatio="none" aria-hidden="true">
+    <svg ref={svg} className={`tab-bulge ${notch ? 'is-notch' : ''}`} preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id="bulgeGrad" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#7c5cff" />
           <stop offset=".55" stopColor="#5b8cff" />
           <stop offset="1" stopColor="#38c8ff" />
         </linearGradient>
+        <linearGradient id="notchGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2a2a40" />
+          <stop offset="1" stopColor="#1b1b2b" />
+        </linearGradient>
         <linearGradient id="bulgeShine" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#fff" stopOpacity=".28" />
           <stop offset=".45" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path ref={path} className="tb-body" fill="url(#bulgeGrad)" />
+      <path ref={path} className="tb-body" fill={notch ? 'url(#notchGrad)' : 'url(#bulgeGrad)'} />
       <path ref={shine} className="tb-shine" fill="url(#bulgeShine)" />
     </svg>
   );
@@ -300,6 +313,7 @@ export function TabBar<T extends string>({
   const [change, setChange] = useState<Change | null>(null);
   const [tapped, setTapped] = useState<{ id: T; n: number } | null>(null);
   const prev = useRef(index);
+  const ball = useRef<HTMLSpanElement>(null);
 
   // Profilda uslub tanlanganda — menyu qo'shni bo'limdan joriy bo'limga «o'tib» ko'rsatadi.
   useEffect(() => {
@@ -343,6 +357,28 @@ export function TabBar<T extends string>({
         )}
       </span>
       {motion === 'bulge' && <LiquidBulge count={tabs.length} active={index} />}
+      {motion === 'notch' && (
+        <>
+          <LiquidBulge
+            notch
+            count={tabs.length}
+            active={index}
+            onFrame={(x, v) => {
+              // Shar o'yiq markazida; tez harakatda yoy bo'ylab yuqoriga sakraydi.
+              const lift = Math.min(26, Math.abs(v) / 38);
+              if (ball.current) ball.current.style.transform = `translate(${x}px, ${-lift}px)`;
+            }}
+          />
+          <span ref={ball} className="notch-ball" aria-hidden="true">
+            {index >= 0 && <span key={index} className="notch-ball-ico">{tabs[index].icon(true)}</span>}
+          </span>
+        </>
+      )}
+      {motion === 'pill' && (
+        <span className="tab-pill" aria-hidden="true">
+          <span key={change?.n ?? 0} className="tab-pill-body" />
+        </span>
+      )}
       {motion === 'string' && <ElasticString count={tabs.length} active={index} change={change} />}
       {motion === 'particle' && change && <Particles key={change.n} change={change} count={tabs.length} />}
       {motion === 'seesaw' && <span className="seesaw-pivot" aria-hidden="true" />}
@@ -382,6 +418,12 @@ export function TabBar<T extends string>({
               )}
             </span>
             {motion === 'bulge' && fresh && <span className="bulge-ripple" key={`r${tapped!.n}`} aria-hidden="true" />}
+            {motion === 'fill' && <span className="fill-dot" aria-hidden="true" />}
+            {motion === 'bubble' && fresh && (
+              <span className="bubbles" key={`b${tapped!.n}`} aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5].map((k) => <i key={k} style={{ '--k': k } as CSSProperties} />)}
+              </span>
+            )}
             <small>{t.label}</small>
             {(motion === 'string' || motion === 'seesaw') && <span className="tab-dot" aria-hidden="true" />}
           </button>
