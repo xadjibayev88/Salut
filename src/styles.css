@@ -2381,6 +2381,101 @@ html[data-theme='light'] .btn-gem:not(:disabled), html[data-theme='light'] .btn-
 }
 html.lite .btn-gem:not(:disabled)::before, html.lite .btn-beam:not(:disabled)::before { animation: none; transform: translate(-50%, -50%) rotate(200deg); }
 
+/* ==========================================================================
+   SEND MONEY tugmasi — to'q tabletka + o'ngda oq doira; yuborilganda doiradan yashil pullar uchadi.
+   ========================================================================== */
+.sendbtn { position: relative; display: flex; align-items: center; width: 100%; height: 58px; margin: 6px 0 0; padding: 0 6px 0 22px; border: 0; border-radius: 999px; cursor: pointer; overflow: hidden; isolation: isolate;
+  background: linear-gradient(180deg, #17183a, #0c0d24); color: #fff; font: 800 16px var(--font-display, inherit); text-align: left;
+  box-shadow: 0 12px 26px -12px rgba(8, 10, 40, .9), inset 0 1px 0 rgba(255, 255, 255, .12), 0 0 0 1px rgba(165, 180, 252, .22);
+  transition: transform .15s, box-shadow .3s, opacity .2s; -webkit-tap-highlight-color: transparent; }
+.sendbtn:active:not(:disabled) { transform: scale(.98); }
+.sendbtn:disabled.sb-idle { opacity: .5; cursor: not-allowed; }
+.sb-fill { position: absolute; inset: 0; z-index: -1; transform-origin: left center; border-radius: inherit;
+  background: linear-gradient(90deg, rgba(45, 212, 191, .28), rgba(129, 140, 248, .34)); transition: transform .35s ease-out; }
+.sb-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; position: relative; transition: opacity .2s; }
+.sb-knob { position: relative; z-index: 3; flex: none; width: 76px; height: 46px; border-radius: 999px; display: grid; place-items: center; background: #fff; color: #111;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .35); transition: background-color .35s, color .35s, transform .35s cubic-bezier(.3, 1.5, .5, 1); }
+.sendbtn:not(:disabled):hover .sb-arrow { transform: translateX(3px); }
+.sb-arrow { transition: transform .25s; }
+.sb-busy .sb-arrow { animation: sb-nudge .7s ease-in-out infinite; }
+@keyframes sb-nudge { 50% { transform: translateX(4px); } }
+.sb-done { box-shadow: 0 12px 26px -12px rgba(22, 163, 74, .8), inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 0 1px rgba(134, 239, 172, .35); }
+.sb-done .sb-fill { background: linear-gradient(90deg, rgba(34, 197, 94, .35), rgba(34, 197, 94, .2)); }
+.sb-done .sb-knob { background: #22c55e; color: #fff; animation: sb-pop .5s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes sb-pop { 0% { transform: scale(.7); } 100% { transform: scale(1); } }
+.sb-tick { stroke-dasharray: 24; stroke-dashoffset: 24; animation: rd-draw .45s .1s ease-out forwards; }
+/* uchadigan pullar: o'ng doira markazidan boshlanadi */
+.sb-bills { position: absolute; z-index: 1; right: 44px; top: 50%; width: 0; height: 0; pointer-events: none; }
+.sb-bills i { position: absolute; left: -15px; top: -8px; width: 30px; height: 16px; opacity: 0; will-change: transform, opacity;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); animation: sb-bill 1.15s cubic-bezier(.2, .7, .35, 1) infinite; }
+.sb-bills svg { display: block; }
+@keyframes sb-bill {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(.3); }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(var(--s)); }
+}
+html[data-theme='light'] .sendbtn { background: linear-gradient(180deg, #23244f, #14153a); }
+@media (prefers-reduced-motion: reduce) { .sb-bills { display: none; } .sb-busy .sb-arrow, .sb-done .sb-knob, .sb-tick { animation: none; stroke-dashoffset: 0; } }
+
+/* ==========================================================================
+   PIN EKRANI — yangi dizayn: ilova rangidagi fon + aurora, Vivi qulf bilan, shisha karta,
+   gradient faol katak va ekrandagi raqamli klaviatura (telefon klaviaturasini kutmasdan).
+   ========================================================================== */
+.lock-screen { overflow: hidden; isolation: isolate; gap: 0; justify-content: center;
+  background: radial-gradient(120% 70% at 50% 0%, #2a2470 0%, #141236 45%, #0a0a1f 100%); }
+.lock-aurora { position: absolute; z-index: -1; width: 90vmax; height: 90vmax; border-radius: 50%; pointer-events: none; opacity: .55; will-change: transform; }
+.lock-aurora.a1 { left: -45vmax; top: -40vmax; background: radial-gradient(closest-side, rgba(45, 212, 191, .45), transparent); animation: lock-drift 16s ease-in-out infinite alternate; }
+.lock-aurora.a2 { right: -45vmax; bottom: -45vmax; background: radial-gradient(closest-side, rgba(168, 85, 247, .5), transparent); animation: lock-drift 19s ease-in-out -6s infinite alternate-reverse; }
+@keyframes lock-drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(12vmax, 8vmax, 0) scale(1.12); } }
+.lock-vivi { position: relative; margin-bottom: -14px; z-index: 2; animation: lock-vivi-in .7s cubic-bezier(.2, .9, .3, 1.3) both; }
+.lock-vivi .vivi, .lock-vivi svg.vivi { filter: drop-shadow(0 10px 18px rgba(10, 8, 40, .55)); }
+@keyframes lock-vivi-in { from { opacity: 0; transform: translateY(20px) scale(.8); } }
+.lock-vivi.m-sad { animation: pin-shake-x .45s cubic-bezier(.36, .07, .19, .97); }
+.lock-vivi.m-cheer { animation: lock-hop .7s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes pin-shake-x { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+@keyframes lock-hop { 40% { transform: translateY(-14px) scale(1.05); } }
+.lock-badge { position: absolute; right: -4px; bottom: 10px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, #818cf8, #a855f7); box-shadow: 0 4px 12px rgba(99, 102, 241, .6), 0 0 0 3px #1a1745; transition: background .3s; }
+.m-cheer .lock-badge { background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 4px 12px rgba(34, 197, 94, .6), 0 0 0 3px #1a1745; }
+.m-sad .lock-badge { background: linear-gradient(135deg, #fb7185, #e11d48); }
+
+/* shisha karta (orqa fon harakatlangani uchun backdrop-filter emas — yarim shaffof to'q fon) */
+.lock-screen .pin-card, .lock-screen.sheet-mode .pin-card {
+  background: linear-gradient(180deg, rgba(40, 38, 96, .92), rgba(22, 21, 58, .94)); border: 1px solid rgba(165, 180, 252, .22);
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .14); padding-top: 24px; }
+.lock-screen .pin-grabber { display: none; }
+.lock-screen .pin-sub { color: rgba(224, 231, 255, .62); min-height: 20px; }
+.pin-stage { position: relative; }
+.lock-screen .pin-stage { height: 140px; margin: 2px 0 0; }
+.lock-screen .pin-box { background: rgba(10, 10, 32, .55); border-color: rgba(165, 180, 252, .22); width: 50px; height: 56px; margin: -28px 0 0 -25px; border-radius: 16px; }
+.lock-screen .pin-box.filled { border-color: rgba(165, 180, 252, .55); background: rgba(99, 102, 241, .16); }
+.lock-screen .pin-box.filled b { background: linear-gradient(135deg, #5eead4, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; animation: pin-dot-in .28s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes pin-dot-in { from { transform: scale(.2); opacity: 0; } }
+.lock-screen .pin-box.active { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, .2), 0 0 20px rgba(129, 140, 248, .45); }
+.lock-screen .pin-st-error .pin-box { border-color: #f87171; box-shadow: 0 0 16px rgba(248, 113, 113, .35); }
+.lock-screen .pin-st-grid .pin-box, .lock-screen .pin-st-link .pin-box { border-color: rgba(129, 140, 248, .85); box-shadow: 0 0 14px rgba(129, 140, 248, .4); }
+.lock-screen .pin-links path { stroke: rgba(196, 181, 253, .75); }
+.lock-screen .pin-caret { background: #a5b4fc; }
+
+/* raqamli klaviatura */
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 18px; width: min(100%, 270px); margin: 8px auto 6px; }
+.pin-key { position: relative; overflow: hidden; isolation: isolate; height: 62px; border-radius: 22px; border: 1px solid rgba(165, 180, 252, .16); cursor: pointer; color: #eef2ff;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .03)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 4px 10px -6px rgba(0, 0, 0, .6);
+  display: grid; place-items: center; transition: transform .12s, background-color .2s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.pin-key b { font: 700 26px/1 var(--font-display, inherit); }
+.pin-key.del { background: none; border-color: transparent; box-shadow: none; color: #c7d2fe; }
+.pin-key:active:not(:disabled) { transform: scale(.92); }
+.pin-key:disabled { opacity: .35; cursor: default; }
+.pin-ripple { position: absolute; z-index: -1; left: 50%; top: 50%; width: 80px; height: 80px; margin: -40px 0 0 -40px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(129, 140, 248, .55), rgba(94, 234, 212, .15) 60%, transparent 70%); animation: pin-ripple .45s ease-out forwards; }
+@keyframes pin-ripple { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.lock-screen .pin-forgot { color: #a5b4fc; }
+.lock-screen.sheet-mode { background: rgba(8, 8, 28, .88); }
+@media (max-height: 640px) { .lock-vivi { display: none; } .pin-key { height: 54px; } .lock-screen .pin-stage { height: 120px; } }
+@media (prefers-reduced-motion: reduce) { .lock-aurora, .lock-vivi, .pin-ripple, .pin-box b { animation: none !important; } }
+html.lite .lock-aurora { animation: none; }
+
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }

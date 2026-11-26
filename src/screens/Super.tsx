@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { postWithProgress, ReceiptDrop, receiptProblem, type ReceiptStage } from '../components/ReceiptDrop';
 import { accountApi, useAccount, type PlanId } from '../state/account';
 import { AuthScreen } from './Auth';
-import { BurstCheck, GlassPayCard, KineticTitle, PayButton, RollNumber } from '../components/StripeFx';
+import { BurstCheck, GlassPayCard, KineticTitle, RollNumber, SendButton } from '../components/StripeFx';
 
 const PERKS = [
   ['⚡', 'Jonli rejim — cheksiz', 'Gemini Live bilan real vaqtda, emotsiyali suhbat'],
@@ -148,15 +148,15 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
           <li>Tekshiruvdan so'ng (odatda bir necha daqiqa) Super avtomatik yoqiladi.</li>
         </ol>
         {err && stage !== 'error' && <p className="auth-error">{err}</p>}
-        <PayButton
+        <SendButton
           stage={stage === 'uploading' ? 'busy' : stage === 'done' ? 'done' : 'idle'}
           progress={progress}
           disabled={busy || stage !== 'ready'}
           onClick={submit}
+          label="Chekni yuborish"
+          busyLabel="Chek yuborilmoqda…"
           doneLabel="Chek yuborildi"
-        >
-          Chekni yuborish
-        </PayButton>
+        />
         <button type="button" className="btn btn-text" onClick={onClose}>
           Bekor qilish
         </button>
