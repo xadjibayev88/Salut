@@ -206,6 +206,19 @@ export function App() {
   };
   startRef.current = start;
 
+  // Tanishuvda «A2/B1/B2» tanlangan bo'lsa — darhol o'sha darajaga qisqa test (o'tsa, oldingi darslar ochiladi).
+  useEffect(() => {
+    if (!state.onboarded) return;
+    let lvl: string | null = null;
+    try {
+      lvl = localStorage.getItem('voila.pendingJump');
+      if (lvl) localStorage.removeItem('voila.pendingJump');
+    } catch {
+      /* e'tiborsiz */
+    }
+    if (lvl === 'A2' || lvl === 'B1' || lvl === 'B2') setSession({ kind: 'jump', level: lvl });
+  }, [state.onboarded]);
+
   if (!state.onboarded) return <Onboarding />;
   if (session)
     return (
