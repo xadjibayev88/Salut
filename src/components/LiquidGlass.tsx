@@ -118,7 +118,8 @@ function mapDataUrl(w: number, h: number, radius: number, bezel: number): string
  * Shisha qatlami: ota element ichiga birinchi bola sifatida qo'yiladi (absolute, inset 0).
  * Ota elementga `lg-on` klassini qo'shing — uning o'z blur'i o'chadi, shu qatlam o'rnini bosadi.
  */
-export function GlassRefraction({ radius, scale = -42, bezel = 18, blur = 2.5, className = '' }: { radius: number; scale?: number; bezel?: number; blur?: number; className?: string }) {
+export function GlassRefraction({ radius, scale, bezel = 30, blur = 1.6, className = '' }: { radius: number; scale?: number; bezel?: number; blur?: number; className?: string }) {
+  const [eff, setEff] = useState({ bezel, scale: Math.abs(scale ?? 30) });
   const id = `lg-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const layer = useRef<HTMLSpanElement>(null);
   const [map, setMap] = useState<{ w: number; h: number; href: string } | null>(null);
@@ -135,7 +136,13 @@ export function GlassRefraction({ radius, scale = -42, bezel = 18, blur = 2.5, c
       const sig = `${w}x${h}`;
       if (sig === last) return;
       last = sig;
-      const href = mapDataUrl(w, h, Math.min(radius, h / 2), Math.min(bezel, h / 2 - 1));
+      const b = Math.min(bezel, h / 2 - 1);
+      // Namuna faqat ichkaridan olinadi (musbat scale + ichkariga vektor): tashqaridan olinsa brauzer chetdagi
+      // piksellarni cho'zib, shisha ichida chiziqlar chizadi. Buklanmaslik sharti: chetdan d masofadagi piksel
+      // d + k·f(d) dan namuna oladi, k·max|f'| < 1; smoothstep uchun max|f'| = 1.5/b, k = scale/2 → scale < 2b/1.5.
+      const safe = Math.round(((2 * b) / 1.5) * 0.85);
+      setEff({ bezel: b, scale: scale === undefined ? safe : Math.min(Math.abs(scale), safe) });
+      const href = mapDataUrl(w, h, Math.min(radius, h / 2), b);
       if (href) setMap({ w, h, href });
     };
     build();
@@ -148,9 +155,10 @@ export function GlassRefraction({ radius, scale = -42, bezel = 18, blur = 2.5, c
       clearTimeout(timer);
       ro.disconnect();
     };
-  }, [radius, bezel]);
+  }, [radius, bezel, scale]);
 
-  const filter = map ? `blur(${blur}px) url(#${id}) saturate(1.6) brightness(1.06)` : `blur(${blur * 2}px) saturate(1.6)`;
+  // iPhone kabi: tiniq (kam blur), yorug' va to'yingan rang.
+  const filter = map ? `blur(${blur}px) url(#${id}) saturate(1.95) brightness(1.22) contrast(1.04)` : `blur(${blur * 3}px) saturate(1.8) brightness(1.12)`;
   return (
     <span ref={layer} className={`lg-refract ${className}`} style={{ backdropFilter: filter, WebkitBackdropFilter: filter }} aria-hidden="true">
       {map && (
@@ -158,7 +166,15 @@ export function GlassRefraction({ radius, scale = -42, bezel = 18, blur = 2.5, c
           <defs>
             <filter id={id} colorInterpolationFilters="sRGB" x="0" y="0" width={map.w} height={map.h} filterUnits="userSpaceOnUse">
               <feImage result="map" x="0" y="0" width={map.w} height={map.h} preserveAspectRatio="none" href={map.href} />
-              <feDisplacementMap in="SourceGraphic" in2="map" scale={scale} xChannelSelector="R" yChannelSelector="G" />
+              {/* Chetda kamalakdek rang ajralishi (chromatic aberration): R/G/B kanallari biroz farqli egiladi. */}
+              <feDisplacementMap in="SourceGraphic" in2="map" scale={eff.scale} xChannelSelector="R" yChannelSelector="G" result="dr" />
+              <feColorMatrix in="dr" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+              <feDisplacementMap in="SourceGraphic" in2="map" scale={eff.scale * 1.04} xChannelSelector="R" yChannelSelector="G" result="dg" />
+              <feColorMatrix in="dg" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
+              <feDisplacementMap in="SourceGraphic" in2="map" scale={eff.scale * 1.08} xChannelSelector="R" yChannelSelector="G" result="db" />
+              <feColorMatrix in="db" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
+              <feBlend in="r" in2="g" mode="screen" result="rg" />
+              <feBlend in="rg" in2="b" mode="screen" />
             </filter>
           </defs>
         </svg>
