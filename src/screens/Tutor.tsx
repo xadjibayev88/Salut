@@ -378,7 +378,7 @@ function TextChat() {
             )}
           </div>
         )}
-        <ViviPeek mode={busy ? 'thinking' : input ? 'typing' : 'idle'} len={input.length} className="composer-peek" />
+        <ViviPeek mode={busy ? 'thinking' : input ? 'typing' : 'idle'} className="composer-peek" />
         <textarea
           ref={inputRef}
           value={input}

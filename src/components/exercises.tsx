@@ -308,7 +308,7 @@ export function TypeView({ ex, locked, onAnswer }: ViewProps<'type'>) {
         </div>
       )}
       <div className="type-wrap">
-      <ViviPeek mode={locked ? 'happy' : text ? 'typing' : 'idle'} len={text.length} className="type-peek" />
+      <ViviPeek mode={locked ? 'happy' : text ? 'typing' : 'idle'} className="type-peek" />
       <textarea
         ref={ref}
         className="type-input"

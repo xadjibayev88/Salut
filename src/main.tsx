@@ -5,11 +5,13 @@ import { StoreProvider } from './state/store';
 import { AccountProvider } from './state/account';
 import { AppLockGate } from './components/AppLockGate';
 import { IconDefs } from './components/Icons';
+import { installSheetDrag } from './engine/sheetDrag';
 import './styles.css';
 import { initTheme } from './engine/theme';
 import { initI18n } from './i18n';
 
 initTheme();
+installSheetDrag();
 
 // Yengil rejim: sekin qurilmalarda (kam xotira/protsessor) shisha blur o'chiriladi — ilova qotmaydi.
 try {

@@ -182,7 +182,7 @@ function PathMap({
               onClick={() => (n.type === 'chest' && st === 'active' ? onWheel(n) : onOpen(n))}
               aria-label={title}
             >
-              <span className="lnode-face">{st === 'locked' ? <Ic name="lock" size={28} className="lnode-lock" /> : n.type === 'chest' ? <Ic name="gift" size={20} /> : <Ic name={icon} size={n.type === 'review' ? 38 : 32} />}</span>
+              <span className="lnode-face">{st === 'locked' ? <Ic name="lock" size={28} className="lnode-lock" /> : n.type === 'chest' ? <GoldBox className="lnode-gbox" /> : <Ic name={icon} size={n.type === 'review' ? 38 : 32} />}</span>
             </button>
             {n.type !== 'chest' && (
               <span className="lnode-stars" aria-label={`${stars} yulduz`}>
@@ -280,18 +280,22 @@ const LESSON_ICONS: IconName[] = ['chat', 'book', 'headphones', 'pencil', 'mic',
 const prizeText = (p: WheelPrize) =>
   p.kind === 'gems' ? `+${p.amount} tanga` : p.kind === 'fish' ? `+${p.amount} baliqcha` : p.kind === 'boost' ? `2x XP · ${p.minutes} daqiqa` : '+1 seriya soyaboni';
 
-/** Oltin sirli quti (SVG): korpus va qopqoq alohida — qopqoq ochilishda uchib ketadi. */
-function GoldBox() {
+/** Oltin sirli quti (izometrik 3D SVG): korpus va qopqoq alohida — ochilganda qopqoq uchib ketadi. */
+function GoldBox({ className = 'gbox' }: { className?: string }) {
   return (
-    <svg className="gbox" viewBox="0 0 160 150" aria-hidden="true">
+    <svg className={className} viewBox="0 0 200 196" aria-hidden="true">
       <defs>
-        <linearGradient id="gb-body" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFE7A3" />
-          <stop offset="1" stopColor="#E9A93A" />
+        <linearGradient id="gb-top" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFF4C8" />
+          <stop offset="1" stopColor="#FFD776" />
         </linearGradient>
-        <linearGradient id="gb-side" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#F7C966" />
-          <stop offset="1" stopColor="#D08A22" />
+        <linearGradient id="gb-left" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFD56E" />
+          <stop offset="1" stopColor="#E9A23A" />
+        </linearGradient>
+        <linearGradient id="gb-right" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#E7A541" />
+          <stop offset="1" stopColor="#B9741C" />
         </linearGradient>
         <linearGradient id="gb-gem" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#FFD23F" />
@@ -299,23 +303,34 @@ function GoldBox() {
           <stop offset="1" stopColor="#9B5CFF" />
         </linearGradient>
       </defs>
-      <ellipse cx="80" cy="140" rx="56" ry="7" fill="rgba(0,0,0,.25)" />
+      <ellipse cx="100" cy="186" rx="70" ry="9" fill="rgba(0,0,0,.28)" />
       <g className="gbox-body">
-        <path d="M22 62h116v66a10 10 0 0 1-10 10H32a10 10 0 0 1-10-10z" fill="url(#gb-body)" />
-        <path d="M22 62h116v12H22z" fill="#C98320" opacity=".35" />
-        <path d="M70 62h20v76H70z" fill="url(#gb-side)" opacity=".9" />
-        <path d="M80 82l16 16-16 16-16-16z" fill="url(#gb-gem)" stroke="#fff" strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M80 86l5 5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity=".8" />
+        <path d="M30 76 100 106v80L30 156z" fill="url(#gb-left)" />
+        <path d="M100 106 170 76v80l-70 30z" fill="url(#gb-right)" />
+        <path d="M58 88l14 6v80l-14-6z" fill="#FFF0C2" opacity=".75" />
+        <path d="M128 94l14-6v80l-14 6z" fill="#F6CF7E" opacity=".6" />
+        <path d="M65 112l13 15-13 17-13-15z" fill="url(#gb-gem)" stroke="#FFF6DA" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M100 106v80" stroke="#FFF3D0" strokeWidth="1.5" opacity=".6" />
       </g>
       <g className="gbox-lid">
-        <path d="M14 44a8 8 0 0 1 8-8h116a8 8 0 0 1 8 8v14a6 6 0 0 1-6 6H20a6 6 0 0 1-6-6z" fill="url(#gb-body)" />
-        <path d="M68 36h24v28H68z" fill="url(#gb-side)" />
-        <path d="M80 36c-10-20-34-22-34-10 0 9 18 10 34 10zM80 36c10-20 34-22 34-10 0 9-18 10-34 10z" fill="none" stroke="#FFF3CF" strokeWidth="5" strokeLinejoin="round" />
-        <path d="M20 40h120" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".55" />
+        <path d="M22 62 100 96v16L22 78z" fill="#F2BC52" />
+        <path d="M100 96 178 62v16l-78 34z" fill="#C98526" />
+        <path d="M100 28 178 62 100 96 22 62z" fill="url(#gb-top)" />
+        <path d="M54 44l78 34M68 38l78 34" stroke="#FFF9E6" strokeWidth="9" opacity=".85" />
+        <path d="M100 58c-16-24-46-22-40-6 4 10 26 8 40 6zM100 58c18-22 48-16 40-2-5 9-27 5-40 2z" fill="#FFE59A" stroke="#E8A93E" strokeWidth="3" strokeLinejoin="round" />
+        <circle cx="100" cy="58" r="6" fill="#FFD776" stroke="#E8A93E" strokeWidth="3" />
       </g>
     </svg>
   );
 }
+
+const DUST = Array.from({ length: 26 }, (_, i) => ({
+  x: (i * 37) % 100,
+  y: (i * 61) % 100,
+  s: 2 + (i % 4),
+  d: (i % 7) * 0.6,
+  t: 5 + (i % 5),
+}));
 
 const SPARKS = Array.from({ length: 18 }, (_, i) => {
   const a = (i / 18) * Math.PI * 2;
@@ -349,34 +364,37 @@ function BoxModal({ node, onClose }: { node: PathNode; onClose: () => void }) {
   };
 
   return createPortal(
-    <div className="modal-back box-back" onClick={() => stage !== 'shake' && onClose()}>
-      <div className={`sheet box-sheet bx-${stage}`} onClick={(e) => e.stopPropagation()}>
-        <small className="box-kicker">{result ? 'SOVG\'A OCHILDI' : 'SIRLI QUTI'}</small>
-        <div className="box-stage" onClick={open}>
-          <span className="box-rays" aria-hidden="true" />
-          <span className="box-glow" aria-hidden="true" />
-          <span className="box-sparks" aria-hidden="true">
-            {SPARKS.map((p, k) => (
-              <i key={k} style={{ ['--x' as string]: `${p.x}px`, ['--y' as string]: `${p.y}px`, ['--d' as string]: `${p.d}ms`, width: p.s, height: p.s }} />
-            ))}
-          </span>
-          {result && <span className="box-prize">{PRIZE_FACE[result.kind].icon}</span>}
-          <GoldBox />
-        </div>
+    <div className={`box-full bx-${stage}`} role="dialog" aria-modal="true" aria-label="Sirli quti" onClick={() => (result ? onClose() : open())}>
+      <span className="box-dust" aria-hidden="true">
+        {DUST.map((d, k) => (
+          <i key={k} style={{ left: `${d.x}%`, top: `${d.y}%`, width: d.s, height: d.s, animationDelay: `${d.d}s`, animationDuration: `${d.t}s` }} />
+        ))}
+      </span>
+      <button type="button" className="box-x" onClick={(e) => { e.stopPropagation(); if (stage !== 'shake') onClose(); }} aria-label="Yopish">
+        <Ic name="close" size={20} />
+      </button>
+      <small className="box-kicker">{result ? 'BONUS OCHILDI' : stage === 'idle' ? 'OCHISH UCHUN BOSING' : 'OCHILMOQDA…'}</small>
+      <div className="box-stage">
+        <span className="box-rays" aria-hidden="true" />
+        <span className="box-glow" aria-hidden="true" />
+        <span className="box-sparks" aria-hidden="true">
+          {SPARKS.map((p, k) => (
+            <i key={k} style={{ ['--x' as string]: `${p.x * 1.4}px`, ['--y' as string]: `${p.y * 1.4}px`, ['--d' as string]: `${p.d}ms`, width: p.s, height: p.s }} />
+          ))}
+        </span>
+        {result && <span className="box-prize">{PRIZE_FACE[result.kind].icon}</span>}
+        <GoldBox />
+      </div>
+      <div className="box-foot">
         {result ? (
-          <div className="box-result">
-            <b>{prizeText(result)}</b>
-            <button type="button" className="btn btn-primary btn-lg" onClick={onClose}>
+          <>
+            <b className="box-prize-text">{prizeText(result)}</b>
+            <button type="button" className="btn btn-primary btn-lg" onClick={(e) => { e.stopPropagation(); onClose(); }}>
               Merci !
             </button>
-          </div>
-        ) : (
-          <>
-            <p className="muted">Ichida — tanga, baliqcha, 2x XP yoki seriya soyaboni.</p>
-            <button type="button" className="btn btn-primary btn-lg btn-beam" onClick={open} disabled={stage !== 'idle'}>
-              {stage === 'idle' ? 'Qutini ochish' : 'Ochilmoqda…'}
-            </button>
           </>
+        ) : (
+          <p>Ichida — tanga, baliqcha, 2x XP yoki seriya soyaboni.</p>
         )}
       </div>
     </div>,
