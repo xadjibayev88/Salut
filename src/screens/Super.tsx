@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { postWithProgress, ReceiptDrop, receiptProblem, type ReceiptStage } from '../components/ReceiptDrop';
 import { accountApi, useAccount, type PlanId } from '../state/account';
 import { AuthScreen } from './Auth';
-import { Confetti } from '../components/Confetti';
+import { BurstCheck, GlassPayCard, KineticTitle, PayButton, RollNumber } from '../components/StripeFx';
 
 const PERKS = [
   ['⚡', 'Jonli rejim — cheksiz', 'Gemini Live bilan real vaqtda, emotsiyali suhbat'],
@@ -95,16 +95,6 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
       clearInterval(tick);
     }
   };
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(card.number.replace(/\s/g, ''));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* nusxa olinmadi */
-    }
-  };
   const submit = async () => {
     if (!file || !dataUrl || stage !== 'ready') return setErr('Avval chekni yuklang');
     setBusy(true);
@@ -136,17 +126,13 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
                 Quyidagi kartaga <b>{fmt(amount)} so'm</b> o'tkazing:
               </>
             )}
-            <button type="button" className="card-number" onClick={copy}>
-              <span>{card.number}</span>
-              <small>{copied ? '✓ Nusxa olindi' : 'Nusxa olish'}</small>
-            </button>
-            {(card.owner || card.bank) && (
-              <small className="muted">
-                {card.owner}
-                {card.owner && card.bank ? ' · ' : ''}
-                {card.bank}
-              </small>
-            )}
+            <GlassPayCard
+              number={card.number}
+              owner={card.owner}
+              bank={card.bank}
+              kind={kind}
+              amount={kind === 'visa' ? `$${Math.ceil((amount / (me.billing.visa?.usdRate || 12800)) * 2) / 2}` : `${fmt(amount)} so'm`}
+            />
           </li>
           <li>
             To'lov chekini (skrinshot yoki PDF) yuklang:
@@ -162,15 +148,32 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
           <li>Tekshiruvdan so'ng (odatda bir necha daqiqa) Super avtomatik yoqiladi.</li>
         </ol>
         {err && stage !== 'error' && <p className="auth-error">{err}</p>}
-        <button type="button" className="btn btn-primary btn-lg" disabled={busy || stage !== 'ready'} onClick={submit}>
-          {stage === 'uploading' ? 'Yuborilmoqda…' : stage === 'done' ? '✓ Yuborildi' : 'Chekni yuborish'}
-        </button>
+        <PayButton
+          stage={stage === 'uploading' ? 'busy' : stage === 'done' ? 'done' : 'idle'}
+          progress={progress}
+          disabled={busy || stage !== 'ready'}
+          onClick={submit}
+          doneLabel="Chek yuborildi"
+        >
+          Chekni yuborish
+        </PayButton>
         <button type="button" className="btn btn-text" onClick={onClose}>
           Bekor qilish
         </button>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Gradient → flow: sarlavha ortida sekin oqib yuruvchi rang lentalari (faqat transform). */
+function SuperFlow() {
+  return (
+    <div className="super-flow" aria-hidden="true">
+      <i className="sf1" />
+      <i className="sf2" />
+      <i className="sf3" />
+    </div>
   );
 }
 
@@ -254,9 +257,9 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
   if (premium) {
     return (
       <div className="super super-active">
-        {celebrate && <Confetti />}
+        <SuperFlow />
         <div className="super-badge">SUPER</div>
-        <h2>{celebrate ? "Tabriklaymiz! Siz endi Super a'zosisiz" : "Siz Super a'zosisiz"}</h2>
+        {celebrate ? <BurstCheck label="Tabriklaymiz! Siz endi Super a'zosisiz" /> : <h2>Siz Super a'zosisiz</h2>}
         <p className="muted">
           {me.admin ? 'Admin rejimi' : `${plans.find((p) => p.id === me.plan)?.label ?? 'Super'} obuna`}
           {me.expiresAt && !me.admin ? ` · ${new Date(me.expiresAt).toLocaleDateString('uz-UZ')} gacha` : ''}
@@ -281,8 +284,9 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="super">
+      <SuperFlow />
       <div className="super-badge">SUPER</div>
-      <h2>Fransuzchani tezroq — cheklovsiz</h2>
+      <KineticTitle lines={['Fransuzchani', 'tezroq —', 'cheklovsiz.']} />
       <StatsLine data={social} />
 
       {anchor && sel && (
@@ -290,7 +294,9 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
           <span>
             💡 {anchor.label}: <s>{fmt(anchor.uzs)} so'm</s>
           </span>
-          <b>Bizda atigi {fmt(sel.uzs)} so'm!</b>
+          <b>
+            Bizda atigi <RollNumber value={sel.uzs} format={fmt} /> so'm!
+          </b>
         </div>
       )}
 
@@ -306,7 +312,7 @@ export function SuperPage({ onClose }: { onClose?: () => void }) {
                 <b className="plan-name">{p.label ?? p.name}</b>
                 {p.oldUzs && p.oldUzs > p.uzs ? <s className="plan-old">{fmt(p.oldUzs)}</s> : null}
                 <span className="plan-price">
-                  {fmt(p.uzs)} <small>so'm</small>
+                  <RollNumber value={p.uzs} format={fmt} /> <small>so'm</small>
                 </span>
                 <small className="muted">kuniga ~{fmt(perDay)} so'm</small>
               </button>
