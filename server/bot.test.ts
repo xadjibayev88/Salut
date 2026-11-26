@@ -4,7 +4,7 @@ process.env.SESSION_SECRET = 'x'.repeat(40);
 import { resetDbForTests } from './db.ts';
 import { register, upsertGoogleUser } from './accounts.ts';
 import { activePlan } from './billing.ts';
-import { adminChats, createBot, createLinkCode } from './bot.ts';
+import { CONFETTI_EFFECT_ID, adminChats, createBot, createLinkCode } from './bot.ts';
 
 type Call = { method: string; body: Record<string, any> };
 
@@ -30,6 +30,43 @@ beforeEach(() => {
 });
 
 describe('telegram bot', () => {
+  it('shows the card like the app: grouped digits, network, bank and a copy button', async () => {
+    const { calls, bot } = setup();
+    process.env.PAY_CARD_NUMBER = '9860170112762613';
+    process.env.PAY_CARD_BANK = 'Test Bank';
+    try {
+      await bot.handle(cb(5, 'pay:card:month'));
+      const last = calls.at(-1)!.body;
+      expect(last.text).toContain('<code>9860 1701 1276 2613</code>');
+      expect(last.text).toContain('<b>HUMO</b> · Test Bank');
+      expect(JSON.stringify(last.reply_markup)).toContain('"copy_text":{"text":"9860170112762613"}');
+      await bot.handle(cb(5, 'pay:visa:month'));
+      expect(calls.at(-1)!.body.text).toContain('<b>VISA</b>');
+      expect(calls.at(-1)!.body.text).toContain('Kurs: 1$');
+    } finally {
+      delete process.env.PAY_CARD_BANK;
+    }
+  });
+
+  it('updates one progress message while a receipt is processed', async () => {
+    const calls: Call[] = [];
+    let mid = 40;
+    const tg = async (method: string, body: Record<string, unknown>) => {
+      calls.push({ method, body: body as Record<string, any> });
+      return method === 'sendMessage' ? { message_id: ++mid } : true;
+    };
+    const bot = createBot(tg, async () => ({ mime: 'image/jpeg', data: Buffer.from('fakejpeg') }));
+    await bot.handle(cb(8, 'pay:card:week'));
+    await bot.handle(msg(8, { photo: [{ file_id: 'big' }] }));
+    const mine = calls.filter((c) => c.body.chat_id === '8');
+    const start = mine.find((c) => c.method === 'sendMessage' && String(c.body.text).includes('yuklanmoqda'));
+    expect(start).toBeTruthy();
+    const edits = mine.filter((c) => c.method === 'editMessageText');
+    expect(edits.map((e) => e.body.message_id)).toEqual([42, 42]);
+    expect(edits.at(-1)!.body.text).toContain('Chek qabul qilindi');
+    expect(edits.at(-1)!.body.text).toContain('▰▰▰');
+  });
+
   it('shows tariffs with old prices and the card after choosing a plan', async () => {
     const { calls, bot } = setup();
     await bot.handle(msg(5, { text: '/plans' }));
@@ -70,6 +107,8 @@ describe('telegram bot', () => {
     await bot.handle(cb(900, 'ok:1', { chat: { id: 900 }, message_id: 3, caption: 'chek' }));
     expect(activePlan(user.user.id).plan).toBe('week');
     expect(calls.some((c) => c.body.chat_id === '7' && String(c.body.text).includes('tasdiqlandi'))).toBe(true);
+    // Super yoqilgani haqidagi xabar 🎉 konfetti effekti bilan keladi.
+    expect(calls.find((c) => c.body.chat_id === '7' && String(c.body.text).includes('tasdiqlandi'))!.body.message_effect_id).toBe(CONFETTI_EFFECT_ID);
     // Ikkinchi marta bosish hech narsa o'zgartirmaydi.
     await bot.handle(cb(900, 'no:1'));
     expect(activePlan(user.user.id).plan).toBe('week');
