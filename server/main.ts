@@ -5,6 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { telegramBotId } from './accounts.ts';
 import { clearCookie, createSessionToken, currentAiSubject, currentUserId, deleteUser, getProgress, getUser, login, putProgress, register, sessionCookie, upsertGoogleUser, verifyGoogleIdToken, upsertSocialUser, verifyAppleIdToken, verifyFacebookToken, verifyTelegramLogin, verifyTelegramWebApp } from './accounts.ts';
 import { activePlan, click, createCardOrder, createOrder, decideOrder, isAdmin, orderStatus, receiptOf, receiptOwner, reviewOrders, payme, paymeAuthError, paymeAuthorized, paymeInternalError, plansPayload } from './billing.ts';
 import { bot, botUsername, createLinkCode, startBot } from './bot.ts';
@@ -381,6 +382,8 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
         appleClientId: (env.APPLE_CLIENT_ID ?? '').split(',')[0]?.trim() || null,
         facebookAppId: env.FACEBOOK_APP_SECRET ? env.FACEBOOK_APP_ID || null : null,
         telegramBot: env.TELEGRAM_BOT_TOKEN ? botUsername() || env.TELEGRAM_BOT_USERNAME || null : null,
+        // Botning ochiq raqamli ID'si (token ':' dan oldingi qismi) — maxfiy emas; Telegram.Login.auth uchun kerak.
+        telegramBotId: telegramBotId(env.TELEGRAM_BOT_TOKEN),
       },
       admin: user ? isAdmin(user.id) : false,
       billing: { ...plansPayload(), telegram: !!botUsername() && plansPayload().providers.includes('card') } });

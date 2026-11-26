@@ -29,7 +29,7 @@ interface Me {
   admin?: boolean;
   expiresAt: number | null;
   googleClientId: string | null;
-  auth?: { appleClientId: string | null; facebookAppId: string | null; telegramBot: string | null };
+  auth?: { appleClientId: string | null; facebookAppId: string | null; telegramBot: string | null; telegramBotId?: number | null };
   billing: BillingInfo;
 }
 
