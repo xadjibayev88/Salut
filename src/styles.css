@@ -2644,6 +2644,145 @@ body:has(.item-sheet) .rail .liq-wave, body:has(.item-sheet) .hanger-swing { ani
 .tab small { max-width: 100%; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html:is([lang='ja'], [lang='ko'], [lang='zh'], [lang='hi']) .tab small { font-size: 10px; letter-spacing: 0; }
 
+/* ==========================================================================
+   VIVI AI — Super taklif ekrani (obunasiz foydalanuvchi)
+   ========================================================================== */
+.vpay { position: relative; display: flex; flex-direction: column; gap: 0; padding-bottom: 20px; }
+.vpay-preview { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 46px; margin: 4px 0 -36px; border-radius: 26px; overflow: hidden;
+  background: radial-gradient(120% 90% at 0% 0%, rgba(94, 234, 212, .22), transparent 60%), radial-gradient(120% 90% at 100% 0%, rgba(192, 132, 252, .3), transparent 60%), rgba(255, 255, 255, .05);
+  filter: blur(1.5px); opacity: .85; }
+.vpay-msg { max-width: 78%; padding: 9px 13px; border-radius: 18px; font-weight: 600; font-size: 14px; }
+.vpay-msg.in { align-self: flex-start; background: rgba(255, 255, 255, .12); border-bottom-left-radius: 6px; }
+.vpay-msg.out { align-self: flex-end; background: linear-gradient(135deg, #818cf8, #a855f7); color: #fff; border-bottom-right-radius: 6px; }
+.vpay-wave { display: flex; align-items: center; gap: 3px; height: 26px; align-self: center; }
+.vpay-wave i { width: 4px; height: 100%; border-radius: 3px; background: linear-gradient(#5eead4, #a78bfa); transform-origin: center; animation: vpay-wave 1s ease-in-out infinite alternate; }
+@keyframes vpay-wave { from { transform: scaleY(.2); } to { transform: scaleY(1); } }
+.vpay-card { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 0 18px 18px; border-radius: 28px;
+  background: linear-gradient(180deg, rgba(36, 34, 92, .96), rgba(20, 19, 56, .98)); border: 1px solid rgba(165, 180, 252, .25); box-shadow: 0 24px 50px -24px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .14); }
+.vpay-mascot { position: relative; margin-top: -40px; }
+.vpay-badge { position: absolute; right: -16px; bottom: 10px; padding: 4px 10px; border-radius: 999px; font: 900 11px/1 var(--font-display, inherit); letter-spacing: .12em; color: #1e1b4b; background: linear-gradient(120deg, #5eead4, #a5b4fc 55%, #f0abfc); box-shadow: 0 6px 16px -4px rgba(129, 140, 248, .8); }
+.vpay-card h2 { margin: 0; font: 900 24px/1.15 var(--font-display, inherit); }
+.vpay-card > p { margin: 0; font-size: 14px; }
+.vpay-perks { list-style: none; margin: 4px 0 6px; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.vpay-perks li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); font-weight: 700; font-size: 14px; }
+.vpay-perks span { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 10px; background: rgba(129, 140, 248, .2); }
+.vpay-cta { width: 100%; }
+html[data-theme='light'] .vpay-card { background: linear-gradient(180deg, #ffffff, #f4f2ff); border-color: rgba(99, 102, 241, .2); }
+html[data-theme='light'] .vpay-perks li { background: rgba(99, 102, 241, .06); border-color: rgba(99, 102, 241, .12); }
+html[data-theme='light'] .vpay-msg.in { background: rgba(26, 22, 64, .07); }
+@media (prefers-reduced-motion: reduce) { .vpay-wave i { animation: none; } }
+
+/* Dars ekrani: haqiqatda ko'rinib turgan balandlikka (dvh) mos ustun. Kontent o'rtada aylanadi, futer doim
+   ekranning pastida ko'rinadi — brauzer paneli (Chrome Custom Tab) ko'rinib turganda ham tortish shart emas. */
+.session { height: 100dvh; min-height: 0; overflow: hidden; }
+.session-top { flex: none; }
+.session-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+.session-foot { position: relative; flex: none; left: auto; right: auto; bottom: auto; }
+@supports not (height: 100dvh) { .session { height: 100vh; } }
+
+/* ==========================================================================
+   MASHQ — yangi dizayn: so'zlar kuchi halqasi, asosiy gradient karta, ikki plitka, rangli kuch ko'rsatkichi
+   ========================================================================== */
+.pr-hero { display: flex; align-items: center; gap: 16px; padding: 16px; margin: 4px 0 12px; border-radius: 24px;
+  background: radial-gradient(120% 120% at 0% 0%, rgba(94, 234, 212, .2), transparent 60%), radial-gradient(120% 120% at 100% 100%, rgba(192, 132, 252, .22), transparent 60%), var(--surface);
+  border: 1px solid var(--glass-edge); box-shadow: var(--shadow-1); }
+.pr-ring { position: relative; flex: none; width: 76px; height: 76px; display: grid; place-items: center; }
+.pr-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.pr-ring circle { fill: none; stroke-width: 7; }
+.pr-ring-bg { stroke: color-mix(in srgb, var(--text) 10%, transparent); }
+.pr-ring-fg { stroke: #8b5cf6; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset 1s cubic-bezier(.2, .8, .2, 1); animation: pr-ring-in 1.1s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes pr-ring-in { from { stroke-dashoffset: 100; } }
+.pr-ring b { position: relative; font: 900 18px var(--font-display, inherit); }
+.pr-hero-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pr-hero-text small { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pr-hero-text > b { font: 800 18px/1.2 var(--font-display, inherit); }
+.pr-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pr-chips span { font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); }
+.pr-chips span.warn { background: rgba(250, 204, 21, .18); color: #a16207; }
+.pr-chips span.bad { background: rgba(239, 68, 68, .14); color: #dc2626; }
+html:not([data-theme='light']) .pr-chips span.warn { color: #fde68a; }
+html:not([data-theme='light']) .pr-chips span.bad { color: #fca5a5; }
+/* asosiy karta */
+.pr-main { position: relative; overflow: hidden; width: 100%; display: flex; align-items: center; gap: 14px; padding: 18px 16px; border: 0; border-radius: 24px; cursor: pointer; text-align: left; color: #fff;
+  background: radial-gradient(120% 140% at 100% 0%, rgba(240, 171, 252, .45), transparent 55%), linear-gradient(135deg, #4f46e5, #7c3aed 60%, #a855f7);
+  box-shadow: 0 16px 30px -14px rgba(79, 70, 229, .8), inset 0 1px 0 rgba(255, 255, 255, .25); transition: transform .15s; }
+.pr-main::after { content: ''; position: absolute; right: -30px; bottom: -40px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255, 255, 255, .08); }
+.pr-main:active:not(:disabled) { transform: scale(.98); }
+.pr-main:disabled { opacity: .55; cursor: default; }
+.pr-main-icon { flex: none; width: 54px; height: 54px; display: grid; place-items: center; font-size: 30px; border-radius: 18px; background: rgba(255, 255, 255, .18); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+.pr-main-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pr-main-text b { font: 800 18px/1.15 var(--font-display, inherit); }
+.pr-main-text small { font-size: 13px; opacity: .85; }
+.pr-main-go { position: relative; z-index: 1; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pr-main-go em { font-style: normal; font-size: 11.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, .2); }
+.pr-main-go svg { width: 38px; height: 38px; padding: 8px; border-radius: 50%; background: #fff; color: #4f46e5; box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .5); }
+/* plitkalar */
+.pr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 6px; }
+.pr-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: 22px; text-align: left; cursor: pointer; color: inherit;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 14%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 25%, transparent); box-shadow: var(--shadow-1); transition: transform .15s; }
+.pr-tile:active:not(:disabled) { transform: scale(.97); }
+.pr-tile:disabled { opacity: .55; cursor: default; }
+.pr-tile-icon { width: 44px; height: 44px; display: grid; place-items: center; font-size: 24px; border-radius: 14px; margin-bottom: 4px; background: linear-gradient(135deg, var(--c), var(--c2)); box-shadow: 0 8px 16px -8px var(--c); }
+.pr-tile b { font: 800 15px/1.2 var(--font-display, inherit); }
+.pr-tile small { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.pr-badge { position: absolute; top: 10px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; display: grid; place-items: center; border-radius: 999px; background: #ef4444; color: #fff; font: 800 12px/1 var(--font-display, inherit); box-shadow: 0 4px 10px -4px #ef4444; }
+/* so'zlar ro'yxati: rangli kuch ko'rsatkichi */
+.strength.s-weak i.on { background: #ef4444; }
+.strength.s-mid i.on { background: #f59e0b; }
+.strength.s-strong i.on { background: #22c55e; }
+.word-list { border-radius: 22px; }
+@media (prefers-reduced-motion: reduce) { .pr-ring-fg { animation: none; transition: none; } }
+
+/* ==========================================================================
+   PROFIL — yangi dizayn: hoshiyali profil kartasi (gradient chegara), ixcham hisob qatori,
+   3×2 statistika plitkalari, «Shu hafta» bitta kartada
+   ========================================================================== */
+.pf-hero { position: relative; margin: 4px 0 8px; padding: 16px 16px 12px; border-radius: 28px; isolation: isolate;
+  background: radial-gradient(120% 100% at 0% 0%, rgba(94, 234, 212, .2), transparent 55%), radial-gradient(120% 120% at 100% 0%, rgba(192, 132, 252, .24), transparent 60%), var(--surface);
+  box-shadow: 0 18px 34px -22px rgba(76, 29, 149, .7); }
+.pf-hero::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; z-index: -1; pointer-events: none;
+  background: linear-gradient(135deg, #5eead4, #818cf8 45%, #f0abfc);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.pf-top { display: flex; align-items: center; gap: 14px; }
+.pf-avatar { width: 88px; height: 88px; border-radius: 30px; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px #8b5cf6, 0 12px 22px -10px rgba(124, 58, 237, .7); }
+.pf-id { min-width: 0; flex: 1; }
+.pf-id .name-input { font-size: 24px; }
+.pf-id .muted { margin: 2px 0 6px; font-size: 13px; }
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-chip { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); white-space: nowrap; }
+.pf-chip.super { color: #1e1b4b; background: linear-gradient(120deg, #5eead4, #a5b4fc 55%, #f0abfc); }
+/* ixcham hisob qatori */
+.acc-line { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 9px 8px 9px 12px; border-radius: 16px; background: color-mix(in srgb, var(--text) 5%, transparent); border: 1px solid var(--line); }
+.acc-line-ico { font-size: 18px; flex: none; }
+.acc-line-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.acc-line-text b { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-line-text small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-line .btn.small { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+.acc-more { flex: none; width: 36px; height: 36px; border-radius: 12px; border: 0; display: grid; place-items: center; color: inherit; background: color-mix(in srgb, var(--text) 8%, transparent); cursor: pointer; }
+.acc-sheet { align-items: center; text-align: center; }
+.acc-sheet .acc-avatar { width: 64px; height: 64px; font-size: 28px; }
+.acc-sheet h3 { margin: 4px 0 0; }
+.acc-sheet .btn-lg { width: 100%; }
+/* statistika */
+.pf-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pf-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 10px 10px; border-radius: 18px; min-width: 0;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 22%, transparent); box-shadow: var(--shadow-1); }
+.pf-stat-ico { width: 30px; height: 30px; display: grid; place-items: center; font-size: 17px; border-radius: 10px; margin-bottom: 4px; background: color-mix(in srgb, var(--c) 20%, transparent); }
+.pf-stat b { font: 900 19px/1.1 var(--font-display, inherit); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-stat small { font-size: 11px; color: var(--muted); line-height: 1.2; }
+/* shu hafta — bitta karta */
+.pf-week { display: flex; flex-direction: column; gap: 12px; padding: 14px 12px 8px; border-radius: 24px; background: var(--surface); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-1); }
+.pf-week-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 0 4px; }
+.pf-week-head > span:first-child { display: flex; align-items: baseline; gap: 4px; font-weight: 800; }
+.pf-week-head b { font: 900 26px/1 var(--font-display, inherit); background: linear-gradient(120deg, #5eead4, #818cf8 55%, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pf-week-head small { color: var(--muted); font-weight: 700; margin-left: 2px; }
+.pf-goal { font-size: 12px; font-weight: 700; color: var(--muted); }
+.pf-week .xp-chart { background: none !important; border: 0 !important; box-shadow: none !important; padding: 8px 4px 0 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.pf-week .wd-dot { width: 30px; height: 30px; }
+html[data-theme='light'] .pf-hero { background: radial-gradient(120% 100% at 0% 0%, rgba(94, 234, 212, .22), transparent 55%), radial-gradient(120% 120% at 100% 0%, rgba(192, 132, 252, .22), transparent 60%), #ffffff; }
+
+html[data-theme='light'] .pf-week .xp-chart { background: none !important; box-shadow: none !important; border: 0 !important; }
+
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }

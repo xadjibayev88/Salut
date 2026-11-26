@@ -92,8 +92,8 @@ describe('telegram bot', () => {
     const { calls, bot } = setup();
     await bot.handle(msg(5, { text: '/plans' }));
     const t = calls.at(-1)!.body.text as string;
-    expect(t).toContain('<s>79 000</s>');
-    expect(t).toContain("49 000 so'm");
+    expect(t).toContain('<s>99 000</s>');
+    expect(t).toContain("69 000 so'm");
     await bot.handle(cb(5, 'plan:month'));
     const kb = JSON.stringify(calls.at(-1)!.body.reply_markup);
     expect(kb).toContain('pay:card:month');

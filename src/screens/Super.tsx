@@ -9,8 +9,8 @@ import { AuthScreen } from './Auth';
 import { BurstCheck, GlassPayCard, KineticTitle, RollNumber, SendButton } from '../components/StripeFx';
 
 const PERKS = [
-  ['⚡', 'Jonli rejim — cheksiz', 'Gemini Live bilan real vaqtda, emotsiyali suhbat'],
-  ['🎙️', 'Vivi bilan cheksiz suhbat', '30 daqiqalik sessiyalar, dam olish kutilmaydi'],
+  ['🐱', 'Vivi AI — faqat Super\'da', 'Fransuzcha ovozli va matnli suhbat, xatolar tahlili'],
+  ['⚡', 'Gemini Live — jonli suhbat', 'Real vaqtda, emotsiyali; 30 daqiqalik sessiyalar'],
   ['💬', 'Cheksiz xabarlar', 'Kunlik 30 ta xabar chegarasi yo\'q'],
   ['☕', 'Cheksiz kofe', 'Xato qilsangiz ham darsdan chiqib ketmaysiz'],
   ['🚫', 'Reklamasiz', 'Darslar va suhbat orasida reklama yo\'q'],
