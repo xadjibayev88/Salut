@@ -5,7 +5,7 @@
 // Displacement map elementning aniq o'lchamida canvas'da quriladi (SDF, «spine» bo'ylab ichkariga yo'nalish),
 // faqat o'lcham o'zgarganda qayta hisoblanadi. Hech narsa animatsiya qilinmaydi — filtr qiymatlari o'zgarmaydi.
 // To'liq effekt faqat Chromium'da (Android Chrome, Edge, desktop Chrome); boshqa joyda oddiy blur qoladi.
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 const KEY = 'voila.liquidGlass';
 const EVENT = 'voila:liquid-glass';
@@ -124,18 +124,21 @@ export function GlassRefraction({ radius, scale, bezel = 30, blur = 1.6, classNa
   const layer = useRef<HTMLSpanElement>(null);
   const [map, setMap] = useState<{ w: number; h: number; href: string } | null>(null);
 
-  useEffect(() => {
+  // useLayoutEffect: xarita birinchi chizishdan OLDIN quriladi — panel «oddiy blur → shisha» bo'lib silkinmaydi.
+  useLayoutEffect(() => {
     const el = layer.current;
     if (!el) return;
     let timer = 0;
-    let last = '';
+    let lastW = 0;
+    let lastH = 0;
     const build = () => {
       const w = Math.round(el.offsetWidth);
       const h = Math.round(el.offsetHeight);
       if (w < 8 || h < 8) return;
-      const sig = `${w}x${h}`;
-      if (sig === last) return;
-      last = sig;
+      // Mayda o'zgarishlarda (shrift yuklanishi, ixcham panel) qayta qurmaymiz — har qayta qurish filtrni almashtiradi.
+      if (Math.abs(w - lastW) < 8 && Math.abs(h - lastH) < 8) return;
+      lastW = w;
+      lastH = h;
       const b = Math.min(bezel, h / 2 - 1);
       // Namuna faqat ichkaridan olinadi (musbat scale + ichkariga vektor): tashqaridan olinsa brauzer chetdagi
       // piksellarni cho'zib, shisha ichida chiziqlar chizadi. Buklanmaslik sharti: chetdan d masofadagi piksel
@@ -148,7 +151,7 @@ export function GlassRefraction({ radius, scale, bezel = 30, blur = 1.6, classNa
     build();
     const ro = new ResizeObserver(() => {
       clearTimeout(timer);
-      timer = window.setTimeout(build, 120);
+      timer = window.setTimeout(build, 300);
     });
     ro.observe(el);
     return () => {
@@ -158,7 +161,7 @@ export function GlassRefraction({ radius, scale, bezel = 30, blur = 1.6, classNa
   }, [radius, bezel, scale]);
 
   // iPhone kabi: tiniq (kam blur), yorug' va to'yingan rang.
-  const filter = map ? `blur(${blur}px) url(#${id}) saturate(1.95) brightness(1.22) contrast(1.04)` : `blur(${blur * 3}px) saturate(1.8) brightness(1.12)`;
+  const filter = map ? `blur(${blur}px) url(#${id}) saturate(1.95) brightness(1.22) contrast(1.04)` : `blur(${blur}px) saturate(1.95) brightness(1.22) contrast(1.04)`;
   return (
     <span ref={layer} className={`lg-refract ${className}`} style={{ backdropFilter: filter, WebkitBackdropFilter: filter }} aria-hidden="true">
       {map && (
