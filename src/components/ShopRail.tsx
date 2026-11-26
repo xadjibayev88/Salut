@@ -1,5 +1,5 @@
 // Do'kon «ilgich»i (kiyim do'koni uslubi): mahsulotlar arqonga ilingan, surganda chayqaladi;
-// bosilsa mahsulot katta oynada ochiladi. Ichidagi suyuqlik — mahsulot darajasi (masalan, termosdagi kofe);
+// bosilsa mahsulot katta oynada ochiladi. Ichidagi suyuqlik — mahsulot darajasi (masalan, akvariumdagi suv/baliqchalar);
 // sotib olinganda suyuqlik to'lqin bilan yangi darajaga ko'tariladi. Faqat transform/opacity.
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';

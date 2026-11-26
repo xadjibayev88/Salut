@@ -12,7 +12,7 @@ const PERKS = [
   ['🐱', 'Vivi AI — faqat Super\'da', 'Fransuzcha ovozli va matnli suhbat, xatolar tahlili'],
   ['⚡', 'Gemini Live — jonli suhbat', 'Real vaqtda, emotsiyali; 30 daqiqalik sessiyalar'],
   ['💬', 'Cheksiz xabarlar', 'Kunlik 30 ta xabar chegarasi yo\'q'],
-  ['☕', 'Cheksiz kofe', 'Xato qilsangiz ham darsdan chiqib ketmaysiz'],
+  ['🐟', 'Cheksiz baliqcha', 'Xato qilsangiz ham darsdan chiqib ketmaysiz'],
   ['🚫', 'Reklamasiz', 'Darslar va suhbat orasida reklama yo\'q'],
   ['☀️', 'Seriyani bepul tiklash', 'Uzilgan seriyani 2 kun ichida tangasiz tiklaysiz'],
 ];

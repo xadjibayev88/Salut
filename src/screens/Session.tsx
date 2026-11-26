@@ -1,3 +1,4 @@
+import { FishIcon } from '../components/TopBarIcons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ALL_LESSONS, CEFR, COURSE, findLesson, type Cefr, type Sentence, type Word } from '../data/course';
 import { buildLesson, buildPractice, type Exercise } from '../engine/exercises';
@@ -234,10 +235,10 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
         </div>
         {usesHearts ? (
           <div className="stat heart">
-            ☕ <b>{state.hearts}</b>
+            <FishIcon full={state.hearts > 0} /> <b>{state.hearts}</b>
           </div>
         ) : (
-          <div className="stat heart">☕ ∞</div>
+          <div className="stat heart"><FishIcon full /> ∞</div>
         )}
       </header>
 
@@ -334,8 +335,8 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
         <div className="modal-back">
           <div className="sheet">
             <div className="big-emoji">💔</div>
-            <h3>Kofe tugadi!</h3>
-            <p className="muted">Har 30 daqiqada bir chashka kofe tayyor bo'ladi. Yoki mashq qilib kofe ishlab oling.</p>
+            <h3>Baliqchalar tugadi!</h3>
+            <p className="muted">Har 30 daqiqada bitta baliqcha qaytadi. Yoki mashq qilib baliqcha ishlab oling — Vivi och qolmasin!</p>
             <button
               type="button"
               className="btn btn-primary btn-lg"
@@ -349,7 +350,7 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
                 else setPos(pos + 1);
               }}
             >
-              Termosni to'ldirish — 🪙 {HEART_REFILL_COST}
+              Akvariumni to'ldirish — 🪙 {HEART_REFILL_COST}
             </button>
             <button type="button" className="btn btn-text" onClick={() => onExit()}>
               Chiqish

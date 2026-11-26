@@ -118,7 +118,7 @@ function mapDataUrl(w: number, h: number, radius: number, bezel: number): string
  * Shisha qatlami: ota element ichiga birinchi bola sifatida qo'yiladi (absolute, inset 0).
  * Ota elementga `lg-on` klassini qo'shing — uning o'z blur'i o'chadi, shu qatlam o'rnini bosadi.
  */
-export function GlassRefraction({ radius, scale, bezel = 30, blur = 1.6, className = '' }: { radius: number; scale?: number; bezel?: number; blur?: number; className?: string }) {
+export function GlassRefraction({ radius, scale, bezel = 30, blur = 0.4, className = '' }: { radius: number; scale?: number; bezel?: number; blur?: number; className?: string }) {
   const [eff, setEff] = useState({ bezel, scale: Math.abs(scale ?? 30) });
   const id = `lg-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const layer = useRef<HTMLSpanElement>(null);
@@ -161,7 +161,7 @@ export function GlassRefraction({ radius, scale, bezel = 30, blur = 1.6, classNa
   }, [radius, bezel, scale]);
 
   // iPhone kabi: tiniq (kam blur), yorug' va to'yingan rang.
-  const filter = map ? `blur(${blur}px) url(#${id}) saturate(1.95) brightness(1.22) contrast(1.04)` : `blur(${blur}px) saturate(1.95) brightness(1.22) contrast(1.04)`;
+  const filter = map ? `blur(${blur}px) url(#${id}) saturate(1.5) brightness(1.06)` : `blur(${blur}px) saturate(1.5) brightness(1.06)`;
   return (
     <span ref={layer} className={`lg-refract ${className}`} style={{ backdropFilter: filter, WebkitBackdropFilter: filter }} aria-hidden="true">
       {map && (

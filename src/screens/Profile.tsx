@@ -23,6 +23,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
   const [confirmReset, setConfirmReset] = useState(false);
   const [name, setName] = useState(state.name);
   const [picking, setPicking] = useState(false);
+  const [accOpen, setAccOpen] = useState(false);
   const { me, premium } = useAccount();
   const words = Object.keys(state.words).length;
   const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
@@ -40,7 +41,14 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
   return (
     <div className="page">
       {/* Profil kartasi: avatar, ism, chiplar; pastida ixcham hisob qatori */}
-      <section className="pf-hero">
+      <section
+        className={`pf-hero ${accOpen ? 'acc-open' : ''}`}
+        onClick={(e) => {
+          // Avatar, ism maydoni va tugmalar o'z ishini qiladi; kartaning qolgan joyi hisob qatorini ochadi/yopadi.
+          if ((e.target as HTMLElement).closest('button, input, a, .acc-line')) return;
+          setAccOpen((v) => !v);
+        }}
+      >
         <div className="pf-top">
           <button type="button" className="avatar-big pf-avatar" onClick={() => setPicking(true)} aria-label="Avatarni o'zgartirish">
             <Avatar value={state.avatar} size={76} />
@@ -56,7 +64,14 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
             </div>
           </div>
         </div>
-        <AccountCard />
+        <div className="pf-acc" aria-hidden={!accOpen}>
+          <div className="pf-acc-inner">
+            <AccountCard />
+          </div>
+        </div>
+        <button type="button" className="pf-acc-toggle" aria-expanded={accOpen} aria-label="Hisob ma'lumotlari" onClick={() => setAccOpen((v) => !v)}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </button>
       </section>
 
       {picking && <AvatarPicker value={state.avatar} googlePhoto={me.user?.avatar} onPick={(v) => update((s) => ({ ...s, avatar: v }))} onClose={() => setPicking(false)} />}

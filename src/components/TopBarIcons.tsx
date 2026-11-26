@@ -67,6 +67,34 @@ export function CupIcon({ full }: { full: boolean }) {
   );
 }
 
+/** Baliqcha (Vivi'ning «joni»): ko'k gradient, dumi qimirlaydi, har 10 soniyada suzib aylanadi; tugasa — xira. */
+export function FishIcon({ full = true }: { full?: boolean }) {
+  return (
+    <svg className={`tbi tbi-fish ${full ? 'full' : 'empty'}`} viewBox="0 0 30 26" width="27" height="24" aria-hidden="true">
+      <defs>
+        <linearGradient id="tbi-fish-g" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#7dd3fc" />
+          <stop offset=".55" stopColor="#38bdf8" />
+          <stop offset="1" stopColor="#0369a1" />
+        </linearGradient>
+      </defs>
+      <g className="tbi-fish-body">
+        <path className="tbi-fish-tail" d="M7.5 13 L1.5 6.5 Q1 12.5 2.2 13 Q1 13.5 1.5 19.5 Z" fill="#0ea5e9" stroke="#075985" strokeWidth="1" strokeLinejoin="round" />
+        <path d="M6.5 13 C9 5.5 20 4 27 12 Q28 13 27 14 C20 22 9 20.5 6.5 13 Z" fill="url(#tbi-fish-g)" stroke="#075985" strokeWidth="1.1" />
+        <path d="M14 7.5 Q16.5 3.5 20 6.5" fill="#0ea5e9" stroke="#075985" strokeWidth=".9" />
+        <path d="M12 9.5 Q16 7.2 21 9" fill="none" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" opacity=".7" />
+        <circle cx="22.2" cy="11.6" r="1.9" fill="#fff" />
+        <circle cx="22.6" cy="11.7" r="1" fill="#0c1a3a" />
+        <path d="M17 13.5 Q18.5 15.5 17 17.5" fill="none" stroke="#075985" strokeWidth=".9" strokeLinecap="round" opacity=".6" />
+      </g>
+      <g className="tbi-bubbles" fill="none" stroke="currentColor" strokeWidth=".9">
+        <circle className="b1" cx="27" cy="7" r="1.3" />
+        <circle className="b2" cx="25" cy="3.5" r=".9" />
+      </g>
+    </svg>
+  );
+}
+
 /** Ikki barobar XP chaqmog'i. */
 export function BoltIcon() {
   return (
