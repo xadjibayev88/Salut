@@ -49,6 +49,43 @@ export function holeState(t: number) {
 const TOTAL = 2.75;
 const SWITCH_AT = 2.05;
 
+/** Oy tugmachasining o'ng cheti (stage koordinatasida) — odamcha shu yerga yetib, chiroqni yoqadi. */
+const KNOB_REACH_X = 92;
+
+/**
+ * Tungi → kunduzgi: odamcha qo'llarini yoyib teshikdan sakrab chiqadi, qo'nadi, chapdagi oy tugmachasi
+ * tomon yuradi, yetib borib qo'lini cho'zadi — shu payt chiroq yonadi (rejim yorug'ga o'tadi).
+ */
+export function wakePose(t: number) {
+  const landX = HOLE_X - 28;
+  if (t < 0.5) {
+    const k = t / 0.5;
+    // teshik ichidan yoy bo'ylab chiqib, chaproqqa qo'nadi
+    return { x: HOLE_X - 28 * k, y: GROUND + 26 * (1 - k) - Math.sin(k * Math.PI) * 30, leg: 0.45, arm: 1.55, swing: 0, sink: 0, visible: true };
+  }
+  if (t < 1.7) {
+    const k = (t - 0.5) / 1.2;
+    const swing = Math.sin((t - 0.5) * 15);
+    return { x: landX + (KNOB_REACH_X - landX) * k, y: GROUND - Math.abs(swing) * 1.5, leg: swing * 0.5, arm: 0.45, swing: swing * 0.45, sink: 0, visible: true };
+  }
+  if (t < 2.05) {
+    // to'xtab, qo'lini tugmachaga cho'zadi
+    const k = Math.min(1, (t - 1.7) / 0.2);
+    return { x: KNOB_REACH_X, y: GROUND, leg: 0, arm: 0.45 + k * 1.1, swing: k * 0.9, sink: 0, visible: true };
+  }
+  return { x: KNOB_REACH_X, y: GROUND, leg: 0, arm: 1.55, swing: 0.9, sink: 0, visible: t < 2.3 };
+}
+
+/** Tungi → kunduzgi teshik: odamcha chiqayotganda qora, chiroq yongach yorug' chuqurchaga aylanadi. */
+export function wakeHole(t: number) {
+  if (t < WAKE_SWITCH_AT) return { rx: t < 0.5 ? 15 + 4 * Math.sin((t / 0.5) * Math.PI) : 15, dark: 1 };
+  const k = Math.min(1, (t - WAKE_SWITCH_AT) / 0.5);
+  return { rx: 15, dark: 1 - k };
+}
+
+const WAKE_SWITCH_AT = 2.05;
+const WAKE_TOTAL = 2.7;
+
 export function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: (next: boolean) => void }) {
   const [running, setRunning] = useState(false);
   const g = useRef<SVGGElement>(null);
@@ -57,9 +94,9 @@ export function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: (next
   const raf = useRef(0);
   useEffect(() => () => cancelAnimationFrame(raf.current), []);
 
-  const draw = (t: number) => {
-    const p = stickPose(t);
-    const h = holeState(t);
+  const draw = (t: number, wake: boolean) => {
+    const p = wake ? wakePose(t) : stickPose(t);
+    const h = wake ? wakeHole(t) : holeState(t);
     const el = g.current;
     if (el) {
       el.style.opacity = p.visible ? '1' : '0';
@@ -87,16 +124,18 @@ export function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: (next
       return;
     }
     setRunning(true);
+    // Tungidan kunduzgiga: odamcha teshikdan chiqib chiroqni yoqadi; aks holda — teshikka sakrab kiradi.
+    const wake = dark;
     const t0 = performance.now();
     let switched = false;
     const step = (now: number) => {
       const t = (now - t0) / 1000;
-      draw(t);
-      if (!switched && t >= SWITCH_AT) {
+      draw(t, wake);
+      if (!switched && t >= (wake ? WAKE_SWITCH_AT : SWITCH_AT)) {
         switched = true;
         onToggle(next);
       }
-      if (t < TOTAL) raf.current = requestAnimationFrame(step);
+      if (t < (wake ? WAKE_TOTAL : TOTAL)) raf.current = requestAnimationFrame(step);
       else setRunning(false);
     };
     raf.current = requestAnimationFrame(step);
