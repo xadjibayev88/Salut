@@ -1,4 +1,4 @@
-// Reklama (video) ko'rib mukofot: ☕ kofe, ⭐ XP yoki 🐱 Vivi bilan qo'shimcha daqiqalar.
+// Reklama (video) ko'rib mukofot: 🐟 baliqcha, ⭐ XP yoki 🐱 Vivi bilan qo'shimcha daqiqalar.
 // Android ilovada — AdMob, saytda — AdSense mukofotli video. Super obunachilarga ko'rinmaydi.
 import { useEffect, useState } from 'react';
 import { AD_XP, grantAdXp, MAX_HEARTS } from '../engine/game';
@@ -7,7 +7,7 @@ import { accountApi } from '../state/account';
 import { useStore } from '../state/store';
 
 const TEXT: Record<RewardKind, { icon: string; title: string; sub: (left: number) => string; done: string }> = {
-  coffee: { icon: '🎬', title: "Reklama ko'rib kofe olish", sub: (l) => `Qisqa video — +1 chashka · bugun ${l} ta qoldi`, done: '+1 chashka kofe ☕' },
+  coffee: { icon: '🎬', title: "Reklama ko'rib baliqcha olish", sub: (l) => `Qisqa video — +1 baliqcha · bugun ${l} ta qoldi`, done: '+1 baliqcha kofe ☕' },
   xp: { icon: '⭐', title: `Video ko'rib +${AD_XP} XP`, sub: (l) => `Turnirda oldinga chiqing · bugun ${l} ta qoldi`, done: `+${AD_XP} XP ⭐` },
   vivi: { icon: '🐱', title: "Video ko'rib Vivi bilan +2 daqiqa", sub: (l) => `Bepul vaqt tugasa ham gaplashing · bugun ${l} ta qoldi`, done: "Vivi bilan +2 daqiqa qo'shildi 🎉" },
 };
@@ -60,7 +60,7 @@ export function RewardedButton({ compact = false, onGranted, kind = 'coffee', vi
       else update((s) => grantAdXp(s));
       setMsg(t.done);
       onGranted?.();
-    } else setMsg(r.reason === 'limit' ? 'Bugungi limit tugadi' : r.reason === 'not_finished' ? "Kofe olish uchun videoni oxirigacha ko'ring" : "Hozir reklama yo'q — birozdan so'ng urinib ko'ring");
+    } else setMsg(r.reason === 'limit' ? 'Bugungi limit tugadi' : r.reason === 'not_finished' ? "Baliqcha olish uchun videoni oxirigacha ko'ring" : "Hozir reklama yo'q — birozdan so'ng urinib ko'ring");
   };
 
   return (

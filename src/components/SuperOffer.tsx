@@ -6,7 +6,7 @@ const PERKS = [
   ['🎙️', 'Vivi bilan cheksiz ovozli suhbat', "30 daqiqalik sessiyalar, kunlik limit yo'q"],
   ['💬', 'Cheksiz xabarlar', "Kuniga 30 ta emas — xohlagancha"],
   ['🚫', 'Reklamasiz', "Darslar va suhbat orasida reklama yo'q"],
-  ['☕', 'Cheksiz kofe', "Xato qilsangiz ham darsdan chiqmaysiz"],
+  ['🐟', 'Cheksiz baliqcha', "Xato qilsangiz ham darsdan chiqmaysiz"],
 ];
 
 export function SuperBanner({ onOpen }: { onOpen: () => void }) {

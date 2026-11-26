@@ -1,5 +1,5 @@
 import { GlassRefraction, useLiquidGlassOn } from './components/LiquidGlass';
-import { BoltIcon, CoinIcon, CupIcon, FlagIcon } from './components/TopBarIcons';
+import { BoltIcon, CoinIcon, FishIcon, FlagIcon } from './components/TopBarIcons';
 import { ViviWalker } from './components/ViviWalker';
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { grantSuperFreeze, LEAGUES, MAX_HEARTS, msToNextHeart, streakActiveToday } from './engine/game';
@@ -222,11 +222,11 @@ export function App() {
         <div className="modal-back" onClick={() => setBlocked(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="big-emoji">💔</div>
-            <h3>Kofe tugadi</h3>
-            <p className="muted">Keyingi chashka {Math.ceil((msToNextHeart(state) ?? 0) / 60000)} daqiqada tayyor bo'ladi. Mashq qilib kofe ishlab oling yoki do'kondan to'ldiring.</p>
+            <h3>Baliqchalar tugadi</h3>
+            <p className="muted">Keyingi baliqcha {Math.ceil((msToNextHeart(state) ?? 0) / 60000)} daqiqada tayyor bo'ladi. Mashq qilib baliqcha ishlab oling yoki do'kondan to'ldiring.</p>
             <RewardedButton compact onGranted={() => setBlocked(false)} />
             <button type="button" className="btn btn-primary btn-lg" onClick={() => { setBlocked(false); setSession({ kind: 'practice', mode: 'smart' }); }}>
-              Mashq qilish (+1 ☕)
+              Mashq qilish (+1 🐟)
             </button>
             <button type="button" className="btn btn-text" onClick={() => { setBlocked(false); go('shop'); }}>
               Do'konga o'tish
@@ -282,8 +282,8 @@ function TopBar({ onShop, onProfile }: { onShop: () => void; onProfile: () => vo
       <button type="button" className="stat gems" title="Tangalar" onClick={onShop}>
         <CoinIcon /> <b><CountUp value={state.gems} /></b>
       </button>
-      <button type="button" className="stat heart" title="Kofe (xato qilsangiz kamayadi)" onClick={onShop}>
-        <CupIcon full={state.unlimitedHearts || premium || state.hearts > 0} /> <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>
+      <button type="button" className="stat heart" title="Baliqchalar (xato qilsangiz kamayadi)" onClick={onShop}>
+        <FishIcon full={state.unlimitedHearts || premium || state.hearts > 0} /> <b>{state.unlimitedHearts || premium ? '∞' : state.hearts}</b>
       </button>
     </header>
   );
@@ -331,10 +331,10 @@ function SidePanels({ onGo }: { onGo: (t: Tab) => void }) {
       {state.hearts < MAX_HEARTS && !state.unlimitedHearts && (
         <div className="panel">
           <div className="panel-h">
-            <b>Kofe</b>
+            <b>Baliqchalar</b>
             <span className="muted">{Math.ceil((msToNextHeart(state) ?? 0) / 60000)} daq.</span>
           </div>
-          <div className="hearts-row">{Array.from({ length: MAX_HEARTS }, (_, i) => (i < state.hearts ? '☕' : '▫️')).join(' ')}</div>
+          <div className="hearts-row">{Array.from({ length: MAX_HEARTS }, (_, i) => (i < state.hearts ? '🐟' : '▫️')).join(' ')}</div>
         </div>
       )}
       <div className="panel quests-panel">
@@ -356,6 +356,13 @@ function StreakFlame({ on }: { on: boolean }) {
     <svg className={`streak-flame ${on ? 'lit' : ''}`} viewBox="0 0 24 28" width="22" height="26" aria-hidden="true">
       <path className="sf-outer" d="M12 1.5c1.2 4.2 6.8 6.6 6.8 13.6A6.8 6.8 0 0 1 12 26a6.8 6.8 0 0 1-6.8-6.9c0-3.4 1.7-5.2 3-6.6.3 2 1.3 3.1 2.3 3.4C9.6 11 10.4 5.6 12 1.5z" />
       <path className="sf-inner" d="M12 12.5c.8 2.4 3.6 3.8 3.6 7.2A3.6 3.6 0 0 1 12 23.4a3.6 3.6 0 0 1-3.6-3.7c0-2.3 1.4-3.2 2.1-4.6.4 1 .9 1.5 1.5 1.6-.4-1.6-.4-2.9 0-4.2z" />
+      {on && (
+        <g className="sf-sparks">
+          <circle className="s1" cx="9" cy="8" r="1" />
+          <circle className="s2" cx="15" cy="6" r=".8" />
+          <circle className="s3" cx="12" cy="3" r=".7" />
+        </g>
+      )}
     </svg>
   );
 }

@@ -7,6 +7,13 @@ import type { SessionConfig } from './Session';
 import { SwipeRow, UndoStrip } from '../components/SwipeRow';
 import { useCallback, useState, type ReactNode } from 'react';
 
+/** So'zga bog'liq barqaror rang (har so'z o'z rangida). */
+const hue = (s: string) => {
+  let h = 0;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return h;
+};
+
 export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
   const { state, update } = useStore();
   const learned = [
@@ -83,7 +90,7 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
           <small>Unutilayotgan so'zlarni mustahkamlang</small>
         </span>
         <span className="pr-main-go">
-          <em>+1 ☕</em>
+          <em>+1 🐟</em>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
         </span>
       </button>
@@ -111,7 +118,9 @@ export function Practice({ onStart }: { onStart: (c: SessionConfig) => void }) {
               const removable = w.emoji === '📝';
               const content = (
                 <div role="button" tabIndex={0} className="word-row" onClick={() => speak(w.fr, state.settings.ttsRate)}>
-                  <span className="wr-emoji">{w.emoji}</span>
+                  <span className="wr-emoji" style={{ ['--h' as string]: hue(w.fr) }}>
+                    <span>{w.emoji ?? '🔤'}</span>
+                  </span>
                   <span className="wr-text">
                     <b>{w.fr}</b>
                     <small>{w.uz}</small>

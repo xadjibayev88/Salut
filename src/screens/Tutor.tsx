@@ -443,7 +443,7 @@ function ViviPaywall() {
       </div>
       <div className="vpay-card">
         <div className="vpay-mascot">
-          <Mascot mood="cheer" size={110} />
+          <Mascot mood="cheer" size={92} />
           <span className="vpay-badge">SUPER</span>
         </div>
         <h2>Vivi AI — Super a'zolari uchun</h2>

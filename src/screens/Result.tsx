@@ -74,7 +74,7 @@ export function Result({ reward, config, onDone }: { reward: Reward; config: Ses
                   ✨ {b.label} <b>+{b.xp} XP</b>
                 </li>
               ))}
-              {reward.heartBack && <li>☕ Mashq uchun +1 chashka kofe</li>}
+              {reward.heartBack && <li>🐟 Mashq uchun +1 baliqcha</li>}
               {reward.goalReachedNow && <li>🎯 Kunlik maqsad bajarildi!</li>}
             </ul>
           )}
