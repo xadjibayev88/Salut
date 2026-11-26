@@ -74,8 +74,8 @@ describe('VoiceCall speech review', () => {
     call.dispose();
   });
 
-  it('keeps recognized speech editable instead of sending it immediately', async () => {
-    const call = new VoiceCall(options());
+  it('keeps recognized speech editable instead of sending it immediately (autoSend off)', async () => {
+    const call = new VoiceCall({ ...options(), autoSend: false });
     call.snap = { ...call.snap, phase: 'user' };
 
     await (call as unknown as { onFinal: (result: SttResult) => Promise<void> }).onFinal(result('  Salom, Vivi  ', ['confidence_missing']));
@@ -87,10 +87,31 @@ describe('VoiceCall speech review', () => {
     call.dispose();
   });
 
-  it('does not call the tutor or record a scored turn until the learner confirms the edited text', async () => {
+  it('sends recognized speech to Vivi right away by default (auto-send)', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ code: 'blocked', message: 'blocked' }), { status: 403 }));
     vi.stubGlobal('fetch', fetchMock);
     const call = new VoiceCall(options());
+    const onUserTurn = vi.fn();
+    call.onUserTurn = onUserTurn;
+    call.snap = { ...call.snap, phase: 'user' };
+    await (call as unknown as { onFinal: (result: SttResult) => Promise<void> }).onFinal(result('Bonjour Vivi', []));
+    expect(onUserTurn).toHaveBeenCalledOnce();
+    expect(call.snap.turns.at(-1)).toMatchObject({ role: 'user', text: 'Bonjour Vivi' });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('api/tutor');
+  });
+
+  it('returns to listening without a review box when nothing was heard', async () => {
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'user' };
+    await (call as unknown as { onFinal: (result: SttResult) => Promise<void> }).onFinal(result('   ', []));
+    expect(call.snap.phase).not.toBe('review');
+    expect(call.snap.turns).toHaveLength(0);
+  });
+
+  it('does not call the tutor or record a scored turn until the learner confirms the edited text (autoSend off)', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ code: 'blocked', message: 'blocked' }), { status: 403 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall({ ...options(), autoSend: false });
     const onUserTurn = vi.fn();
     call.onUserTurn = onUserTurn;
     call.snap = { ...call.snap, phase: 'user' };

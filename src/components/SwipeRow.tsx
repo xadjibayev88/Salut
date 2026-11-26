@@ -5,7 +5,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motionAllowed } from '../engine/motion';
 
-const DELETE_AT = 0.38; // qator kengligining 38% i
+// Qator kengligining 22% i yetadi; tez siltanganda (flick) bundan ham kam masofa kifoya.
+const DELETE_AT = 0.22;
+const FLICK_SPEED = 0.45; // px/ms — tez siltash
+const FLICK_MIN = 36; // px
 export const UNDO_MS = 4500;
 const HINT_KEY = 'voila.swipeHintSeen';
 
@@ -30,6 +33,7 @@ export function SwipeRow({
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [state, setState] = useState<'idle' | 'leaving'>('idle');
+  const track = useRef({ x: 0, t: 0, v: 0 });
   const start = useRef<{ x: number; y: number; id: number; locked: boolean | null } | null>(null);
   const width = () => row.current?.offsetWidth ?? 320;
 
@@ -77,6 +81,7 @@ export function SwipeRow({
         onPointerDown={(e) => {
           if (state !== 'idle' || e.pointerType === 'mouse' && e.button !== 0) return;
           start.current = { x: e.clientX, y: e.clientY, id: e.pointerId, locked: null };
+          track.current = { x: e.clientX, t: e.timeStamp, v: 0 };
         }}
         onPointerMove={(e) => {
           const s = start.current;
@@ -84,8 +89,8 @@ export function SwipeRow({
           const mx = e.clientX - s.x;
           const my = e.clientY - s.y;
           if (s.locked === null) {
-            if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
-            s.locked = Math.abs(mx) > Math.abs(my) * 1.3; // gorizontal — surish; vertikal — skroll
+            if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+            s.locked = Math.abs(mx) > Math.abs(my) * 1.05; // gorizontal — surish; vertikal — skroll
             if (s.locked) {
               (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
               setDragging(true);
@@ -95,6 +100,9 @@ export function SwipeRow({
             }
           }
           if (!s.locked) return;
+          // Tezlikni silliqlab kuzatamiz (flick uchun).
+          const dt = Math.max(1, e.timeStamp - track.current.t);
+          track.current = { x: e.clientX, t: e.timeStamp, v: track.current.v * 0.4 + ((e.clientX - track.current.x) / dt) * 0.6 };
           setDx(mx < 0 ? mx : mx * 0.15);
         }}
         onPointerUp={() => {
@@ -102,7 +110,8 @@ export function SwipeRow({
           start.current = null;
           if (!s?.locked) return;
           setDragging(false);
-          if (blobAmount(dx, width()) >= 1) commit();
+          const flick = track.current.v < -FLICK_SPEED && dx < -FLICK_MIN;
+          if (blobAmount(dx, width()) >= 1 || flick) commit();
           else setDx(0);
         }}
         onPointerCancel={() => {

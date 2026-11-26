@@ -1,6 +1,7 @@
 import { ReviewForm } from '../components/SocialProof';
 import { PinSetupSheet } from '../components/PinLock';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { Folder } from '../components/Folder';
 import { clearPin, hasPin, setPin, verifyPin } from '../engine/applock';
 import { TAB_MOTIONS, saveTabMotion, useTabMotion } from '../components/TabBar';
 import { themePref, setThemePref, type ThemePref } from '../engine/theme';
@@ -108,8 +109,12 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         </div>
       </div>
 
-      <h2 className="section-title">Yutuqlar</h2>
-      <div className="ach-list">
+      <Folder
+        className="ach-folder"
+        icon="🏆"
+        title="Yutuqlar"
+        summary={`${ACHIEVEMENTS.filter((a) => state.achievements[a.id]).length} / ${ACHIEVEMENTS.length} ochilgan`}
+      >
         {ACHIEVEMENTS.map((a) => {
           const p = Math.min(a.goal, a.progress(state));
           const done = !!state.achievements[a.id];
@@ -129,19 +134,9 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
             </div>
           );
         })}
-      </div>
-
-      <h2 className="section-title">Fikringiz</h2>
-      <div className="panel rv-profile">
-        <ReviewForm />
-      </div>
+      </Folder>
 
       <h2 className="section-title">Sozlamalar</h2>
-      <div className="panel">
-        <b>🔐 Vivi AI va maxfiylik</b>
-        <p className="muted small">Har bir AI vazifasiga rozilikni alohida boshqaring, uni bekor qiling yoki Vivi xotirasini o‘chiring.</p>
-        <button type="button" className="btn btn-ghost" onClick={onManageAiConsent}>AI roziliklarini boshqarish</button>
-      </div>
       <div className="settings">
         <ThemeSetting />
         <TabMotionSetting />
@@ -190,6 +185,17 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
             ))}
           </div>
         </div>
+      </div>
+      <h2 className="section-title">Fikringiz</h2>
+      <div className="panel rv-profile">
+        <ReviewForm />
+      </div>
+
+      <h2 className="section-title">Maxfiylik</h2>
+      <div className="panel">
+        <b>🔐 Vivi AI va maxfiylik</b>
+        <p className="muted small">Har bir AI vazifasiga rozilikni alohida boshqaring, uni bekor qiling yoki Vivi xotirasini o‘chiring.</p>
+        <button type="button" className="btn btn-ghost" onClick={onManageAiConsent}>AI roziliklarini boshqarish</button>
       </div>
       <a className="btn btn-ghost btn-lg about-link" href="#/about">
         ℹ️ Biz haqimizda · ijtimoiy tarmoqlar · ulashish
@@ -251,25 +257,23 @@ function ThemeSetting() {
 /** Pastki menyu o'tish animatsiyasi (videodagi 6 uslub). Tanlansa — menyu darhol namoyish qiladi. */
 function TabMotionSetting() {
   const current = useTabMotion();
+  const name = TAB_MOTIONS.find((m) => m.id === current)?.name ?? '';
   return (
-    <div className="setting tab-motion-setting">
-      <span>✨ Menyu animatsiyasi</span>
-      <div className="tm-grid" role="radiogroup" aria-label="Menyu animatsiyasi">
-        {TAB_MOTIONS.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            role="radio"
-            aria-checked={current === m.id}
-            className={`tm-chip tm-chip-${m.id} ${current === m.id ? 'on' : ''}`}
-            onClick={() => saveTabMotion(m.id)}
-          >
-            <b>{m.name}</b>
-            <small>{m.note}</small>
-          </button>
-        ))}
-      </div>
-    </div>
+    <Folder className="setting-folder tm-folder" icon="✨" title="Menyu animatsiyasi" summary={`Tanlangan: ${name}`}>
+      {TAB_MOTIONS.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          role="radio"
+          aria-checked={current === m.id}
+          className={`tm-chip tm-chip-${m.id} ${current === m.id ? 'on' : ''}`}
+          onClick={() => saveTabMotion(m.id)}
+        >
+          <b>{m.name}</b>
+          <small>{m.note}</small>
+        </button>
+      ))}
+    </Folder>
   );
 }
 

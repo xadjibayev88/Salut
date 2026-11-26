@@ -63,17 +63,17 @@ export function QuestsCard({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function StreakRepair() {
+export function StreakRepair({ compact = false }: { compact?: boolean }) {
   const { state, update } = useStore();
   const { premium } = useAccount();
   if (!canRepairStreak(state) || !state.lostStreak) return null;
   const can = premium || state.gems >= STREAK_REPAIR_COST;
   return (
-    <div className="streak-repair">
+    <div className={`streak-repair ${compact ? 'compact' : ''}`}>
       <span className="sr-icon">☀️</span>
       <div>
-        <b>{state.lostStreak.value} kunlik seriyangiz uzildi</b>
-        <small className="muted">Ikki kun ichida tiklash mumkin{premium ? ' — Super uchun bepul' : ''}.</small>
+        <b>{state.lostStreak.value} kunlik seriya uzildi</b>
+        <small className="muted">{compact ? `2 kun ichida tiklang${premium ? ' · bepul' : ''}` : `Ikki kun ichida tiklash mumkin${premium ? ' — Super uchun bepul' : ''}.`}</small>
       </div>
       <button
         type="button"
@@ -91,4 +91,13 @@ export function StreakRepair() {
       </button>
     </div>
   );
+}
+
+/** Turnir sahifasi uchun ixcham holat: nechta vazifa bajarilgani (papka sarlavhasida ko'rsatiladi). */
+export function useQuestSummary() {
+  const { state } = useStore();
+  const d = todayDaily(state);
+  const quests = dailyQuests(d.day, state.dailyGoal);
+  const done = quests.filter((q) => d.claimed.includes(q.id)).length;
+  return { done, total: quests.length, bonus: QUESTS_BONUS };
 }

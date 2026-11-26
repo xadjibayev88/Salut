@@ -657,12 +657,14 @@ describe('AI route consent/quota middleware', () => {
     expect(config).toContain('GOOGLE_PROVIDER_TRANSPORT_READY = true');
     expect(main).toContain('providerCall: createProviderCall(googleProvider)');
     expect(main).toContain("stt: sttReady");
-    expect(main).toContain("if (routeKey === 'POST /api/live/token') return void aiRouteHandlers['POST /api/live/token'](req, res);");
+    // Live has its own gate (mode, consent, kill switch, limits) in server/live-route.ts.
+    expect(main).toContain("if (routeKey === 'POST /api/live/token') {");
+    expect(main).toContain("hasConsent: (subject) => hasAiConsent(subject, 'live_session', 'google-gemini-api')");
     expect(main).toContain('const ai = aiRoutesEffectivelyReady();');
     expect(main).toContain('ai: aiReady');
     expect(main).toContain("requestOriginAllowed: aiRequestOriginAllowed");
     expect(main).toContain("tts: ttsReady ? 'elevenlabs' : 'text'");
-    expect(main).toContain('live: false');
+    expect(main).toContain('live: liveReady()');
     expect(initialState(0).settings.tutorVoice).toBe(true);
     expect(tutor).toContain('if (state.settings.tutorVoice) speakQueue(frenchParts(reply.text), state.settings.ttsRate);');
     expect(tutor).toContain('tutorVoice: !s.settings.tutorVoice');

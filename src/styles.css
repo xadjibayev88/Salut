@@ -1640,6 +1640,7 @@ html.ptr-on, html.ptr-on body { overscroll-behavior-y: contain; }
 .swipe-goo {
   position: absolute; top: 0; bottom: 0; right: 0; width: calc(var(--dx) * -1 + 2px); z-index: 0; pointer-events: none;
   display: grid; place-items: center end; padding-right: 14px; filter: url(#goo-filter);
+  opacity: calc(var(--blob) * 8); /* tinch holatda (surilmaganda) tomchi umuman ko'rinmaydi */
 }
 .goo-blob {
   position: absolute; right: -14px; top: 50%; height: calc(34px + var(--blob) * 18px); width: calc(var(--dx) * -1 + 26px); transform: translateY(-50%);
@@ -1899,6 +1900,52 @@ html.theme-anim, html.theme-anim body, html.theme-anim * { transition: backgroun
 .theme-auto { border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 12px; border-radius: 999px; }
 .theme-auto.on { color: #fff; border-color: transparent; background: linear-gradient(135deg, #7c5cff, #38bdf8); }
 @media (prefers-reduced-motion: reduce) { .theme-toggle.is-light .tt-sun { animation: none; } }
+
+/* ==========================================================
+   PAPKA (Folder) — yig'iladigan bo'lim, silliq ochilish va ketma-ket tushish
+   ========================================================== */
+.folder { border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-1); overflow: hidden; margin-bottom: 12px; }
+.folder-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.folder-head:active { background: rgba(127, 127, 255, .06); }
+.folder-icon { width: 44px; height: 44px; flex: none; display: grid; place-items: center; font-size: 24px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(124, 92, 255, .18), rgba(56, 189, 248, .16)); transition: transform .45s cubic-bezier(.3, 1.6, .5, 1); }
+.folder.open .folder-icon { transform: rotate(-8deg) scale(1.08); }
+.folder-text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.folder-text b { font-size: 16px; }
+.folder-text small { color: var(--muted); font-size: 13px; }
+.folder-chev { color: var(--muted); transition: transform .45s cubic-bezier(.3, 1.4, .5, 1); }
+.folder.open .folder-chev { transform: rotate(180deg); }
+/* balandlik 0 → avto: grid-template-rows 0fr → 1fr */
+.folder-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s cubic-bezier(.2, .9, .25, 1); }
+.folder.open .folder-body { grid-template-rows: 1fr; }
+.folder-inner { min-height: 0; overflow: hidden; }
+.folder-item { opacity: 0; transform: translateY(-14px) scale(.98); filter: blur(4px);
+  transition: opacity .3s, transform .45s cubic-bezier(.2, .9, .3, 1.15), filter .3s; transition-delay: 0s; }
+.folder.open .folder-item { opacity: 1; transform: none; filter: none; transition-delay: calc(var(--fi) * 45ms + 60ms); }
+.folder.open .folder-head { border-bottom: 1px solid var(--line); }
+/* Yutuqlar papkasi: ichidagi qatorlar */
+.ach-folder .folder-item .ach { border-bottom: 1px solid var(--line); }
+.ach-folder .folder-item:last-child .ach { border-bottom: none; }
+/* Menyu animatsiyasi papkasi — sozlamalar ichida, ikki ustunli tanlov */
+.settings .setting-folder { margin: 0; border-radius: 0; box-shadow: none; background: none; border-bottom: 1px solid var(--line); }
+.settings .setting-folder .folder-head { padding: 14px 16px; }
+.settings .setting-folder .folder-icon { width: 36px; height: 36px; font-size: 18px; border-radius: 11px; }
+.tm-folder .folder-inner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 12px; }
+.tm-folder.open .folder-inner { padding: 4px 12px 14px; }
+.tm-folder .folder-item { display: flex; }
+.tm-folder .tm-chip { width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .folder-body, .folder-item, .folder-chev, .folder-icon { transition: none !important; }
+}
+
+/* Turnir: ixcham seriya tasmasi va kunlik vazifalar papkasi */
+.streak-repair.compact { padding: 10px 12px; gap: 10px; margin-bottom: 12px; }
+.streak-repair.compact .sr-icon { font-size: 26px; }
+.streak-repair.compact b { font-size: 14.5px; }
+.streak-repair.compact small { font-size: 12px; }
+.streak-repair.compact .btn { padding: 8px 14px; font-size: 14px; }
+.quests-folder .quests { box-shadow: none; background: none; border: none; padding: 4px 12px 12px; }
+.quests-folder .quests-head { display: none; }
 
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }

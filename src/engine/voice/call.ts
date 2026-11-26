@@ -59,6 +59,8 @@ export interface CallOptions {
   lang: ExplainLang;
   voiceId: string;
   inputMode: InputMode;
+  /** Gapirilgan matnni tasdiqlash oynasisiz darhol yuborish (sukut bo'yicha yoqilgan). */
+  autoSend?: boolean;
   stt: SttEngine;
   micLang: string;
   /** Mikrofon tili «Avto»: Vivi javobiga qarab o'zi almashadi. */
@@ -310,7 +312,17 @@ export class VoiceCall {
     if (this.snap.phase !== 'thinking' && this.snap.phase !== 'user') return;
     this.draftSubmitted = false;
     this.draftTurnId = null;
+    if (!t) {
+      // Hech narsa eshitilmadi — oynani ochmasdan qayta tinglashga qaytamiz.
+      this.notice('nudgeSilence');
+      this.set({ partial: '', live: '', level: 0 });
+      this.toReady();
+      return;
+    }
     this.set({ phase: 'review', draft: t, sttResult: result, retryAvailable: false, partial: '', live: '', level: 0 });
+    // Avto-yuborish: gapirgan matn tekshirish oynasisiz darhol Vivi'ga ketadi (suhbat matnida ko'rinadi).
+    // Faqat «autoSend: false» bo'lsa, avvalgidek tasdiqlash oynasi qoladi.
+    if (this.o.autoSend !== false) this.submitDraft(t);
   }
 
   /** STT matnini tahrirlash oynasida saqlash. */
