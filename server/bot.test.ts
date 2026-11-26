@@ -30,6 +30,27 @@ beforeEach(() => {
 });
 
 describe('telegram bot', () => {
+  it('sends receipts only to ADMIN_TELEGRAM_CHAT_ID when it is set, not to other Telegram accounts linked to the admin', async () => {
+    const { calls, bot } = setup();
+    const boss = upsertGoogleUser('g-boss2', 'boss@example.com', 'Boss', null);
+    // Begona odam admin hisobining bog'lash havolasini ochdi — u admin bo'lib qolmasligi kerak.
+    await bot.handle(msg(555, { text: `/start pay_${createLinkCode(boss.id)}` }));
+    process.env.ADMIN_TELEGRAM_CHAT_ID = '900';
+    try {
+      expect(adminChats()).toEqual(['900']);
+      await bot.handle(cb(8, 'pay:card:week'));
+      await bot.handle(msg(8, { photo: [{ file_id: 'big' }] }));
+      const photos = calls.filter((c) => c.method === 'sendPhoto').map((c) => (c.body.__form as FormData).get('chat_id'));
+      expect(photos).toEqual(['900']);
+      // Bog'langan begona akkaunt chekni tasdiqlay olmaydi.
+      await bot.handle(cb(555, 'ok:1'));
+      expect(calls.at(-1)!.body.text ?? calls.at(-1)!.body.callback_query_id).toBeTruthy();
+      expect(calls.some((c) => c.method === 'answerCallbackQuery' && /Ruxsat/.test(String(c.body.text)))).toBe(true);
+    } finally {
+      delete process.env.ADMIN_TELEGRAM_CHAT_ID;
+    }
+  });
+
   it('shows the card like the app: grouped digits, network, bank and a copy button', async () => {
     const { calls, bot } = setup();
     process.env.PAY_CARD_NUMBER = '9860170112762613';

@@ -2476,6 +2476,11 @@ html[data-theme='light'] .sendbtn { background: linear-gradient(180deg, #23244f,
 @media (prefers-reduced-motion: reduce) { .lock-aurora, .lock-vivi, .pin-ripple, .pin-box b { animation: none !important; } }
 html.lite .lock-aurora { animation: none; }
 
+.consent-dirty { margin: 4px 0 -2px; font-size: 13px; font-weight: 700; color: #fbbf24; }
+.consent-save-dirty:not(:disabled) { animation: consent-pulse 1.6s ease-in-out infinite; }
+@keyframes consent-pulse { 50% { box-shadow: 0 0 0 6px rgba(129, 140, 248, .25), 0 0 22px rgba(129, 140, 248, .45); } }
+@media (prefers-reduced-motion: reduce) { .consent-save-dirty:not(:disabled) { animation: none; } }
+
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }

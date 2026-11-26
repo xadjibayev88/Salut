@@ -7,7 +7,7 @@ import { db } from './db.ts';
 import { decideReview } from './social.ts';
 import { getUser, upsertSocialUser } from './accounts.ts';
 import { cardBrand, groupCardNumber } from '../src/shared/card.ts';
-import { PLANS, activePlan, toUsd, usdRate, createCardOrder, createOrder, decideOrder, isAdmin, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
+import { PLANS, activePlan, toUsd, usdRate, createCardOrder, createOrder, decideOrder, oldPriceUzs, onGrant, plansPayload, priceUzs, providers, visiblePlans, type PlanId } from './billing.ts';
 
 type Tg = (method: string, body: Record<string, unknown>) => Promise<any>;
 type From = { id: number; first_name?: string; last_name?: string; username?: string };
@@ -46,11 +46,22 @@ function chatOfUser(userId: string): string | null {
 }
 
 /** Cheklar yuboriladigan admin chatlari: ADMIN_TELEGRAM_CHAT_ID + ADMIN_EMAILS hisobiga bog'langan Telegramlar. */
+/**
+ * Cheklar, izohlar va «Tasdiqlash/Rad etish» huquqi kimga boradi.
+ * ADMIN_TELEGRAM_CHAT_ID berilgan bo'lsa — FAQAT o'sha ID'lar. Admin hisobiga bog'langan boshqa Telegram
+ * akkauntlar hisobga olinmaydi: kimdir admin qurilmasida o'z Telegrami bilan kirsa yoki admin hisobining
+ * bog'lash havolasini ochsa, u cheklarni (shaxsiy ma'lumot) olib, ularni tasdiqlay olardi.
+ * O'zgaruvchi bo'sh bo'lsa — faqat Google'da tasdiqlangan admin email hisobiga bog'langan Telegram.
+ */
 export function adminChats(): string[] {
-  const set = new Set(env('ADMIN_TELEGRAM_CHAT_ID').split(',').map((s) => s.trim()).filter(Boolean));
-  const rows = db().prepare("SELECT subject, user_id FROM identities WHERE provider = 'telegram'").all() as { subject: string; user_id: string }[];
-  for (const r of rows) if (isAdmin(r.user_id)) set.add(r.subject);
-  return [...set];
+  const explicit = env('ADMIN_TELEGRAM_CHAT_ID').split(',').map((s) => s.trim()).filter(Boolean);
+  if (explicit.length) return [...new Set(explicit)];
+  const emails = env('ADMIN_EMAILS').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (!emails.length) return [];
+  const rows = db()
+    .prepare("SELECT i.subject, u.email, u.google_sub FROM identities i JOIN users u ON u.id = i.user_id WHERE i.provider = 'telegram'")
+    .all() as { subject: string; email: string | null; google_sub: string | null }[];
+  return [...new Set(rows.filter((r) => r.google_sub && r.email && emails.includes(r.email.toLowerCase())).map((r) => r.subject))];
 }
 
 type Kind = 'card' | 'visa';
