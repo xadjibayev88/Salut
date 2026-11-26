@@ -1947,6 +1947,60 @@ html.theme-anim, html.theme-anim body, html.theme-anim * { transition: backgroun
 .quests-folder .quests { box-shadow: none; background: none; border: none; padding: 4px 12px 12px; }
 .quests-folder .quests-head { display: none; }
 
+/* ==========================================================
+   CHEK YUKLASH — javob beradigan yuklash zonasi (drag feedback)
+   ========================================================== */
+.rdrop {
+  --rd-teal: #2dd4bf; position: relative; display: grid; place-items: center; min-height: 128px; margin-top: 8px; padding: 18px 16px; overflow: hidden;
+  border-radius: 14px; border: 1.5px solid rgba(148, 163, 184, .22); background: #12151b; color: #e5e7eb; cursor: pointer; text-align: center;
+  transition: border-color .25s, background .25s, box-shadow .3s, transform .2s; -webkit-tap-highlight-color: transparent;
+}
+.rdrop:focus-visible { outline: 2px solid var(--rd-teal); outline-offset: 2px; }
+.rdrop:active { transform: scale(.99); }
+.rd-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s;
+  background: radial-gradient(70% 90% at 50% 55%, rgba(45, 212, 191, .22), rgba(45, 212, 191, .04) 60%, transparent 80%); }
+.rd-idle, .rd-progress, .rd-ok { position: relative; display: grid; justify-items: center; gap: 4px; width: 100%; }
+.rd-idle b, .rd-ok b { font-size: 14.5px; }
+.rd-idle small, .rd-ok small, .rd-progress small { font-size: 12px; color: rgba(203, 213, 225, .55); }
+.rd-cloud { color: rgba(203, 213, 225, .7); transition: transform .35s cubic-bezier(.3, 1.6, .5, 1), color .25s; margin-bottom: 2px; }
+/* fayl ustida: shtrix chegara, yorug'lik, ikonka ko'tariladi, strelka «nafas oladi» */
+.rd-over { border-style: dashed; border-color: var(--rd-teal); box-shadow: 0 0 0 4px rgba(45, 212, 191, .1), 0 10px 30px rgba(45, 212, 191, .12); }
+.rd-over .rd-glow, .rd-preparing .rd-glow, .rd-uploading .rd-glow, .rd-ready .rd-glow, .rd-done .rd-glow { opacity: 1; }
+.rd-over .rd-cloud { transform: translateY(-5px) scale(1.12); color: var(--rd-teal); }
+.rd-over .rd-arrow { animation: rd-arrow .8s ease-in-out infinite alternate; }
+@keyframes rd-arrow { to { transform: translateY(-2px); } }
+.rd-over .rd-idle b { color: #99f6e4; }
+/* progress */
+.rd-preparing, .rd-uploading { border-style: dashed; border-color: rgba(45, 212, 191, .7); cursor: default; }
+.rd-row { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 10px; }
+.rd-file { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13.5px; font-weight: 700; color: #f1f5f9; }
+.rd-file svg { flex: none; color: var(--rd-teal); }
+.rd-pct { font-size: 13px; font-weight: 800; color: var(--rd-teal); font-variant-numeric: tabular-nums; }
+.rd-bar { display: block; width: 100%; height: 6px; margin: 6px 0 2px; border-radius: 6px; background: rgba(148, 163, 184, .14); overflow: hidden; }
+.rd-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #14b8a6, #5eead4); box-shadow: 0 0 10px rgba(45, 212, 191, .7); transition: width .18s linear; }
+/* tayyor / yuborildi */
+.rd-ready, .rd-done { border-color: var(--rd-teal); box-shadow: 0 0 0 1px rgba(45, 212, 191, .25) inset; }
+.rd-check { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 4px; color: var(--rd-teal);
+  border: 2px solid var(--rd-teal); background: rgba(45, 212, 191, .08); box-shadow: 0 0 18px rgba(45, 212, 191, .35); animation: rd-pop .45s cubic-bezier(.3, 1.7, .5, 1); }
+.rd-check svg path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: rd-draw .35s .15s ease-out forwards; }
+@keyframes rd-pop { from { transform: scale(.4); opacity: 0; } }
+@keyframes rd-draw { to { stroke-dashoffset: 0; } }
+.rd-ok b { color: #ccfbf1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-badge { position: absolute; left: 10px; top: 8px; padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 800; letter-spacing: .08em;
+  color: #0f2f2b; background: var(--rd-teal); animation: rd-pop .35s cubic-bezier(.3, 1.7, .5, 1); }
+.rd-done { cursor: default; }
+.rd-error { border-color: rgba(248, 113, 113, .7); }
+.rd-error .rd-idle small { color: #fca5a5; }
+/* tashlangan paytdagi to'lqin */
+.rd-ripple { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; pointer-events: none;
+  border: 2px solid var(--rd-teal); animation: rd-ripple .7s ease-out forwards; }
+@keyframes rd-ripple { from { transform: scale(.5); opacity: .9; } to { transform: scale(7); opacity: 0; } }
+html[data-theme='light'] .rdrop { background: #f4f7fb; color: #1e293b; border-color: rgba(100, 116, 139, .3); }
+html[data-theme='light'] .rd-idle small, html[data-theme='light'] .rd-ok small, html[data-theme='light'] .rd-progress small { color: #64748b; }
+html[data-theme='light'] .rd-file, html[data-theme='light'] .rd-ok b { color: #0f766e; }
+html[data-theme='light'] .rd-over .rd-idle b { color: #0f766e; }
+@media (prefers-reduced-motion: reduce) { .rd-arrow, .rd-ripple, .rd-check, .rd-badge { animation: none !important; } .rd-check svg path { stroke-dashoffset: 0; } }
+
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }

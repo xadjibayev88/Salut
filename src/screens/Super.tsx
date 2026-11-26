@@ -3,6 +3,7 @@ import { PurchaseToast, Reviews, StatsLine, SupportRow, useSocial } from '../com
 // Payme / Click (avtomatik) va karta orqali o'tkazma (chek yuklanadi, admin tasdiqlaydi).
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { postWithProgress, ReceiptDrop, receiptProblem, type ReceiptStage } from '../components/ReceiptDrop';
 import { accountApi, useAccount, type PlanId } from '../state/account';
 import { AuthScreen } from './Auth';
 import { Confetti } from '../components/Confetti';
@@ -50,10 +51,50 @@ async function fileToDataUrl(f: File): Promise<string> {
 function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanId; amount: number; kind?: 'card' | 'visa'; onDone: (orderId: number) => void; onClose: () => void }) {
   const { me } = useAccount();
   const card = (kind === 'visa' ? me.billing.visa : me.billing.card)!;
-  const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [stage, setStage] = useState<ReceiptStage>('idle');
+  const [progress, setProgress] = useState(0);
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const pickId = useRef(0);
+
+  /** Fayl tanlandi/tashlandi: tekshiramiz, rasmni siqamiz (progress bilan), so'ng «tayyor». */
+  const pick = async (f: File) => {
+    const problem = receiptProblem(f);
+    if (problem) {
+      setFile(null);
+      setStage('error');
+      setErr(problem);
+      return;
+    }
+    const id = ++pickId.current;
+    setErr(null);
+    setFile(f);
+    setDataUrl(null);
+    setStage('preparing');
+    setProgress(0);
+    // Siqish bir zumda tugashi ham mumkin — foiz silliq o'sib boradi, tayyor bo'lgach 100% ga yetadi.
+    let shown = 0;
+    const tick = window.setInterval(() => {
+      shown = Math.min(0.9, shown + (0.9 - shown) * 0.18 + 0.02);
+      if (pickId.current === id) setProgress(shown);
+    }, 60);
+    try {
+      const [url] = await Promise.all([fileToDataUrl(f), new Promise((r) => setTimeout(r, 650))]);
+      if (pickId.current !== id) return;
+      setDataUrl(url);
+      setProgress(1);
+      window.setTimeout(() => pickId.current === id && setStage('ready'), 220);
+    } catch {
+      if (pickId.current !== id) return;
+      setFile(null);
+      setStage('error');
+      setErr("Chekni o'qib bo'lmadi — boshqa rasm tanlang");
+    } finally {
+      clearInterval(tick);
+    }
+  };
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -65,19 +106,20 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
     }
   };
   const submit = async () => {
-    if (!file) return setErr('Avval chekni yuklang');
+    if (!file || !dataUrl || stage !== 'ready') return setErr('Avval chekni yuklang');
     setBusy(true);
     setErr(null);
-    try {
-      const receipt = await fileToDataUrl(file);
-      const r = await accountApi<{ id?: number; message?: string }>('billing/card', { method: 'POST', body: JSON.stringify({ plan, receipt, kind }) });
-      if (!r.ok || !r.body.id) return setErr(r.body.message ?? "Yuborib bo'lmadi");
-      onDone(r.body.id);
-    } catch {
-      setErr("Chekni o'qib bo'lmadi — boshqa rasm tanlang");
-    } finally {
-      setBusy(false);
+    setStage('uploading');
+    setProgress(0);
+    const r = await postWithProgress<{ id?: number; message?: string }>('billing/card', { plan, receipt: dataUrl, kind }, setProgress);
+    setBusy(false);
+    if (!r.ok || !r.body.id) {
+      setStage('ready');
+      return setErr(r.body.message ?? "Yuborib bo'lmadi — internetni tekshirib, qayta urinib ko'ring");
     }
+    setStage('done');
+    const orderId = r.body.id;
+    window.setTimeout(() => onDone(orderId), 1100);
   };
   return createPortal(
     <div className="modal-back" onClick={onClose}>
@@ -108,16 +150,20 @@ function CardPay({ plan, amount, kind = 'card', onDone, onClose }: { plan: PlanI
           </li>
           <li>
             To'lov chekini (skrinshot yoki PDF) yuklang:
-            <button type="button" className={`receipt-drop ${file ? 'has' : ''}`} onClick={() => fileRef.current?.click()}>
-              {file ? `📎 ${file.name}` : '📷 Chekni tanlash'}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <ReceiptDrop
+              stage={stage}
+              file={file}
+              progress={progress}
+              error={err}
+              onPick={(f) => void pick(f)}
+              onOver={(over) => setStage((st) => (over ? (st === 'idle' || st === 'error' || st === 'ready' ? 'over' : st) : st === 'over' ? (file && dataUrl ? 'ready' : 'idle') : st))}
+            />
           </li>
           <li>Tekshiruvdan so'ng (odatda bir necha daqiqa) Super avtomatik yoqiladi.</li>
         </ol>
-        {err && <p className="auth-error">{err}</p>}
-        <button type="button" className="btn btn-primary btn-lg" disabled={busy || !file} onClick={submit}>
-          {busy ? 'Yuborilmoqda…' : 'Chekni yuborish'}
+        {err && stage !== 'error' && <p className="auth-error">{err}</p>}
+        <button type="button" className="btn btn-primary btn-lg" disabled={busy || stage !== 'ready'} onClick={submit}>
+          {stage === 'uploading' ? 'Yuborilmoqda…' : stage === 'done' ? '✓ Yuborildi' : 'Chekni yuborish'}
         </button>
         <button type="button" className="btn btn-text" onClick={onClose}>
           Bekor qilish
