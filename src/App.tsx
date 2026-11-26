@@ -97,7 +97,7 @@ function morphPaneIn(): (() => void) | undefined {
     if (r.height === 0 || r.bottom < 0) continue;
     if (r.top > vh) break;
     shown.push(el);
-    if (shown.length >= 10) break;
+    if (shown.length >= 5) break;
   }
   shown.forEach((el, i) => {
     el.style.setProperty('--mi', String(i));
