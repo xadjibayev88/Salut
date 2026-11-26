@@ -7,12 +7,15 @@
 //  slot     — Slot Reel: har bir ikonka — o'yin avtomati g'ildiragi; bosilgani aylanib, faol yuzida to'xtaydi
 //  bulge    — Liquid Bulge: gradient menyu faol bo'lim ustida suyuqlikdek bo'rtadi; bosilganda bo'rtiq
 //             cho'zilib yangi bo'limga oqib o'tadi (prujina fizikasi), bosilgan ikonkadan halqa to'lqini chiqadi
+//  drop     — Liquid Drop: bosilgan ikonka shisha pufakda suyuq «poya» bilan menyudan ko'tariladi, poya
+//             ingichkalashib uziladi, pufak tomchidek qaytib tushadi; menyu rangi bo'limga qarab almashadi
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { motionAllowed } from '../engine/motion';
 
-export type TabMotion = 'bulge' | 'notch' | 'pill' | 'fill' | 'label' | 'bubble' | 'flip' | 'glow' | 'particle' | 'string' | 'seesaw' | 'slot';
+export type TabMotion = 'drop' | 'bulge' | 'notch' | 'pill' | 'fill' | 'label' | 'bubble' | 'flip' | 'glow' | 'particle' | 'string' | 'seesaw' | 'slot';
 
 export const TAB_MOTIONS: readonly { id: TabMotion; name: string; note: string }[] = [
+  { id: 'drop', name: 'Suyuq tomchi', note: 'Ikonka tomchidek ko‘tarilib, qaytib tushadi' },
   { id: 'bulge', name: 'Suyuq bo‘rtiq', note: 'Menyu faol bo‘lim ustida bo‘rtib, oqib o‘tadi' },
   { id: 'notch', name: 'Suzuvchi shar', note: 'Shar o‘yiq ustida sakrab o‘tadi' },
   { id: 'pill', name: 'Sirpanuvchi tabletka', note: 'Tabletka cho‘zilib sirpanadi' },
@@ -37,7 +40,7 @@ export function readTabMotion(): TabMotion {
   } catch {
     /* saqlash bloklangan */
   }
-  return 'bulge';
+  return 'drop';
 }
 
 export function saveTabMotion(m: TabMotion) {
@@ -347,6 +350,7 @@ export function TabBar<T extends string>({
   return (
     <nav className={`bottombar tm-${motion}${change ? ` ss-${change.n % 2}` : ''}`} style={style}>
       <span className="tab-clip" aria-hidden="true">
+        {motion === 'drop' && <span className="drop-tint" />}
         <span className={`tab-lens ${index >= 0 ? '' : 'hidden'}`} />
         {motion === 'glow' && change && (
           <span
@@ -357,6 +361,16 @@ export function TabBar<T extends string>({
         )}
       </span>
       {motion === 'bulge' && <LiquidBulge count={tabs.length} active={index} />}
+      {motion === 'drop' && change && index >= 0 && (
+        <span key={change.n} className="drop-fx" style={{ '--to': change.to } as CSSProperties} aria-hidden="true">
+          <span className="drop-col">
+            <svg className="drop-neck" viewBox="0 0 30 24" preserveAspectRatio="none">
+              <path d="M0 24 C9 24 11 16 11 9 L11 0 L19 0 L19 9 C19 16 21 24 30 24 Z" />
+            </svg>
+            <span className="drop-bubble">{tabs[change.to].icon(true)}</span>
+          </span>
+        </span>
+      )}
       {motion === 'notch' && (
         <>
           <LiquidBulge
@@ -425,7 +439,7 @@ export function TabBar<T extends string>({
               </span>
             )}
             <small>{t.label}</small>
-            {(motion === 'string' || motion === 'seesaw') && <span className="tab-dot" aria-hidden="true" />}
+            {(motion === 'string' || motion === 'seesaw' || motion === 'drop') && <span className="tab-dot" aria-hidden="true" />}
           </button>
         );
       })}

@@ -2234,6 +2234,45 @@ html[data-theme='light'] .vw-z { color: #6366f1; }
 }
 html.lite .vw-tail, html.lite .vw-tail2, html.lite .vw-eye, html.lite .tbi-coin-shine, html.lite .tbi-steam path { animation: none !important; }
 
+/* 0 · Liquid Drop — ikonka shisha pufakda suyuq poya bilan ko'tarilib, poya uziladi va tomchidek qaytadi.
+   Faqat transform/opacity; pufakda blur yo'q (menyuning o'z blur foni harakatsiz qoladi). */
+.tm-drop .tab-lens { opacity: 0; }
+.drop-tint { position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(120% 140% at calc((var(--i) + .5) / var(--tabs) * 100%) 0%, hsl(calc(258 + var(--i) * 34) 85% 66% / .34), transparent 70%);
+  transition: background .6s ease; }
+.drop-fx { position: absolute; left: 6px; right: 6px; top: 0; height: 0; pointer-events: none; z-index: 3; }
+.drop-col { position: absolute; top: 0; left: calc((var(--to) + .5) / var(--tabs) * 100%); width: 0; height: 0; }
+.drop-neck { position: absolute; left: -15px; bottom: -1px; width: 30px; height: 24px; overflow: visible; transform-origin: 50% 100%; transform: scale(1, 0);
+  animation: drop-neck .95s cubic-bezier(.3, .7, .3, 1) both; }
+.drop-neck path, .drop-bubble { fill: #8b7cf6; }
+.drop-bubble { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .55), transparent 42%), linear-gradient(150deg, #a78bfa, #7c3aed 70%);
+  box-shadow: 0 10px 22px -8px rgba(76, 29, 149, .75), inset 0 -3px 6px rgba(49, 16, 112, .35);
+  animation: drop-bubble .95s both; will-change: transform, opacity; }
+.drop-bubble svg { width: 22px; height: 22px; }
+@keyframes drop-bubble {
+  0% { transform: translateY(30px) scale(.5); opacity: 0; animation-timing-function: cubic-bezier(.2, .9, .3, 1.25); }
+  10% { opacity: 1; }
+  38% { transform: translateY(-36px) scale(1.06, .96); animation-timing-function: ease-in-out; }
+  50% { transform: translateY(-40px) scale(.97, 1.04); }
+  62% { transform: translateY(-37px) scale(1); animation-timing-function: cubic-bezier(.55, 0, .85, .4); }
+  92% { transform: translateY(26px) scale(.62, .7); opacity: 1; }
+  100% { transform: translateY(30px) scale(.5); opacity: 0; }
+}
+@keyframes drop-neck {
+  0% { transform: scale(1, 0); opacity: 1; }
+  34% { transform: scale(1, 1); }
+  48% { transform: scale(.32, 1.05); opacity: 1; }
+  54% { transform: scale(.1, .35); opacity: 0; }
+  100% { transform: scale(.1, 0); opacity: 0; }
+}
+/* pufak qaytib tushganda haqiqiy ikonka «qo'nadi» */
+.tm-drop .tab.tapped .tab-ico-wrap { animation: drop-land .95s both; }
+@keyframes drop-land { 0%, 84% { transform: scale(.6); opacity: .25; } 92% { transform: scale(1.16, .9); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.tm-drop .tab.active { color: var(--text); }
+html[data-theme='light'] .drop-tint { background: radial-gradient(120% 140% at calc((var(--i) + .5) / var(--tabs) * 100%) 0%, hsl(calc(258 + var(--i) * 34) 85% 70% / .3), transparent 70%); }
+@media (prefers-reduced-motion: reduce) { .drop-fx { display: none; } .tm-drop .tab.tapped .tab-ico-wrap { animation: none; } .drop-tint { transition: none; } }
+
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }
