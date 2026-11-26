@@ -1,4 +1,5 @@
 // Facebook, Apple va Telegram orqali kirish. Har bir tugma faqat server sozlangan bo'lsa ko'rinadi.
+import { currentLang } from '../i18n';
 import { useState } from 'react';
 import { useAccount } from '../state/account';
 
@@ -57,7 +58,7 @@ export function SocialLogin({ onDone, onError }: { onDone: () => void; onError: 
     try {
       setBusy('telegram');
       await loadScript('https://telegram.org/js/telegram-widget.js?22');
-      window.Telegram!.Login!.auth({ bot_id: botId, request_access: 'write', lang: 'uz' }, (user) => {
+      window.Telegram!.Login!.auth({ bot_id: botId, request_access: 'write', lang: currentLang() }, (user) => {
         if (user && typeof user === 'object') void finish('telegram', { data: user });
         else setBusy(null);
       });

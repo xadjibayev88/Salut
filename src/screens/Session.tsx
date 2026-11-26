@@ -323,7 +323,7 @@ export function Session({ config, onExit }: { config: SessionConfig; onExit: (co
           <div className="sheet">
             <Mascot mood="sad" size={96} />
             <h3>Hozircha yetmadi</h3>
-            <p className="muted">Testda {JUMP_MAX_MISTAKES} tadan ko'p xato bo'ldi. Darslarni ketma-ket o'tib, keyinroq yana urinib ko'ring — Vivi sizga ishonadi!</p>
+            <p className="muted">{`Testda ${JUMP_MAX_MISTAKES} tadan ko'p xato bo'ldi. Darslarni ketma-ket o'tib, keyinroq yana urinib ko'ring — Vivi sizga ishonadi!`}</p>
             <button type="button" className="btn btn-primary btn-lg" onClick={() => onExit()}>
               Tushunarli
             </button>

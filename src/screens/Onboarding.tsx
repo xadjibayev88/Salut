@@ -1,3 +1,5 @@
+import { currentLang, LANGUAGES, type Lang } from '../i18n';
+import { chooseLanguage } from '../i18n/choose';
 import { useState } from 'react';
 import { useStore } from '../state/store';
 import { Mascot } from '../components/Mascot';
@@ -13,6 +15,31 @@ const GOALS = [
 ];
 
 const REASONS = ['✈️ Sayohat', '🎓 O\'qish', '💼 Ish', '🎬 Madaniyat', '🧠 Miya mashqi', '💡 Shunchaki qiziq'];
+
+/** Birinchi ekrandagi til tanlash (ixcham). */
+function LangPick() {
+  const [lang, setL] = useState<Lang>(() => currentLang());
+  return (
+    <label className="onboard-lang" data-no-i18n>
+      <span aria-hidden="true">🌐</span>
+      <select
+        aria-label="Language"
+        value={lang}
+        onChange={(e) => {
+          const l = e.target.value as Lang;
+          setL(l);
+          void chooseLanguage(l);
+        }}
+      >
+        {LANGUAGES.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.flag} {l.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export function Onboarding() {
   const { update } = useStore();
@@ -63,6 +90,7 @@ export function Onboarding() {
 
       {step === 0 && (
         <div className="onboard-hero">
+          <LangPick />
           <Mascot mood="cheer" size={200} className="bounce-in" />
           <h1 className="brand">Voilà!</h1>
           <p className="lead">Fransuz tilini o'zbek tilida — bepul, qiziqarli va samarali.</p>

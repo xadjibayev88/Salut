@@ -5,6 +5,7 @@ import { useStore } from '../state/store';
 import { useAccount } from '../state/account';
 import { SuperPage } from './Super';
 import { RewardedButton } from '../components/RewardedButton';
+import { ShopRail } from '../components/ShopRail';
 
 export function Shop() {
   const { state, update } = useStore();
@@ -12,13 +13,15 @@ export function Shop() {
   const [toast, setToast] = useState<string | null>(null);
   const next = msToNextHeart(state);
 
-  const buy = (fn: typeof buyFreeze, msg: string) => {
+  const boostLeft = Math.max(0, state.xpBoostUntil - Date.now());
+  const buy = (fn: typeof buyFreeze, msg: string): boolean => {
     const r = fn(state);
-    if (!r) return;
+    if (!r) return false;
     update(() => r);
     playSfx('chest', state.settings.sound);
     setToast(msg);
     setTimeout(() => setToast(null), 1800);
+    return true;
   };
 
   return (
@@ -26,65 +29,58 @@ export function Shop() {
       <h1 className="page-title">Do'kon</h1>
       <SuperPage />
       <div className="gem-balance">
-        🪙 <b>{state.gems}</b> tanga
+        🪙 <b>{state.gems}</b> {'tanga'}
       </div>
 
-      <h2 className="section-title">Kofe</h2>
-      <div className="shop-item">
-        <div className="shop-icon">☕</div>
-        <div className="shop-body">
-          <b>Kofe termosini to'ldirish</b>
-          <small>
-            {state.hearts}/{MAX_HEARTS} chashka
-            {next !== null && ` · keyingisi ${Math.ceil(next / 60000)} daqiqada`}
-          </small>
-        </div>
-        <button
-          type="button"
-          className="btn btn-gem"
-          disabled={state.hearts >= MAX_HEARTS || state.gems < HEART_REFILL_COST}
-          onClick={() => buy(buyHeartRefill, "Termos to'ldi! Bon appétit !")}
-        >
-          🪙 {HEART_REFILL_COST}
-        </button>
-      </div>
+      <h2 className="section-title">Do'kon rastasi</h2>
+      <ShopRail
+        items={[
+          {
+            id: 'coffee',
+            icon: '☕',
+            name: 'Kofe termosi',
+            desc: "Xato qilganda kofe kamayadi. Termosni to'ldirsangiz, darslarni to'xtovsiz davom ettirasiz.",
+            price: HEART_REFILL_COST,
+            level: (premium || state.unlimitedHearts ? MAX_HEARTS : state.hearts) / MAX_HEARTS,
+            levelLabel: premium || state.unlimitedHearts ? 'Cheksiz kofe ∞' : `${state.hearts}/${MAX_HEARTS} chashka${next !== null ? ` · keyingisi ${Math.ceil(next / 60000)} daqiqada` : ''}`,
+            color: '#7c4a2a',
+            color2: '#c08457',
+            canBuy: !premium && !state.unlimitedHearts && state.hearts < MAX_HEARTS && state.gems >= HEART_REFILL_COST,
+            whyNot: premium || state.unlimitedHearts || state.hearts >= MAX_HEARTS ? "Termos to'la" : 'Tanga yetmaydi',
+            buy: () => buy(buyHeartRefill, "Termos to'ldi! Bon appétit !"),
+          },
+          {
+            id: 'xp',
+            icon: '⚡',
+            name: 'Ikki barobar XP',
+            desc: `${XP_BOOST_MINUTES} daqiqa davomida har bir dars va suhbat uchun 2x XP. Turnirda tez ko'tarilish uchun.`,
+            price: XP_BOOST_COST,
+            level: boostLeft / (XP_BOOST_MINUTES * 60_000),
+            levelLabel: boostLeft > 0 ? `Faol — ${Math.ceil(boostLeft / 60000)} daqiqa qoldi` : 'Hozir faol emas',
+            color: '#eab308',
+            color2: '#fde047',
+            canBuy: state.gems >= XP_BOOST_COST,
+            whyNot: 'Tanga yetmaydi',
+            buy: () => buy((s) => buyXpBoost(s), '2x XP yoqildi! ⚡'),
+          },
+          {
+            id: 'freeze',
+            icon: '⛱️',
+            name: 'Seriya soyaboni',
+            desc: 'Bir kun dars qilmasangiz ham kunlik seriyangiz saqlanib qoladi.',
+            price: FREEZE_COST,
+            level: state.streakFreezes / MAX_FREEZES,
+            levelLabel: `${state.streakFreezes}/${MAX_FREEZES} jihozlangan`,
+            color: '#0284c7',
+            color2: '#7dd3fc',
+            canBuy: state.streakFreezes < MAX_FREEZES && state.gems >= FREEZE_COST,
+            whyNot: state.streakFreezes >= MAX_FREEZES ? "Soyabonlar to'liq" : 'Tanga yetmaydi',
+            buy: () => buy(buyFreeze, 'Soyabon tayyor!'),
+          },
+        ]}
+      />
       {!premium && <RewardedButton />}
       {!premium && <RewardedButton kind="xp" />}
-
-      <h2 className="section-title">Kuchaytirgichlar</h2>
-      <div className="shop-item">
-        <div className="shop-icon">⚡</div>
-        <div className="shop-body">
-          <b>Ikki barobar XP</b>
-          <small>
-            {state.xpBoostUntil > Date.now()
-              ? `Faol — ${Math.ceil((state.xpBoostUntil - Date.now()) / 60000)} daqiqa qoldi`
-              : `${XP_BOOST_MINUTES} daqiqa davomida har bir dars va suhbat uchun 2x XP`}
-          </small>
-        </div>
-        <button type="button" className="btn btn-gem" disabled={state.gems < XP_BOOST_COST} onClick={() => buy((s) => buyXpBoost(s), '2x XP yoqildi! ⚡')}>
-          🪙 {XP_BOOST_COST}
-        </button>
-      </div>
-
-      <h2 className="section-title">Kunlik seriya</h2>
-      <div className="shop-item">
-        <div className="shop-icon">⛱️</div>
-        <div className="shop-body">
-          <b>Seriya soyaboni</b>
-          <small>
-            Bir kun dars qilmasangiz ham seriya saqlanadi · {state.streakFreezes}/{MAX_FREEZES} jihozlangan
-          </small>
-        </div>
-        <button
-          type="button"
-          className="btn btn-gem"
-          disabled={state.streakFreezes >= MAX_FREEZES || state.gems < FREEZE_COST}
-          onClick={() => buy(buyFreeze, 'Soyabon tayyor!')}
-        >
-          🪙 {FREEZE_COST}
-        </button>
-      </div>
       <p className="muted small">Tangalarni darslar, sovg'alar va turnir g'alabalari orqali ishlang.</p>
       {toast && <div className="toast">{toast}</div>}
     </div>

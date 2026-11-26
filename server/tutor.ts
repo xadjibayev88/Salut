@@ -6,7 +6,7 @@ export const SCENARIOS = ['free', 'cafe', 'meet', 'grammar', 'mistakes', 'shop',
 export type Scenario = (typeof SCENARIOS)[number];
 export const CHARACTERS = ['classic', 'strict', 'kind', 'witty', 'adult'] as const;
 export type Character = (typeof CHARACTERS)[number];
-export const LANGS = ['uz', 'ru', 'en'] as const;
+export const LANGS = ['uz', 'ru', 'en', 'kk', 'ky', 'tg', 'tr', 'zh', 'hi', 'ko', 'ja', 'id'] as const;
 export type Lang = (typeof LANGS)[number];
 
 export interface ChatTurn {
@@ -118,7 +118,20 @@ const CHARACTER_GUIDE: Record<Character, string> = {
   adult: "Uslub — kattalar hayotiga mos mavzularni xolis va hurmat bilan muhokama qilishi mumkin; haqorat, bosim va majburiy so'kinish yo'q.",
 };
 
-const LANG_NAME: Record<Lang, string> = { uz: "o'zbek tilida (lotin yozuvida)", ru: 'rus tilida', en: 'ingliz tilida' };
+const LANG_NAME: Record<Lang, string> = {
+  uz: "o'zbek tilida (lotin yozuvida)",
+  ru: 'rus tilida',
+  en: 'ingliz tilida',
+  kk: 'qozoq tilida (kirill yozuvida)',
+  ky: "qirg'iz tilida (kirill yozuvida)",
+  tg: 'tojik tilida (kirill yozuvida)',
+  tr: 'turk tilida',
+  zh: 'xitoy tilida (soddalashtirilgan iyerogliflar)',
+  hi: 'hind tilida (devanagari)',
+  ko: 'koreys tilida',
+  ja: 'yapon tilida',
+  id: 'indonez tilida',
+};
 
 export function tutorBehaviorContract(lang: Lang): string {
   return `UMUMIY O'QITISH KONTRAKTI — matnli va ovozli rejimda bir xil:\n- Voilà!da fransuz tilini CEFR A1–C2 darajasida o'rgat; tushuntirishni o'quvchining darajasiga mosla.\n- Avval savolga bevosita javob ber; zarur bo'lsa foydali, tabiiy fransuzcha misol qo'sh.\n- Fransuz tilidagi har qanday maqbul, to'g'ri va tabiiy variantni qabul qil; sen tanlagan ifodadan farq qilgani uchungina to'g'ri javobni xato dema.\n- Faqat aniq, muhim xatoni tuzat; oddiy navbatda ko'pi bilan bitta qisqa va muloyim tuzatish ber. Xato to'qima, mayda-chuyda tafsilotni tuzatma.\n- Izohni ${LANG_NAME[lang]} tabiiy, ravon va ixcham ber. Yengil, vaziyatga mos hazil ixtiyoriy — majburan hazil qilma, o'quvchini yoki uning xatosini masxara qilma.\n- Hurmatli bo'l: haqorat, uyaltirish, qo'rqitish va o'quvchiga qaratilgan so'kinish taqiqlanadi. Ko'pi bilan bitta foydali qo'shimcha savol yoki kichik mashq ber.\n- O'quvchiga butun javob davomida bir xil murojaat qil: «siz» (iliq, samimiy ohangda); «sen» va «siz»ni aralashtirma.\n- Har bir fransuzcha so'z va gapning imlosini, urg'u belgilarini (é, è, ê, à, ç) va artikl/rodni yuborishdan oldin tekshir; ishonching komil bo'lmagan so'zni ishlatma (masalan: l'Ouzbékistan, je viens d'Ouzbékistan).`;

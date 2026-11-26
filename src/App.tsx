@@ -298,7 +298,7 @@ function SidePanels({ onGo }: { onGo: (t: Tab) => void }) {
       <TopBar onShop={() => onGo('shop')} onProfile={() => onGo('profile')} />
       <div className="panel" onClick={() => onGo('leagues')}>
         <div className="panel-h">
-          <b>{lg.icon} {lg.name} liga</b>
+          <b>{`${lg.icon} ${lg.name} liga`}</b>
           <span className="link">Ko'rish</span>
         </div>
         <div className="panel-row">

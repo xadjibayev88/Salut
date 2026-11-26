@@ -2,7 +2,7 @@
 
 export type CharacterId = 'classic' | 'strict' | 'kind' | 'witty' | 'adult';
 export type RoleId = 'free' | 'cafe' | 'meet' | 'shop' | 'hotel' | 'exam' | 'grammar' | 'mistakes' | 'custom';
-export type ExplainLang = 'uz' | 'ru' | 'en';
+export type ExplainLang = 'uz' | 'ru' | 'en' | 'kk' | 'ky' | 'tg' | 'tr' | 'zh' | 'hi' | 'ko' | 'ja' | 'id';
 
 export interface Character {
   id: CharacterId;
@@ -171,6 +171,15 @@ export const EXPLAIN_LANGS: { id: ExplainLang; label: string; mic: string }[] = 
   { id: 'uz', label: "O'zbekcha", mic: 'uz-UZ' },
   { id: 'ru', label: 'Русский', mic: 'ru-RU' },
   { id: 'en', label: 'English', mic: 'en-US' },
+  { id: 'kk', label: 'Қазақша', mic: 'kk-KZ' },
+  { id: 'ky', label: 'Кыргызча', mic: 'ky-KG' },
+  { id: 'tg', label: 'Тоҷикӣ', mic: 'tg-TJ' },
+  { id: 'tr', label: 'Türkçe', mic: 'tr-TR' },
+  { id: 'zh', label: '中文', mic: 'zh-CN' },
+  { id: 'hi', label: 'हिन्दी', mic: 'hi-IN' },
+  { id: 'ko', label: '한국어', mic: 'ko-KR' },
+  { id: 'ja', label: '日本語', mic: 'ja-JP' },
+  { id: 'id', label: 'Bahasa Indonesia', mic: 'id-ID' },
 ];
 
 export const CUSTOM_ROLE_MIN = 20;

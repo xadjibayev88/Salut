@@ -6,6 +6,7 @@ import { AccountProvider } from './state/account';
 import { AppLockGate } from './components/AppLockGate';
 import './styles.css';
 import { initTheme } from './engine/theme';
+import { initI18n } from './i18n';
 
 initTheme();
 
@@ -19,17 +20,22 @@ try {
   /* e'tiborsiz */
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <StoreProvider>
-      <AccountProvider>
-        <AppLockGate>
-          <App />
-        </AppLockGate>
-      </AccountProvider>
-    </StoreProvider>
-  </StrictMode>,
-);
+// Interfeys tili: o'zbekchadan boshqa bo'lsa — lug'at yuklangach chiziladi (o'zbekcha matn «miltillamasin»).
+void initI18n()
+  .catch(() => undefined)
+  .then(() =>
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <StoreProvider>
+          <AccountProvider>
+            <AppLockGate>
+              <App />
+            </AppLockGate>
+          </AccountProvider>
+        </StoreProvider>
+      </StrictMode>,
+    ),
+  );
 
 declare const __BUILD__: string;
 
