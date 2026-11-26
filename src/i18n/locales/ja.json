@@ -1378,5 +1378,13 @@
  "Omad g'ildiragi": "ラッキールーレット",
  "Voilà! shaxsiy PIN bilan himoyalangan.": "Voilà!は個人用PINで保護されています。",
  "conic-gradient({0})": "conic-gradient({0})",
- "{0} {1}deg {2}deg": "{0} {1}度 {2}度"
+ "{0} {1}deg {2}deg": "{0} {1}度 {2}度",
+ "BONUS OCHILDI": "ボーナス獲得",
+ "OCHILMOQDA…": "開けています…",
+ "OCHISH UCHUN BOSING": "タップして開ける",
+ "Ovoz hozir mavjud emas": "現在音声を利用できません",
+ "Ro'yxatdan o'tish uchun Vivi AI va maxfiylik shartlariga rozilik bering.": "登録するには Vivi AI とプライバシーの規約に同意してください。",
+ "Vivi AI va maxfiylik shartlariga roziman": "Vivi AI とプライバシーの規約に同意します",
+ "Vivi bilan suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profil → «Vivi AI va maxfiylik»da istalgan payt o'zgartirasiz.": "Vivi とのチャット・音声・翻訳・記憶のため、テキスト/音声が Google Gemini に送信されます。プロフィール → «Vivi AI とプライバシー» でいつでも変更できます。",
+ "Yuklanmoqda…": "読み込み中…"
 }

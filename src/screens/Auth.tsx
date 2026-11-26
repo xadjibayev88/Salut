@@ -1,4 +1,5 @@
 // Kirish / ro'yxatdan o'tish: Google, email + parol, yoki mehmon sifatida davom etish.
+import { grantAllAiConsent } from '../state/ai-consent';
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '../state/account';
 import { SocialLogin } from '../components/SocialLogin';
@@ -62,6 +63,11 @@ const Icon = {
 
 export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdrop = false }: { initial?: 'login' | 'register'; onDone: () => void; onSkip?: () => void; title?: string; backdrop?: boolean }) {
   const { me, signIn, signInGoogle } = useAccount();
+  // Ro'yxatdan o'tishda: Vivi AI va maxfiylik shartlariga bitta toggle bilan rozilik (majburiy).
+  const [agree, setAgree] = useState(false);
+  const agreeRef = useRef(false);
+  agreeRef.current = agree;
+  const modeRef = useRef(initial);
   const [mode, setMode] = useState(initial);
   const [phase, setPhase] = useState<Phase>('idle');
   const [height, setHeight] = useState<number | null>(null);
@@ -124,7 +130,7 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
             const err = await signInGoogle(r.credential);
             setBusy(false);
             if (err) setError(err);
-            else onDone();
+            else finish();
           },
         });
         window.google.accounts.id.renderButton(gBtn.current, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: Math.min(360, gBtn.current.clientWidth || 320), locale: 'uz' });
@@ -135,6 +141,12 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
     };
   }, [clientId, native]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  modeRef.current = mode;
+  const finish = () => {
+    if (modeRef.current === 'register' && agreeRef.current) void grantAllAiConsent().catch(() => undefined);
+    onDone();
+  };
+
   const nativeGoogle = async () => {
     if (!clientId) return;
     setBusy(true);
@@ -143,7 +155,7 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
       const token = await androidGoogle(clientId);
       const err = await signInGoogle(token);
       if (err) setError(err);
-      else onDone();
+      else finish();
     } catch (e) {
       if (!/cancel/i.test(String((e as Error).message))) setError('Google bilan kirib bo\'lmadi — email orqali urinib ko\'ring');
     } finally {
@@ -155,10 +167,15 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
     e.preventDefault();
     setBusy(true);
     setError(null);
+    if (mode === 'register' && !agree) {
+      setBusy(false);
+      setError("Ro'yxatdan o'tish uchun Vivi AI va maxfiylik shartlariga rozilik bering.");
+      return;
+    }
     const err = await signIn(mode, email, password, name);
     setBusy(false);
     if (err) setError(err);
-    else onDone();
+    else finish();
   };
 
   const login = mode === 'login';
@@ -185,8 +202,17 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
             <p>{login ? "Hisobingizga kiring va o'qishni davom ettiring." : 'Progressingiz saqlanadi va istalgan qurilmada davom etasiz.'}</p>
           </header>
 
+          {!login && (
+            <label className={`ga-consent ${agree ? 'on' : ''}`}>
+              <span>
+                <b>Vivi AI va maxfiylik shartlariga roziman</b>
+                <small>Vivi bilan suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profil → «Vivi AI va maxfiylik»da istalgan payt o'zgartirasiz.</small>
+              </span>
+              <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setError(null); }} />
+            </label>
+          )}
           {hasSocial && (
-            <div className="ga-social">
+            <div className={`ga-social ${!login && !agree ? 'ga-locked' : ''}`} aria-disabled={!login && !agree}>
               {clientId &&
                 (native ? (
                   <button type="button" className="ga-social-btn" disabled={busy} onClick={nativeGoogle}>
@@ -195,7 +221,7 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
                 ) : (
                   <div className="ga-slot gis-wrap" ref={gBtn} />
                 ))}
-              <SocialLogin onDone={onDone} onError={setError} />
+              <SocialLogin onDone={finish} onError={setError} />
             </div>
           )}
           {hasSocial && <div className="ga-or"><span>yoki email bilan</span></div>}
@@ -236,7 +262,7 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title, backdr
               </span>
             </label>
             {error && <p className="auth-error" role="alert">{error}</p>}
-            <button type="submit" className="ga-submit" disabled={busy}>
+            <button type="submit" className="ga-submit" disabled={busy || (!login && !agree)}>
               {busy ? 'Kuting…' : login ? 'Kirish' : 'Profil yaratish'} {!busy && Icon.arrow}
             </button>
           </form>

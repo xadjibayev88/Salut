@@ -1,7 +1,7 @@
 import { SuperBanner, SuperOfferModal } from '../../components/SuperOffer';
 import { Ic } from '../../components/Icons';
 // Vivi ovozli suhbati: tanishuv → xarakter va rol tanlash → qo'ng'iroq → tahlil.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CHARACTERS, CUSTOM_ROLE_MAX, CUSTOM_ROLE_MIN, EXPLAIN_LANGS, ROLES } from '../../data/characters';
 import { applyChatTurn } from '../../engine/game';
 import { learnerContext, updateMemory } from '../../engine/tutor';
@@ -154,12 +154,30 @@ export function VoiceHub() {
     }
   }
 
+  const [sampleSt, setSampleSt] = useState<'idle' | 'loading' | 'playing' | 'error'>('idle');
+  const sampleQ = useRef<TtsQueue | null>(null);
+  useEffect(() => () => sampleQ.current?.dispose(), []);
   const sample = (text: string) => {
     if (!config) return;
-    const q = new TtsQueue(config.tts);
+    if (sampleSt === 'loading' || sampleSt === 'playing') {
+      sampleQ.current?.stop();
+      setSampleSt('idle');
+      return;
+    }
+    sampleQ.current?.dispose();
+    // Ovoz sozlanmagan bo'lsa — brauzer ovozi bilan bo'lsa ham eshittiramiz.
+    const q = new TtsQueue(config.tts === 'text' ? 'browser' : config.tts);
+    sampleQ.current = q;
     q.voiceId = prefs.voiceId || config.voices[0]?.id || '';
     q.explainLang = prefs.lang;
+    q.onSentence = () => setSampleSt('playing');
+    q.onDrain = () => setSampleSt((s) => (s === 'error' ? s : 'idle'));
+    q.onFail = () => {
+      setSampleSt('error');
+      window.setTimeout(() => setSampleSt('idle'), 2500);
+    };
     q.unlock();
+    setSampleSt('loading');
     q.push(text);
     q.end();
   };
@@ -279,7 +297,21 @@ export function VoiceHub() {
             <b>{ch.name}</b>
             <small>{ch.tagline}</small>
             <button type="button" className="vh2-sample" onClick={() => sample(ch.sample)}>
-              <Ic name="play" size={13} /> Ovozini eshitish
+              {sampleSt === 'loading' ? (
+                <>
+                  <span className="vh2-spin" /> Yuklanmoqda…
+                </>
+              ) : sampleSt === 'playing' ? (
+                <>
+                  <span className="vh2-eq"><i /><i /><i /></span> To'xtatish
+                </>
+              ) : sampleSt === 'error' ? (
+                "Ovoz hozir mavjud emas"
+              ) : (
+                <>
+                  <Ic name="play" size={13} /> Ovozini eshitish
+                </>
+              )}
             </button>
           </div>
         </div>

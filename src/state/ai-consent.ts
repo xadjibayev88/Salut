@@ -131,3 +131,12 @@ export async function revokeAiConsentRequest() {
 export async function deleteAiMemoryRequest() {
   return accountApi<{ deleted: boolean }>('ai/memory', { method: 'DELETE' });
 }
+
+/** Ro'yxatdan o'tishda bitta toggle bilan berilgan rozilik: serverdagi barcha AI vazifalariga ruxsat yoziladi. */
+export async function grantAllAiConsent(): Promise<boolean> {
+  const r = await loadAiConsent();
+  if (!r.ok) return false;
+  const grants = scopeOptionsFor(r.body.requirements).map(({ scope, provider }) => ({ scope, provider }));
+  const w = await saveAiConsent(r.body.policyVersion, grants);
+  return w.ok;
+}

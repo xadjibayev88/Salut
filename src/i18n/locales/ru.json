@@ -1368,5 +1368,14 @@
  "Zo'r holat!": "Отличное состояние!",
  "Zo'r!": "Отлично!",
  "Zumrad": "Изумруд",
- "Русский": "Русский"
+ "Русский": "Русский",
+ "BONUS OCHILDI": "БОНУС ОТКРЫТ",
+ "OCHILMOQDA…": "ОТКРЫВАЕТСЯ…",
+ "OCHISH UCHUN BOSING": "НАЖМИТЕ, ЧТОБЫ ОТКРЫТЬ",
+ "Ovoz hozir mavjud emas": "Голос сейчас недоступен",
+ "Ro'yxatdan o'tish uchun Vivi AI va maxfiylik shartlariga rozilik bering.": "Чтобы зарегистрироваться, примите условия Vivi AI и конфиденциальности.",
+ "Vivi AI va maxfiylik shartlariga roziman": "Я согласен с условиями Vivi AI и конфиденциальности",
+ "Vivi bilan suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profil → «Vivi AI va maxfiylik»da istalgan payt o'zgartirasiz.": "Для чата, голоса, перевода и памяти Vivi текст/аудио отправляются в Google Gemini. Изменить можно в любое время: Профиль → «Vivi AI и конфиденциальность».",
+ "Voilà! shaxsiy PIN bilan himoyalangan.": "Voilà! защищено вашим личным PIN-кодом.",
+ "Yuklanmoqda…": "Загрузка…"
 }

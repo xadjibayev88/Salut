@@ -3059,91 +3059,107 @@ html.lite .vh2-avatar { animation: none; }
 .goo-icon .ic [fill^='url'] { fill: rgba(255,255,255,.3); }
 .fr-chip-icon .ic { vertical-align: -0.15em; }
 .vpay li > span .ic, .super-perks .ic { vertical-align: middle; }
-/* PIN: Vivi panjalari bilan ko'zini yopadi; katakchalarda panja izi */
-.pin-paw { color: currentColor; animation: paw-in .28s cubic-bezier(.3, 1.6, .5, 1); }
-@keyframes paw-in { from { transform: scale(.2) rotate(-30deg); opacity: 0; } }
-.lock-vivi { position: relative; }
-.lock-paw { position: absolute; top: 58%; width: 30px; height: 26px; border-radius: 50% 50% 45% 45%; background: #fff; box-shadow: inset 0 -3px 0 rgba(155, 92, 255, .18), 0 3px 8px rgba(40, 10, 90, .25); opacity: 0; transform: translateY(26px) scale(.8); transition: transform .32s cubic-bezier(.3, 1.5, .5, 1), opacity .2s; z-index: 2; pointer-events: none; }
-.lock-paw::before { content: ''; position: absolute; left: 50%; top: 45%; width: 11px; height: 9px; margin-left: -5.5px; border-radius: 50%; background: #FF8FD0; }
-.lock-paw::after { content: ''; position: absolute; left: 5px; right: 5px; top: 4px; height: 5px; background: radial-gradient(circle at 15% 50%, #FF8FD0 2px, transparent 2.5px), radial-gradient(circle at 50% 30%, #FF8FD0 2px, transparent 2.5px), radial-gradient(circle at 85% 50%, #FF8FD0 2px, transparent 2.5px); }
-.lock-paw.l { left: 14%; } .lock-paw.r { right: 14%; }
-.lock-vivi.cover .lock-paw, .lock-vivi.peek .lock-paw { opacity: 1; transform: translateY(-22px) rotate(var(--rot, 0deg)); }
-.lock-vivi.cover .lock-paw.l, .lock-vivi.peek .lock-paw.l { --rot: 12deg; }
-.lock-vivi.cover .lock-paw.r { --rot: -12deg; }
-.lock-vivi.peek .lock-paw.r { transform: translateY(-6px) rotate(-30deg); }
-/* Qulf ochilishi: binafsha tomchi parda tepaga ko'tariladi */
-.drip-reveal { position: fixed; inset: 0; z-index: 9999; pointer-events: none; overflow: hidden; }
-.drip-sheet { position: absolute; left: 0; right: 0; top: 0; height: 100%; background: linear-gradient(180deg, #7FE3FF -30%, #B49CFF 35%, #9B5CFF 100%); animation: drip-up .54s cubic-bezier(.65, 0, .35, 1) .02s forwards; will-change: transform; }
-.drip-edge { position: absolute; left: 0; top: calc(100% - 1px); width: 100%; height: 70px; fill: #9B5CFF; transform-origin: top; animation: drip-stretch .54s cubic-bezier(.65, 0, .35, 1) .02s forwards; }
-@keyframes drip-up { to { transform: translateY(calc(-100% - 140px)); } }
-@keyframes drip-stretch { 50% { transform: scaleY(2.2); } to { transform: scaleY(1.4); } }
-.drip-eyes { position: absolute; left: 50%; top: 46%; display: flex; gap: 18px; transform: translateX(-50%); }
-.drip-eyes i { width: 14px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.6); animation: drip-blink .3s ease-in-out .1s; }
-@keyframes drip-blink { 50% { transform: scaleY(.15); } }
-@media (prefers-reduced-motion: reduce) { .drip-reveal { display: none; } .lock-paw { transition: none; } }
-/* Sirli quti */
-.box-sheet { text-align: center; display: flex; flex-direction: column; align-items: stretch; gap: 10px; overflow: hidden;
-  background: radial-gradient(120% 70% at 50% 30%, #4a2a12 0%, #1d1208 70%) !important; color: #fff; border: 1px solid rgba(255, 210, 120, .25) !important; }
-.box-sheet .muted { color: rgba(255, 236, 200, .7); margin: 0; }
-.box-kicker { letter-spacing: .3em; font-weight: 800; font-size: 11px; color: #FFD98A; }
-.box-stage { position: relative; height: 250px; display: grid; place-items: center; cursor: pointer; }
-.gbox { position: relative; z-index: 2; width: 170px; height: auto; overflow: visible; filter: drop-shadow(0 14px 22px rgba(0,0,0,.45)); animation: gbox-bob 2.4s ease-in-out infinite; }
-@keyframes gbox-bob { 50% { transform: translateY(-6px); } }
-.gbox-lid { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .55s cubic-bezier(.2, .9, .3, 1.2), opacity .5s; }
+/* Sirli quti — to'liq ekran, iliq oltin sahna (video uslubi) */
+.box-full { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px 20px calc(28px + env(safe-area-inset-bottom)); color: #fff; overflow: hidden;
+  background: radial-gradient(70% 50% at 50% 46%, #6b3c12 0%, #3a1f0a 45%, #170c04 100%); animation: box-in .35s ease-out; -webkit-tap-highlight-color: transparent; }
+@keyframes box-in { from { opacity: 0; } }
+.box-x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 230, 180, .25); background: rgba(255, 230, 180, .1); color: #FFE2A8; display: grid; place-items: center; }
+.box-x .ic [fill^='url'] { fill: none; }
+.box-kicker { position: relative; z-index: 3; letter-spacing: .32em; font-weight: 800; font-size: 12px; color: #FFD98A; text-shadow: 0 0 12px rgba(255, 190, 80, .6); }
+.bx-idle .box-kicker { animation: box-kick 1.8s ease-in-out infinite; }
+@keyframes box-kick { 50% { opacity: .45; } }
+.box-stage { position: relative; width: min(320px, 86vw); height: min(340px, 52vh); display: grid; place-items: center; }
+.gbox { position: relative; z-index: 2; width: min(250px, 66vw); height: auto; overflow: visible; filter: drop-shadow(0 24px 30px rgba(0, 0, 0, .55)); animation: gbox-bob 2.6s ease-in-out infinite; }
+@keyframes gbox-bob { 50% { transform: translateY(-10px); } }
+.gbox-lid { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .6s cubic-bezier(.2, .9, .3, 1.1), opacity .55s; }
 .bx-shake .gbox { animation: gbox-shake .75s cubic-bezier(.36, .07, .19, .97); }
-@keyframes gbox-shake { 10%, 90% { transform: translateX(-2px) rotate(-2deg); } 20%, 80% { transform: translateX(4px) rotate(3deg); } 30%, 50%, 70% { transform: translateX(-7px) rotate(-5deg) scale(1.03); } 40%, 60% { transform: translateX(7px) rotate(5deg) scale(1.05); } }
-.bx-open .gbox { animation: gbox-drop .6s cubic-bezier(.3, 1.4, .5, 1) both; }
-@keyframes gbox-drop { from { transform: scale(1.12); } to { transform: translateY(40px) scale(.82); } }
-.bx-open .gbox-lid { transform: translate(-18px, -120px) rotate(-38deg); opacity: 0; }
-.box-glow { position: absolute; z-index: 1; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 214, 120, .55), rgba(255, 160, 60, .12) 55%, transparent 70%); opacity: .5; transform: scale(.8); transition: transform .5s, opacity .5s; }
-.bx-shake .box-glow { opacity: .85; transform: scale(1); }
+@keyframes gbox-shake { 10%, 90% { transform: translateX(-2px) rotate(-2deg); } 20%, 80% { transform: translateX(5px) rotate(3deg); } 30%, 50%, 70% { transform: translateX(-9px) rotate(-6deg) scale(1.04); } 40%, 60% { transform: translateX(9px) rotate(6deg) scale(1.06); } }
+.bx-open .gbox { animation: gbox-drop .7s cubic-bezier(.3, 1.4, .5, 1) both; }
+@keyframes gbox-drop { from { transform: scale(1.1); } to { transform: translateY(70px) scale(.72); } }
+.bx-open .gbox-lid { transform: translate(-30px, -170px) rotate(-42deg); opacity: 0; }
+.box-glow { position: absolute; z-index: 1; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 214, 120, .6), rgba(255, 160, 60, .15) 50%, transparent 70%); opacity: .55; transform: scale(.8); transition: transform .6s, opacity .6s; }
+.bx-shake .box-glow { opacity: .9; transform: scale(1); }
 .bx-open .box-glow { opacity: 1; transform: scale(1.5); }
-.box-rays { position: absolute; z-index: 0; width: 420px; height: 420px; border-radius: 50%; opacity: 0; transform: scale(.4);
-  background: repeating-conic-gradient(from 0deg, rgba(255, 220, 140, .32) 0deg 7deg, transparent 7deg 18deg);
-  -webkit-mask: radial-gradient(circle, #000 10%, transparent 68%); mask: radial-gradient(circle, #000 10%, transparent 68%); transition: opacity .5s, transform .6s cubic-bezier(.2, .9, .3, 1); }
-.bx-open .box-rays { opacity: 1; transform: scale(1); animation: box-rays 14s linear infinite; }
+.box-rays { position: absolute; z-index: 0; width: 680px; height: 680px; border-radius: 50%; opacity: 0; transform: scale(.3);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 220, 140, .34) 0deg 6deg, transparent 6deg 15deg);
+  -webkit-mask: radial-gradient(circle, #000 8%, transparent 66%); mask: radial-gradient(circle, #000 8%, transparent 66%); transition: opacity .6s, transform .8s cubic-bezier(.2, .9, .3, 1); }
+.bx-idle .box-rays { opacity: .25; transform: scale(.55); animation: box-rays 30s linear infinite; }
+.bx-open .box-rays { opacity: 1; transform: scale(1); animation: box-rays 16s linear infinite; }
 @keyframes box-rays { from { rotate: 0deg; } to { rotate: 360deg; } }
 .box-sparks { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-.box-sparks i { position: absolute; left: 50%; top: 55%; border-radius: 50%; background: #FFE29A; box-shadow: 0 0 8px #FFD23F; opacity: 0; }
-.bx-open .box-sparks i { animation: box-spark 1.1s cubic-bezier(.15, .7, .3, 1) var(--d) both; }
-@keyframes box-spark { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.4); } 100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1.2); } }
-.box-prize { position: absolute; z-index: 4; display: grid; place-items: center; width: 92px; height: 92px; border-radius: 30px; top: 18px; left: 50%; margin-left: -46px;
-  background: radial-gradient(circle at 35% 25%, #fff, #FFF1C9 60%, #FFD98A); box-shadow: 0 0 0 4px rgba(255,255,255,.35), 0 12px 32px rgba(255, 190, 80, .6); animation: box-prize .7s cubic-bezier(.3, 1.6, .5, 1) .1s both; }
-.box-prize .tbi, .box-prize .ic { width: 54px !important; height: 54px !important; }
-@keyframes box-prize { from { opacity: 0; transform: translateY(90px) scale(.3); } }
-.box-result { display: flex; flex-direction: column; gap: 10px; animation: pop .4s .3s both; }
-.box-result b { font-size: 22px; font-family: var(--font-display); background: linear-gradient(90deg, #FFE29A, #FFB648); -webkit-background-clip: text; background-clip: text; color: transparent; }
-html[data-theme='light'] .box-sheet { background: radial-gradient(120% 70% at 50% 30%, #4a2a12 0%, #1d1208 70%) !important; color: #fff; }
-.modal-back:has(.box-sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(10, 6, 2, .66); }
-@media (prefers-reduced-motion: reduce) { .gbox, .box-rays, .lnode.t-chest.active .lnode-btn { animation: none !important; } }
-html.lite .box-rays, html.lite .gbox { animation: none !important; }
-/* Vivi mo'ralovchi (matn maydoni ustida) */
+.box-sparks i { position: absolute; left: 50%; top: 52%; border-radius: 50%; background: #FFE29A; box-shadow: 0 0 10px #FFD23F; opacity: 0; }
+.bx-open .box-sparks i { animation: box-spark 1.2s cubic-bezier(.15, .7, .3, 1) var(--d) both; }
+@keyframes box-spark { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.4); } 100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1.3); } }
+.box-dust { position: absolute; inset: 0; pointer-events: none; }
+.box-dust i { position: absolute; border-radius: 50%; background: #FFD98A; box-shadow: 0 0 6px rgba(255, 200, 90, .9); opacity: 0; animation: box-dust 6s ease-in-out infinite; }
+@keyframes box-dust { 0% { opacity: 0; transform: translateY(20px); } 30%, 70% { opacity: .7; } 100% { opacity: 0; transform: translateY(-60px); } }
+.box-prize { position: absolute; z-index: 4; display: grid; place-items: center; width: 132px; height: 132px; border-radius: 42px; top: 4%; left: 50%; margin-left: -66px;
+  background: radial-gradient(circle at 35% 25%, #fff, #FFF1C9 60%, #FFD98A); box-shadow: 0 0 0 5px rgba(255, 240, 200, .35), 0 0 60px rgba(255, 190, 80, .75); animation: box-prize .8s cubic-bezier(.3, 1.6, .5, 1) .12s both; }
+.box-prize .tbi, .box-prize .ic { width: 78px !important; height: 78px !important; }
+@keyframes box-prize { from { opacity: 0; transform: translateY(140px) scale(.25); } }
+.box-foot { position: relative; z-index: 3; width: min(360px, 100%); display: flex; flex-direction: column; gap: 12px; text-align: center; min-height: 92px; }
+.box-foot p { margin: 0; color: rgba(255, 236, 200, .72); }
+.box-prize-text { font-size: 26px; font-family: var(--font-display); background: linear-gradient(90deg, #FFE29A, #FFB648); -webkit-background-clip: text; background-clip: text; color: transparent; animation: pop .45s .35s both; }
+.box-foot .btn { animation: pop .45s .5s both; }
+/* Xaritadagi quti — doirasiz, kattaroq */
+.lnode.t-chest .lnode-btn { width: 96px; height: 96px; left: -48px; top: -56px; background: none !important; box-shadow: none !important; }
+.lnode.t-chest .lnode-face { filter: none; }
+.lnode-gbox { width: 92px; height: auto; overflow: visible; filter: drop-shadow(0 8px 12px rgba(150, 90, 20, .45)); }
+.lnode.t-chest.active .lnode-btn { animation: none; }
+.lnode.t-chest.active .lnode-gbox { animation: lbox-wiggle 2.8s ease-in-out infinite; transform-origin: 50% 90%; }
+.lnode.t-chest.done .lnode-gbox .gbox-lid { transform: translate(-6px, -18px) rotate(-16deg); transform-box: fill-box; }
+.lnode.t-chest .lnode-title { top: 46px; }
+@media (prefers-reduced-motion: reduce) { .gbox, .box-rays, .box-dust i, .lnode-gbox { animation: none !important; } }
+html.lite .box-rays, html.lite .gbox, html.lite .box-dust, html.lite .lnode-gbox { animation: none !important; }
+html.lite .box-dust { display: none; }
+/* Vivi mo'ralovchi: matn maydoni chetidan boshchasi ko'rinadi */
 .has-peek, .type-wrap { position: relative; }
 .type-wrap { display: flex; flex-direction: column; }
-.vpeek { position: absolute; right: 18px; top: -34px; z-index: 3; width: 52px; height: 42px; pointer-events: none; }
-.type-peek { right: 14px; top: -33px; }
-.vpeek svg { display: block; overflow: visible; filter: drop-shadow(0 4px 8px rgba(120, 70, 220, .35)); }
-.vpeek-hop { display: block; transform-origin: 50% 100%; }
-.vp-typing .vpeek-hop { animation: vpeek-hop .26s cubic-bezier(.3, 1.6, .5, 1); }
-@keyframes vpeek-hop { 40% { transform: translateY(-4px) scaleY(1.05); } }
-.vpeek-eyes { transform-box: fill-box; transform-origin: center; transition: transform .2s; transform: translate(var(--look), 2px); animation: vpeek-blink 4.5s infinite; }
-@keyframes vpeek-blink { 0%, 94%, 100% { scale: 1 1; } 97% { scale: 1 .1; } }
-.vp-typing .vpeek-eyes { transform: translate(var(--look), 3px); }
-.vp-thinking .vpeek-eyes { transform: translate(0, -3px); }
-.vp-happy .vpeek-eyes { scale: 1 .35; animation: none; }
-.vpeek-body { transform-box: fill-box; transform-origin: 50% 100%; }
-.vp-thinking .vpeek-hop { animation: vpeek-goo 1.1s ease-in-out infinite; }
-@keyframes vpeek-goo { 0%, 100% { transform: scale(1, 1); } 30% { transform: scale(1.08, .92); } 60% { transform: scale(.94, 1.07) translateY(-3px); } }
-.vp-happy .vpeek-hop { animation: vpeek-hop .5s cubic-bezier(.3, 1.6, .5, 1) 2; }
-.vpeek-mouth { opacity: 0; transition: opacity .2s; }
-.vp-happy .vpeek-mouth, .vp-idle .vpeek-mouth { opacity: .9; }
-.vpeek-dots { position: absolute; left: -30px; top: 6px; display: flex; gap: 3px; padding: 5px 7px; border-radius: 12px 12px 3px 12px; background: var(--surface-solid); box-shadow: 0 4px 12px rgba(40, 20, 90, .25); opacity: 0; transform: scale(.4) translateY(6px); transform-origin: 100% 100%; transition: opacity .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); }
+.vpeek { position: absolute; right: 22px; top: -30px; z-index: 3; width: 52px; height: 32px; pointer-events: none; }
+.type-peek { right: 16px; }
+.vpeek-clip { position: absolute; left: 0; right: 0; bottom: 0; height: 34px; overflow: hidden; }
+.vpeek-cat { position: absolute; left: 1px; top: 2px; display: block; transform-origin: 50% 100%; transition: transform .35s cubic-bezier(.3, 1.3, .5, 1); }
+.vpeek-cat svg { filter: none !important; }
+.vp-idle .vpeek-cat { transform: translateY(6px); }
+.vp-typing .vpeek-cat { animation: vpeek-nod 1.8s ease-in-out infinite; }
+@keyframes vpeek-nod { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg) translateY(1px); } }
+.vp-thinking .vpeek-cat { animation: vpeek-sway 1.6s ease-in-out infinite; }
+@keyframes vpeek-sway { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg) translateY(-2px); } }
+.vp-happy .vpeek-cat { transform: translateY(-3px); }
+.vpeek-dots { position: absolute; left: -34px; top: -6px; display: flex; gap: 3px; padding: 5px 7px; border-radius: 12px 12px 3px 12px; background: var(--surface-solid); box-shadow: 0 4px 12px rgba(40, 20, 90, .22); opacity: 0; transform: scale(.4) translateY(6px); transform-origin: 100% 100%; transition: opacity .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); }
 .vp-thinking .vpeek-dots { opacity: 1; transform: none; }
 .vpeek-dots i { width: 5px; height: 5px; border-radius: 50%; background: #B49CFF; animation: vpeek-dot 1s ease-in-out infinite; }
 .vpeek-dots i:nth-child(2) { animation-delay: .15s; background: #FF8FD0; } .vpeek-dots i:nth-child(3) { animation-delay: .3s; background: #7FE3FF; }
 @keyframes vpeek-dot { 50% { transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .vpeek *, .vpeek { animation: none !important; } }
-html.lite .vpeek-eyes, html.lite .vpeek-dots i { animation: none; }
+html.lite .vpeek-cat, html.lite .vpeek-dots i { animation: none; }
+/* Qo'llanma: ichki ro'yxat oxirigacha aylanadi */
+.sheet.guide .guide-body { flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+/* Barmoq bilan tortiladigan oynalar tepasida «tutqich» */
+.modal-back > .sheet::before { content: ''; position: absolute; top: 8px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: color-mix(in srgb, var(--text) 22%, transparent); pointer-events: none; }
+.modal-back > .sheet { position: relative; }
+.modal-back > .sheet.box-sheet::before { background: rgba(255, 230, 180, .35); }
+/* Vivi AI sozlamalari oynasi */
+.vh2-sheet { text-align: left; align-items: stretch; }
+.vh2-sheet .vh-section { padding: 2px 3px !important; overflow: visible !important; contain: none !important; }
+.vh2-sheet .vh-section.two { gap: 16px; }
+.vh2-sheet .vh-field small { white-space: normal; text-align: left; line-height: 1.35; }
+.vh2-sheet .seg { width: 100%; }
+.vh2-sheet .seg button { flex: 1; padding: 9px 8px; }
+.vh2-sheet .vh-check { text-align: left; }
+.vh2-spin { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -0.15em; animation: vh2-rot .8s linear infinite; }
+@keyframes vh2-rot { to { transform: rotate(360deg); } }
+.vh2-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; vertical-align: -0.1em; }
+.vh2-eq i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; animation: vh2-eq .7s ease-in-out infinite; transform-origin: bottom; }
+.vh2-eq i:nth-child(2) { animation-delay: .15s; } .vh2-eq i:nth-child(3) { animation-delay: .3s; }
+@keyframes vh2-eq { 50% { transform: scaleY(.3); } }
+.ga-consent { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 2px 0 12px; border-radius: 16px; text-align: left; border: 1.5px solid color-mix(in srgb, var(--primary) 35%, transparent); background: color-mix(in srgb, var(--primary) 9%, transparent); transition: border-color .2s, background .2s; }
+.ga-consent.on { border-color: color-mix(in srgb, #34d399 60%, transparent); background: color-mix(in srgb, #34d399 10%, transparent); }
+.ga-consent b { display: block; font-size: 14px; }
+.ga-consent small { display: block; margin-top: 3px; font-size: 11.5px; line-height: 1.35; color: rgba(255, 255, 255, .62); }
+.ga-consent b { color: #fff; }
+.ga-consent input { flex: none; }
+.ga-locked { opacity: .45; pointer-events: none; filter: grayscale(.4); }
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }

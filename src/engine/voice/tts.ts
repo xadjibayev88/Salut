@@ -25,6 +25,20 @@ export function browserVoiceAvailable(lang: string): boolean {
   return !!voiceFor(lang);
 }
 
+/** 0,05 s jim 8 kHz WAV (data URI) — audio elementni foydalanuvchi bosganda «ochish» uchun. */
+const SILENT_WAV = (() => {
+  const n = 400;
+  const b = new Uint8Array(44 + n);
+  const v = new DataView(b.buffer);
+  const str = (o: number, t: string) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+  let bin = '';
+  b.forEach((x) => (bin += String.fromCharCode(x)));
+  return 'data:audio/wav;base64,' + btoa(bin);
+})();
+
 export class TtsQueue {
   private items: Item[] = [];
   private playing = false;
@@ -217,6 +231,9 @@ export class TtsQueue {
   unlock() {
     const el = this.ensureAudio();
     void this.ctx?.resume();
+    // Mobil brauzerlar audio'ni faqat bosish paytida «ochadi»: manbasiz play() hech narsani ochmaydi,
+    // shuning uchun qisqa jim WAV bilan o'ynatamiz — keyin (TTS javobi kelganda) ijro bloklanmaydi.
+    if (!el.src) el.src = SILENT_WAV;
     el.muted = true;
     void el.play().catch(() => undefined).finally(() => {
       el.pause();

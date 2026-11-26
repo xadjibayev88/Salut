@@ -2,7 +2,7 @@
 // LockScreen ko'rsatiladi; qulf ochilmaguncha ilova tarkibi umuman chizilmaydi.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { clearPin, hasPin, lockedForMs, RELOCK_AFTER_MS, verifyPin } from '../engine/applock';
-import { DripReveal, LockScreen } from './PinLock';
+import { LockScreen } from './PinLock';
 import { useAccount } from '../state/account';
 import { useStore } from '../state/store';
 
@@ -13,8 +13,6 @@ function waitText(ms: number): string {
 
 export function AppLockGate({ children }: { children: ReactNode }) {
   const [locked, setLocked] = useState(hasPin);
-  const [reveal, setReveal] = useState(false);
-  const revealDone = useCallback(() => setReveal(false), []);
   const hiddenAt = useRef<number | null>(null);
   const { me, signOut } = useAccount();
   const { reset } = useStore();
@@ -50,14 +48,6 @@ export function AppLockGate({ children }: { children: ReactNode }) {
     setLocked(false);
   }, [me.user, signOut, reset]);
 
-  if (locked) return <LockScreen verify={verify} onUnlock={() => {
-          setLocked(false);
-          setReveal(true);
-        }} onForgot={() => void forgot()} />;
-  return (
-    <>
-      {children}
-      {reveal && <DripReveal onDone={revealDone} />}
-    </>
-  );
+  if (locked) return <LockScreen verify={verify} onUnlock={() => setLocked(false)} onForgot={() => void forgot()} />;
+  return <>{children}</>;
 }
