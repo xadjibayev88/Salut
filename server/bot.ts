@@ -100,14 +100,19 @@ function welcomeText(name: string): string {
     "",
     "<b>Voilà!</b> da hammasi yangicha ishlaydi:",
     "",
-    "🐱 <b>1. Vivi — AI ustoz bilan jonli suhbat</b>",
-    "Vivi bilan 24/7 istalgan mavzuda ovozli gaplashasiz. U xatolaringizni hazil bilan (ba'zan qattiq 😼) to'g'rilaydi va talaffuzingizni o'stiradi.",
+    "🗺 <b>1. O'yin tariqasidagi darslar — bepul</b>",
+    "A1 dan C2 gacha 50 ta liniya: pastdan tepaga boriladigan xarita, yulduzlar, Sirli qutilar, mashq va diktant — so'zlar o'zi yodda qoladi.",
     "",
-    "🎮 <b>2. O'yin tariqasida darslar</b>",
-    "A1 dan C2 gacha 50 ta liniya: mashqlar, diktant, turnir va kunlik seriya — so'zlar o'zi yodda qoladi.",
+    "🏆 <b>2. Haftalik turnir</b>",
+    "20 kishilik guruhlarda XP yig'ing: Kurtak ligasidan Afsonagacha ko'tariling, kunlik seriyani uzmang 🔥",
     "",
-    "🎭 <b>3. Har xil xarakterlar</b>",
+    "🐱 <b>3. Vivi AI — jonli ustoz (Super)</b>",
+    "Vivi bilan istalgan mavzuda ovozli va matnli gaplashasiz, Gemini Live'da real vaqtda. U xatolaringizni hazil bilan (ba'zan qattiq 😼) to'g'rilaydi.",
+    "",
+    "🎭 <b>4. Har xil xarakterlar</b>",
     "Romantik Vivi 💘, qattiqqo'l Professor, hazilkash yoki 18+ «bezori» Vivi — kim bilan o'rganishni o'zingiz tanlaysiz.",
+    "",
+    "🌐 Ilova 12 tilda: o'zbek, rus, ingliz, qozoq, qirg'iz, tojik, turk va boshqalar.",
     "",
     "Vaqtingizni qadrlang va tilni zamonaviy texnologiyalar bilan oson o'rganing! 💡",
     "",
@@ -129,11 +134,12 @@ function plansText(): string {
   return [
     '💎 <b>Voilà Super</b> — fransuz tilini Vivi bilan cheksiz o\'rgan!',
     '',
-    '✅ Vivi ustoz bilan cheksiz ovozli suhbat',
-    '✅ Gemini Live — jonli suhbat, cheklovsiz',
-    '✅ Eng tiniq ovoz (ElevenLabs)',
-    '✅ Cheksiz xabar, reklamasiz',
-    '✅ Barcha darajalar: A1 → C2',
+    '🐱 Vivi AI — faqat Super\'da: ovozli va matnli suhbat, xatolar tahlili',
+    '⚡ Gemini Live — jonli suhbat, 30 daqiqalik sessiyalar',
+    '💬 Cheksiz xabarlar',
+    '🐟 Cheksiz baliqcha — xato qilsangiz ham darsdan chiqmaysiz',
+    '🚫 Reklamasiz',
+    '🔥 Uzilgan seriyani bepul tiklash',
     '',
     `💸 ${esc(anchor.label)}: <s>${som(anchor.uzs)} so'm</s>`,
     '👇 Bizda esa:',
@@ -253,7 +259,7 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
     const chat = chatOfUser(userId);
     if (!chat) return;
     const text = approve
-      ? `🎉 <b>To'lov tasdiqlandi!</b>\n💎 Super faollashdi — ${esc(meText(userId).split('\n').slice(2).join(' '))}\n\nIlovani oching va Vivi bilan cheksiz gaplashing!`
+      ? `🎉 <b>To'lov tasdiqlandi!</b>\n💎 Super faollashdi — ${esc(meText(userId).split('\n').slice(2).join(' '))}\n\nIlovani oching: Vivi AI, Gemini Live va cheksiz baliqcha endi siz uchun ochiq!`
       : "❌ Chek tasdiqlanmadi. Summa yoki chek noto'g'ri bo'lishi mumkin. Savol bo'lsa shu yerga yozing.";
     const extra = { reply_markup: approve ? { inline_keyboard: [[{ text: '📱 Ilovani ochish', url: appUrl() }]] } : mainKb() };
     if (!approve) return void (await send(chat, text, extra).catch(() => {}));
@@ -434,8 +440,8 @@ export function startBot(token = env('TELEGRAM_BOT_TOKEN')): Bot | null {
     if (me?.username) username = me.username;
     const url = appUrl();
     await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Voilà App 🚀', web_app: { url } } }).catch(() => {});
-    await tg('setMyShortDescription', { short_description: "Vivi — fransuz tilini hazil bilan o'rgatadigan AI ustoz 🐱 A1→C2, jonli ovozli suhbat." }).catch(() => {});
-    await tg('setMyDescription', { description: "🇫🇷 Voilà! — fransuz tilini o'zbek tilida o'rganing.\n\n🐱 Vivi AI bilan jonli ovozli suhbat\n🎮 O'yin tariqasida darslar A1→C2\n💎 Super obuna — Payme, Click, karta yoki Visa orqali\n\nBoshlash uchun «Start» ni bosing 👇" }).catch(() => {});
+    await tg('setMyShortDescription', { short_description: "Voilà! — fransuz tilini o'yin tariqasida o'rganing 🇫🇷 A1→C2. Vivi AI ustoz — Super'da 🐱" }).catch(() => {});
+    await tg('setMyDescription', { description: "🇫🇷 Voilà! — fransuz tilini o'zbek tilida o'rganing.\n\n🗺 O'yin tariqasida darslar A1→C2 — bepul\n🏆 Haftalik turnir va kunlik seriya\n🐱 Vivi AI va Gemini Live — Super obunada\n💎 Super: 1 hafta, 1 oy yoki 3 oy — Payme, Click, karta yoki Visa\n\nBoshlash uchun «Start» ni bosing 👇" }).catch(() => {});
     await tg('setMyCommands', { commands: [{ command: 'start', description: 'Boshlash' }, { command: 'plans', description: '💎 Super tariflari' }, { command: 'me', description: 'Mening obunam' }] }).catch(() => {});
     let offset = 0;
     for (;;) {
