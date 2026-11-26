@@ -1,4 +1,5 @@
 import { GlassRefraction, useLiquidGlassOn } from './components/LiquidGlass';
+import { motionAllowed } from './engine/motion';
 import { BoltIcon, CoinIcon, FishIcon, FlagIcon } from './components/TopBarIcons';
 import { Ic } from './components/Icons';
 import { ViviWalker } from './components/ViviWalker';
@@ -75,6 +76,40 @@ const PaneBody = memo(function PaneBody({ id, onStart, onManageAiConsent }: { id
 });
 
 /** Sahifa qatlami: ko'rinmaydiganlari yashiriladi (o'chirilmaydi) — qaytib o'tish bir zumda. */
+/**
+ * Tab almashganda: yangi sahifaning ekranda ko'rinib turgan bloklari (Turnir'dagi ro'yxat ↔ kartalar
+ * almashinuvidagidek) kichrayib-siljigan holatdan o'z joyiga prujinadek «oqib» tushadi, navbatma-navbat.
+ * Faqat ko'rinayotgan ≤ 10 ta blok, faqat transform/opacity — sekin telefonlarda ham qotmaydi.
+ */
+function morphPaneIn(): (() => void) | undefined {
+  if (!motionAllowed() || document.documentElement.classList.contains('lite')) return;
+  const pane = document.querySelector<HTMLElement>('.content > .tab-pane:not([hidden])');
+  const root = pane?.firstElementChild as HTMLElement | null;
+  if (!pane || !root) return;
+  const vh = window.innerHeight;
+  let blocks = Array.from(root.children) as HTMLElement[];
+  // Bitta katta o'ram bo'lsa — uning ichidagi bloklar.
+  if (blocks.length === 1) blocks = Array.from(blocks[0].children) as HTMLElement[];
+  const shown: HTMLElement[] = [];
+  for (const el of blocks) {
+    const r = el.getBoundingClientRect();
+    if (el.matches('[data-no-morph], .modal-back')) continue;
+    if (r.height === 0 || r.bottom < 0) continue;
+    if (r.top > vh) break;
+    shown.push(el);
+    if (shown.length >= 10) break;
+  }
+  shown.forEach((el, i) => {
+    el.style.setProperty('--mi', String(i));
+    el.classList.add('pane-morph');
+  });
+  const t = window.setTimeout(() => shown.forEach((el) => el.classList.remove('pane-morph')), 900);
+  return () => {
+    clearTimeout(t);
+    shown.forEach((el) => el.classList.remove('pane-morph'));
+  };
+}
+
 const Pane = memo(function Pane({ id, on, dir, onStart, onManageAiConsent }: { id: Tab; on: boolean; dir: 'fwd' | 'back'; onStart: (c: SessionConfig) => void; onManageAiConsent: () => void }) {
   return (
     <div className={`tab-pane page-${dir}`} hidden={!on} aria-hidden={!on}>
@@ -112,8 +147,14 @@ export function App() {
   const scrolls = useRef<Partial<Record<Tab, number>>>({});
   useEffect(() => setVisited((v) => (v.includes(tab) ? v : [...v, tab])), [tab]);
   // Har sahifaning o'z joyiga qaytish (yangi sahifa — tepadan).
+  const firstPane = useRef(true);
   useLayoutEffect(() => {
     window.scrollTo(0, scrolls.current[tab] ?? 0);
+    if (firstPane.current) {
+      firstPane.current = false;
+      return;
+    }
+    return morphPaneIn();
   }, [tab]);
   const [session, setSession] = useState<SessionConfig | null>(null);
   const [blocked, setBlocked] = useState(false);

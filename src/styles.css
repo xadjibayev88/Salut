@@ -1323,12 +1323,13 @@ html[data-theme='light'] :is(.call, .live-call) :is(.mic-lang-pill, .sub-tutor, 
 /* Tez o'tish: yashirin sahifalar chizilmaydi; ko'rinishda — 160 ms yengil siljish (blur yo'q, faqat transform/opacity) */
 .tab-pane[hidden] { display: none !important; }
 /* «backwards»: animatsiya tugagach sahifa alohida qatlam bo'lib qolmaydi — ichidagi oynalar menyu ustida chiqadi */
-.tab-pane { animation: pane-in .16s cubic-bezier(.2, .9, .3, 1) backwards; }
-.tab-pane.page-fwd { --from-x: 14px; }
-.tab-pane.page-back { --from-x: -14px; }
-@keyframes pane-in { from { opacity: .4; transform: translate3d(var(--from-x, 0), 0, 0); } to { opacity: 1; transform: none; } }
+.tab-pane { --dx: 26px; }
+.tab-pane.page-fwd { --dx: 26px; }
+.tab-pane.page-back { --dx: -26px; }
+.pane-morph { animation: pane-morph .52s cubic-bezier(.2, .9, .25, 1.12) calc(var(--mi, 0) * 38ms) both; transform-origin: 50% 0; }
+@keyframes pane-morph { from { opacity: 0; transform: translate3d(var(--dx, 26px), 22px, 0) scale(.93); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
 .tutor-mode .tab-pane { height: 100%; }
-@media (prefers-reduced-motion: reduce) { .tab-pane { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pane-morph { animation: none; } }
 .tab { touch-action: manipulation; }
 
 /* ---------- Ijtimoiy isbot: izohlar, xarid bildirishnomasi, qo'llab-quvvatlash ---------- */
@@ -3213,6 +3214,14 @@ html[data-theme='light'] .authx { background: #fbfaff; }
 html:not([data-theme='light']) .authx-legal a, html:not([data-theme='light']) .authx-legal button { color: #B49CFF; }
 @media (max-height: 720px) { .authx { --ph: 136px; } .authx-or { font-size: 11px; } .authx-inner { padding-bottom: calc(8px + env(safe-area-inset-bottom)); } .authx-vivi { width: 100px; } .authx-vivi > * { transform: scale(.82); } .authx-inner { gap: 6px; padding-top: 8px; } .authx-fields { gap: 7px; } .authx-inner h1 { font-size: 20px; } .authx-input { height: 44px; } .authx-submit { height: 46px; } .authx-consent small { display: none; } .authx-hello p { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .authx-panel, .authx-form { transition: none; } .authx-inner { animation: none; } }
+.lmap-down { position: fixed; right: 16px; bottom: calc(108px + env(safe-area-inset-bottom)); z-index: 30; width: 52px; height: 52px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, #FF6B9A, #9B5CFF); box-shadow: 0 10px 24px -6px rgba(155, 92, 255, .6); opacity: 0; transform: translateY(18px) scale(.7); pointer-events: none; transition: opacity .25s, transform .35s cubic-bezier(.3, 1.5, .5, 1); }
+.lmap-down.on { opacity: 1; transform: none; pointer-events: auto; }
+.lmap-down.on svg { animation: lmap-down 1.8s ease-in-out infinite; }
+.lmap-down:active { transform: scale(.9); }
+@keyframes lmap-down { 0%, 60%, 100% { transform: none; } 75% { transform: translateY(4px); } }
+@media (min-width: 1000px) { .lmap-down { bottom: 28px; } }
+@media (prefers-reduced-motion: reduce) { .lmap-down.on svg { animation: none; } }
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }

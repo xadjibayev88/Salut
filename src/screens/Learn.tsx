@@ -39,6 +39,37 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
     return () => cancelAnimationFrame(r);
   }, []);
 
+  // Tepaga chiqib ketganda — o'ng pastda «pastga» tugmasi: bir bosishda hozirgi darsga tushadi.
+  const [showDown, setShowDown] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const el = activeRef.current;
+      const far = el ? el.getBoundingClientRect().top > window.innerHeight + 120 : document.documentElement.scrollHeight - window.scrollY - window.innerHeight > 900;
+      setShowDown((v) => (v === far ? v : far));
+    };
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    window.addEventListener('scroll', on, { passive: true });
+    check();
+    return () => {
+      window.removeEventListener('scroll', on);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  const jumpDown = () => {
+    const el = activeRef.current;
+    const target = el
+      ? window.scrollY + el.getBoundingClientRect().top - window.innerHeight / 2 + 40
+      : document.documentElement.scrollHeight - window.innerHeight;
+    const smooth = motionAllowed();
+    // Uzoq masofa: deyarli yetguncha bir zumda, oxirgi qismi silliq.
+    if (smooth && target - window.scrollY > 1400) window.scrollTo({ top: target - 700, behavior: 'instant' as ScrollBehavior });
+    window.scrollTo({ top: target, behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) });
+  };
+
   const order = COURSE.map((u, ui) => ({ u, ui })).reverse();
   return (
     <div className="learn lmap">
@@ -100,6 +131,11 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
           </section>
         );
       })}
+      <button type="button" data-no-morph className={`lmap-down ${showDown ? 'on' : ''}`} onClick={jumpDown} aria-label="Hozirgi darsga tushish" tabIndex={showDown ? 0 : -1}>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 5v13M6 12l6 6 6-6" />
+        </svg>
+      </button>
       {sheet && <NodeSheet node={sheet} onClose={() => setSheet(null)} onStart={onStart} />}
       {wheel && <BoxModal node={wheel} onClose={() => setWheel(null)} />}
       {guide && <GuideModal unit={guide} onClose={() => setGuide(null)} />}
