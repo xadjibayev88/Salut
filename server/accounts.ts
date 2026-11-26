@@ -365,3 +365,9 @@ export function putProgress(userId: string, state: unknown, updatedAt: unknown):
   db().prepare('INSERT INTO progress (user_id, state, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at').run(userId, json, ts);
   return { ok: true, updatedAt: ts };
 }
+
+/** Bot ID — tokenning ':' gacha bo'lgan raqamli qismi (Telegram uni ochiq ko'rsatadi); sir qismi hech qachon yuborilmaydi. */
+export function telegramBotId(token: string | undefined): number | null {
+  const m = /^(\d{5,15}):[A-Za-z0-9_-]{20,}$/.exec((token ?? '').trim());
+  return m ? Number(m[1]) : null;
+}

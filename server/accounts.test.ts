@@ -229,3 +229,14 @@ describe("karta orqali to'lov", () => {
     delete process.env.PAY_CARD_NUMBER;
   });
 });
+
+describe('telegram bot id for Telegram.Login.auth', () => {
+  it('exposes only the public numeric id, never the secret part', async () => {
+    const { telegramBotId } = await import('./accounts.ts');
+    const fake = `123456789:${'x'.repeat(35)}`;
+    expect(telegramBotId(fake)).toBe(123456789);
+    expect(String(telegramBotId(fake))).not.toContain('x');
+    expect(telegramBotId('')).toBeNull();
+    expect(telegramBotId('not-a-token')).toBeNull();
+  });
+});
