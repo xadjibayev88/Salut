@@ -57,6 +57,11 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
 
   if (!open) return null;
 
+  // Serverdagi amaldagi roziliklar — toggle holati undan farq qilsa, «saqlanmagan» deb ko'rsatamiz.
+  const active = !!consent && consent.revokedAt === null && consent.policyVersion === policyVersion;
+  const saved = active ? consent!.grants.filter((g) => g.policyVersion === policyVersion && g.revokedAt === null).map((g) => g.scope) : [];
+  const dirty = !loading && (saved.length !== selected.length || saved.some((s) => !selected.includes(s)));
+
   const toggle = (scope: AiScope, checked: boolean) => {
     setSelected((current) => checked
       ? current.includes(scope) ? current : [...current, scope]
@@ -147,8 +152,14 @@ export function AiConsentDialog({ open, onClose }: { open: boolean; onClose: () 
         <p className="muted">Provider sozlamalari, model va region keyin alohida tekshirilib yoqiladi. Provider’larning o‘zida saqlash muddati haqida bu yerda kafolat berilmaydi.</p>
         {error && <p className="danger" role="alert">{error}</p>}
         {message && <p className="muted" role="status">{message}</p>}
-        <button type="button" className="btn btn-primary btn-lg" disabled={loading || saving || !me.user || !selected.length} onClick={() => void save()}>
-          {saving ? 'Saqlanmoqda…' : 'Tanlangan roziliklarni saqlash'}
+        {dirty && !saving && <p className="consent-dirty" role="status">Saqlanmagan o‘zgarish bor — pastdagi tugmani bosing.</p>}
+        <button
+          type="button"
+          className={`btn btn-primary btn-lg ${dirty ? 'consent-save-dirty' : ''}`}
+          disabled={loading || saving || !me.user || (!selected.length && !active)}
+          onClick={() => void (selected.length ? save() : revoke())}
+        >
+          {saving ? 'Saqlanmoqda…' : selected.length ? 'Tanlangan roziliklarni saqlash' : 'Hammasini o‘chirib saqlash'}
         </button>
         <button type="button" className="btn btn-text danger" disabled={loading || saving || !me.user || !consent || consent.revokedAt !== null} onClick={() => void revoke()}>
           Barcha AI roziligini bekor qilish

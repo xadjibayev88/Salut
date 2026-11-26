@@ -255,7 +255,7 @@ function ThemeSetting() {
       </span>
       <div className="theme-controls">
         <ThemeToggle dark={dark} onToggle={(next) => apply(next ? 'dark' : 'light')} />
-        <button type="button" className={`theme-auto ${pref === 'auto' ? 'on' : ''}`} aria-pressed={pref === 'auto'} onClick={() => apply('auto')}>
+        <button type="button" className={`theme-auto ${pref === 'auto' ? 'on' : ''}`} aria-pressed={pref === 'auto'} onClick={() => apply(pref === 'auto' ? (dark ? 'dark' : 'light') : 'auto')}>
           🌗 Avto
         </button>
       </div>
