@@ -1869,6 +1869,37 @@ html.lite .ga-card::before { -webkit-backdrop-filter: none; backdrop-filter: non
   .pin-sparks i, .pin-links path, .pin-caret, .pin-st-error .pin-box { animation: none !important; }
 }
 
+/* ==========================================================
+   KUNDUZGI / TUNGI KALIT — neomorfik, odamcha teshikka sakraydi
+   ========================================================== */
+.theme-setting { flex-wrap: wrap; gap: 12px; }
+.theme-controls { display: flex; align-items: center; gap: 10px; }
+.theme-toggle {
+  --tt-bg: #e8ebf6; --tt-hi: #ffffff; --tt-lo: #c3c8dc; --tt-ink: #2b2f45; --tt-hole: #d6dbeb;
+  position: relative; width: 168px; height: 68px; padding: 0; border: none; border-radius: 22px; cursor: pointer;
+  background: var(--tt-bg); box-shadow: 8px 8px 18px var(--tt-lo), -8px -8px 18px var(--tt-hi);
+  transition: background .6s, box-shadow .6s; -webkit-tap-highlight-color: transparent;
+}
+.theme-toggle.is-dark { --tt-bg: #1e2130; --tt-hi: #2a2e42; --tt-lo: #0c0e16; --tt-ink: #f1f5f9; --tt-hole: #141722; }
+.theme-toggle:active { transform: scale(.98); }
+.tt-knob {
+  position: absolute; left: 10px; top: 50%; width: 46px; height: 46px; margin-top: -23px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--tt-bg); box-shadow: 5px 5px 10px var(--tt-lo), -5px -5px 10px var(--tt-hi); transition: background .6s, box-shadow .6s;
+}
+.tt-knob svg { position: absolute; transition: opacity .45s, transform .6s cubic-bezier(.3, 1.4, .5, 1); }
+.theme-toggle.is-light .tt-moon, .theme-toggle.is-dark .tt-sun { opacity: 0; transform: rotate(-90deg) scale(.4); }
+.theme-toggle.is-light .tt-sun { animation: tt-spin 14s linear infinite; }
+@keyframes tt-spin { to { transform: rotate(360deg); } }
+.tt-stage { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.tt-hole { fill: color-mix(in srgb, var(--tt-hole) calc((1 - var(--dark, 0)) * 100%), #07080c); --dark: 0;
+  filter: drop-shadow(0 1px 0 var(--tt-hi)); transition: fill .2s; }
+.tt-stick { fill: none; stroke: var(--tt-ink); stroke-width: 2.4; stroke-linecap: round; }
+.tt-stick circle { fill: var(--tt-ink); stroke: none; }
+html.theme-anim, html.theme-anim body, html.theme-anim * { transition: background-color .55s ease, color .4s ease, border-color .55s ease, box-shadow .55s ease !important; }
+.theme-auto { border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 12px; border-radius: 999px; }
+.theme-auto.on { color: #fff; border-color: transparent; background: linear-gradient(135deg, #7c5cff, #38bdf8); }
+@media (prefers-reduced-motion: reduce) { .theme-toggle.is-light .tt-sun { animation: none; } }
+
 /* Vivi semantic cues: small movements on the existing cat parts only. */
 .vivi-cue-motion .vivi-cue-head { transform-origin: 100px 92px; transition: transform .22s ease; }
 .vivi-cue-state-listening .vivi-cue-head { animation: vivi-cue-listening 2.4s ease-in-out infinite; }
