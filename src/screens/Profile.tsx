@@ -1,3 +1,5 @@
+import { currentLang, LANG_EVENT, LANGUAGES, type Lang } from '../i18n';
+import { chooseLanguage } from '../i18n/choose';
 import { liquidGlassSupported, readLiquidGlass, saveLiquidGlass } from '../components/LiquidGlass';
 import { DrawLine } from '../components/StripeFx';
 import { ReviewForm } from '../components/SocialProof';
@@ -7,7 +9,7 @@ import { Folder } from '../components/Folder';
 import { clearPin, hasPin, setPin, verifyPin } from '../engine/applock';
 import { TAB_MOTIONS, saveTabMotion, useTabMotion } from '../components/TabBar';
 import { themePref, setThemePref, type ThemePref } from '../engine/theme';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS, LEAGUES } from '../engine/game';
 import { addDays, dayKey } from '../engine/time';
 import { useStore } from '../state/store';
@@ -25,7 +27,9 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
   const words = Object.keys(state.words).length;
   const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
   const c = new Date(state.createdAt);
-  const since = `${c.getFullYear()}-yil ${MONTHS[c.getMonth()]}`;
+  // Sana ilova tilida: o'zbekcha — qo'lda, boshqalar — brauzer Intl formati.
+  const since = currentLang() === 'uz' ? `${c.getFullYear()}-yil ${MONTHS[c.getMonth()]}` : new Intl.DateTimeFormat(currentLang(), { year: 'numeric', month: 'long' }).format(c);
+  const sinceLabel = `${since} dan beri`;
 
   // So'nggi 14 kun XP grafigi
   const today = dayKey();
@@ -42,7 +46,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         </button>
         <div>
           <input className="name-input" value={name} placeholder="Ismingiz" onChange={(e) => setName(e.target.value)} onBlur={() => update((s) => ({ ...s, name: name.trim() }))} />
-          <p className="muted">{since} dan beri · 🇺🇿 → 🇫🇷</p>
+          <p className="muted">{sinceLabel} · 🇺🇿 → 🇫🇷</p>
         </div>
       </div>
 
@@ -102,7 +106,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
           })}
           <DrawLine values={days.map((d) => state.xpByDay[d] ?? 0)} max={max} />
           <div className="xp-goal" style={{ bottom: `${(state.dailyGoal / max) * 100}%` }}>
-            <span>maqsad {state.dailyGoal}</span>
+            <span>{`maqsad ${state.dailyGoal}`}</span>
           </div>
         </div>
         <div className="xp-labels">
@@ -141,6 +145,7 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
 
       <h2 className="section-title">Sozlamalar</h2>
       <div className="settings">
+        <LanguageSetting />
         <ThemeSetting />
         <TabMotionSetting />
         {liquidGlassSupported() && (
@@ -231,6 +236,28 @@ export function Profile({ onManageAiConsent }: { onManageAiConsent: () => void }
         </div>
       )}
     </div>
+  );
+}
+
+/** Ilova (interfeys) tili — 12 til. Tanlansa sahifa darhol shu tilga o'tadi. */
+function LanguageSetting() {
+  const [lang, setL] = useState<Lang>(() => currentLang());
+  useEffect(() => {
+    const on = (e: Event) => setL((e as CustomEvent<Lang>).detail);
+    window.addEventListener(LANG_EVENT, on);
+    return () => window.removeEventListener(LANG_EVENT, on);
+  }, []);
+  const cur = LANGUAGES.find((l) => l.id === lang) ?? LANGUAGES[0];
+  return (
+    <Folder className="setting-folder lang-folder" icon="🌐" title="Ilova tili" summary={<span data-no-i18n>{cur.flag} {cur.name}</span>}>
+      {LANGUAGES.map((l) => (
+        <button key={l.id} type="button" role="radio" aria-checked={lang === l.id} className={`lang-chip ${lang === l.id ? 'on' : ''}`} onClick={() => void chooseLanguage(l.id)} data-no-i18n>
+          <span className="lang-flag">{l.flag}</span>
+          <b>{l.name}</b>
+          {lang === l.id && <span className="lang-tick">✓</span>}
+        </button>
+      ))}
+    </Folder>
   );
 }
 

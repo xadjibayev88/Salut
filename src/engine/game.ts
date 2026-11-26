@@ -168,22 +168,23 @@ export function streakActiveToday(s: GameState, now = new Date()): boolean {
 // Turnir bosqichlari — Fransiya shaharlari bo'ylab sayohat (Ruandan Parijgacha).
 // Ligalar: aniq daraja nomi (Bronza → Chempion) + fransuz shahri (mavzu uchun).
 export const LEAGUES = [
-  { name: "Boshlang'ich", city: 'Ruan', color: '#A16207', icon: '🌱' },
-  { name: 'Bronza', city: 'Lill', color: '#B45309', icon: '🥉' },
-  { name: 'Kumush', city: 'Nant', color: '#6B7280', icon: '🥈' },
-  { name: 'Oltin', city: 'Strasburg', color: '#CA8A04', icon: '🥇' },
-  { name: 'Platina', city: 'Bordo', color: '#0E7490', icon: '💠' },
-  { name: 'Zumrad', city: 'Tuluza', color: '#059669', icon: '💚' },
-  { name: 'Sapfir', city: 'Marsel', color: '#1D4ED8', icon: '💙' },
-  { name: 'Yoqut', city: 'Lion', color: '#BE123C', icon: '❤️‍🔥' },
-  { name: 'Olmos', city: 'Nitsa', color: '#0891B2', icon: '💎' },
-  { name: 'Chempion', city: 'Parij', color: '#1E2A78', icon: '🏆' },
+  { name: 'Kurtak', motto: 'Birinchi qadamlar', color: '#16A34A', color2: '#86EFAC', icon: '🌱' },
+  { name: 'Bronza', motto: 'Odat shakllanmoqda', color: '#B45309', color2: '#FDBA74', icon: '🥉' },
+  { name: 'Kumush', motto: 'Barqaror sur\'at', color: '#64748B', color2: '#E2E8F0', icon: '🥈' },
+  { name: 'Oltin', motto: 'Ishonchli o\'quvchi', color: '#CA8A04', color2: '#FDE68A', icon: '🥇' },
+  { name: 'Platina', motto: 'Kuchlilar orasida', color: '#0E7490', color2: '#A5F3FC', icon: '💠' },
+  { name: 'Zumrad', motto: 'Yorqin natijalar', color: '#047857', color2: '#6EE7B7', icon: '💚' },
+  { name: 'Sapfir', motto: 'Chuqur bilim', color: '#1D4ED8', color2: '#93C5FD', icon: '💙' },
+  { name: 'Yoqut', motto: 'Olovli ishtiyoq', color: '#BE123C', color2: '#FDA4AF', icon: '❤️‍🔥' },
+  { name: 'Olmos', motto: 'Eng yaxshilar', color: '#0891B2', color2: '#E0F2FE', icon: '💎' },
+  { name: 'Afsona', motto: 'Fransuz tili afsonasi', color: '#7C3AED', color2: '#F0ABFC', icon: '👑' },
 ];
 /** Hafta yakunidagi mukofot (XP): 1-, 2-, 3-o'rin. */
 export const LEAGUE_PRIZE_XP = [0, 100, 60, 40];
 
-export const LEAGUE_SIZE = 30;
-export const PROMOTE = 7;
+/** Guruh: 20 kishi — 1–5 ko'tarilish zonasi, 6–15 qolish zonasi, 16–20 tushish zonasi. */
+export const LEAGUE_SIZE = 20;
+export const PROMOTE = 5;
 export const DEMOTE = 5;
 
 const BOT_NAMES = [

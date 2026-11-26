@@ -11,6 +11,7 @@ import {
   HEART_REGEN_MS,
   initialState,
   leagueStandings,
+  LEAGUE_SIZE,
   loseHeart,
   MAX_HEARTS,
   nodeState,
@@ -183,7 +184,7 @@ describe('game', () => {
     expect(next.league.tier).toBe(1);
     expect(next.league.lastResult?.rank).toBe(1);
     expect(next.league.weeklyXp).toBe(0);
-    expect(leagueStandings(next.league, new Date(2026, 10, 10, 12))).toHaveLength(30);
+    expect(leagueStandings(next.league, new Date(2026, 10, 10, 12))).toHaveLength(LEAGUE_SIZE);
   });
 
   it('shop purchases spend gems', () => {

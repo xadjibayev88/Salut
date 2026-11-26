@@ -35,7 +35,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
               <span className="level-badge">{lvl}</span>
               <div>
                 <b>{LEVEL_NAMES[lvl]}</b>
-                <small>{COURSE.filter((x) => (x.level ?? 'A1') === lvl).length} ta liniya</small>
+                <small>{`${COURSE.filter((x) => (x.level ?? 'A1') === lvl).length} ta liniya`}</small>
               </div>
               {locked && ui > 0 && (
                 <button type="button" className="btn btn-jump" onClick={() => onStart({ kind: 'jump', level: lvl })}>
@@ -49,7 +49,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
               <span className="line-badge">{ui + 1}</span>
               <div className="line-text">
                 <small>
-                  LINIYA {ui + 1} · {done}/{u.lessons.length} bekat
+                  {`Liniya ${ui + 1} · ${done}/${u.lessons.length} bekat`}
                 </small>
                 <h2>{u.title}</h2>
                 <p>{u.description}</p>
@@ -60,7 +60,7 @@ export function Learn({ onStart }: { onStart: (c: SessionConfig) => void }) {
             </header>
             {locked && firstLocked >= 0 && ui > firstLocked + 1 && !peek.has(u.id) ? (
               <button type="button" className="line-peek" onClick={() => setPeek((p) => new Set(p).add(u.id))}>
-                🔒 {u.lessons.length} ta dars — ko'rish
+                {`🔒 ${u.lessons.length} ta dars — ko'rish`}
               </button>
             ) : (
             <ol className="stations">

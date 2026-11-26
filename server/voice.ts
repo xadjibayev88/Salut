@@ -54,7 +54,20 @@ export const FEEDBACK_SCHEMA = {
   propertyOrdering: ['summary', 'strengths', 'growth', 'words'],
 };
 
-const LANG_NAME: Record<Lang, string> = { uz: "o'zbek (lotin)", ru: 'rus', en: 'ingliz' };
+const LANG_NAME: Record<Lang, string> = {
+  uz: "o'zbek (lotin)",
+  ru: 'rus',
+  en: 'ingliz',
+  kk: 'qozoq (kirill)',
+  ky: "qirg'iz (kirill)",
+  tg: 'tojik (kirill)',
+  tr: 'turk',
+  zh: 'xitoy (soddalashtirilgan)',
+  hi: 'hind',
+  ko: 'koreys',
+  ja: 'yapon',
+  id: 'indonez',
+};
 
 export function feedbackBody(req: FeedbackRequest, model: string): Record<string, unknown> {
   const thinking = thinkingFor(model);

@@ -1,3 +1,4 @@
+import { currentLang } from '../i18n';
 import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS, type Reward } from '../engine/game';
 import { dayKey, addDays, WEEKDAYS_SHORT, parseDay } from '../engine/time';
@@ -118,6 +119,15 @@ export function Result({ reward, config, onDone }: { reward: Reward; config: Ses
   );
 }
 
+/** Hafta kunlari qisqa nomi: o'zbekcha — o'zimizniki, boshqa tillar — brauzer Intl (dushanbadan). */
+function weekdayLabels(): string[] {
+  const lang = currentLang();
+  if (lang === 'uz') return WEEKDAYS_SHORT;
+  const f = new Intl.DateTimeFormat(lang, { weekday: 'short' });
+  // 2024-01-01 — dushanba
+  return Array.from({ length: 7 }, (_, i) => f.format(new Date(2024, 0, 1 + i)).replace(/\.$/, '').slice(0, 3));
+}
+
 export function WeekStrip() {
   const { state } = useStore();
   const today = dayKey();
@@ -125,7 +135,7 @@ export function WeekStrip() {
   const monday = addDays(today, -dow);
   return (
     <div className="week-strip">
-      {WEEKDAYS_SHORT.map((d, i) => {
+      {weekdayLabels().map((d, i) => {
         const k = addDays(monday, i);
         const active = (state.xpByDay[k] ?? 0) > 0;
         const frozen = state.frozenDays.includes(k);

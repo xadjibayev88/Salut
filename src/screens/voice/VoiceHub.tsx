@@ -456,7 +456,7 @@ export function VoiceHub() {
 
       {config && config.messagesLeft != null && (
         <p className="vh-quota">
-          🎁 Bugun {config.messagesLeft} / {config.messagesPerDay} ta bepul xabar va {config.sessionMinutes} daqiqalik ovozli suhbat.{' '}
+          {`🎁 Bugun ${config.messagesLeft} / ${config.messagesPerDay} ta bepul xabar va ${config.sessionMinutes} daqiqalik ovozli suhbat.`}{' '}
           <a href="#/shop">Super — cheksiz va Dilzoda ovozi</a>
         </p>
       )}

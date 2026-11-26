@@ -1,5 +1,7 @@
 // Ovozli suhbat sozlamalari, dam olish (cooldown) va suhbatlar tarixi — qurilmada saqlanadi.
-import type { CharacterId, ExplainLang, RoleId } from '../../data/characters';
+import { EXPLAIN_LANGS, type CharacterId, type ExplainLang, type RoleId } from '../../data/characters';
+
+const EXPLAIN_IDS = new Set<string>(EXPLAIN_LANGS.map((l) => l.id));
 import type { TalkStats } from './markers';
 
 export type InputMode = 'ptt' | 'handsfree';
@@ -101,7 +103,15 @@ export function loadPrefs(): VoicePrefs {
   } catch {
     /* saqlash bloklangan */
   }
-  return { ...DEFAULT_PREFS, ...saved, ...(migrated ? {} : { live: true }) };
+  // Tushuntirish tili hali tanlanmagan bo'lsa — ilova tili (12 tildan biri) olinadi.
+  let uiLang: string | null = null;
+  try {
+    uiLang = localStorage.getItem('voila.lang');
+  } catch {
+    /* e'tiborsiz */
+  }
+  const lang = saved.lang ?? (uiLang && EXPLAIN_IDS.has(uiLang) ? (uiLang as VoicePrefs['lang']) : DEFAULT_PREFS.lang);
+  return { ...DEFAULT_PREFS, ...saved, lang, ...(migrated ? {} : { live: true }) };
 }
 export const savePrefs = (p: VoicePrefs) => write(PREFS_KEY, p);
 
