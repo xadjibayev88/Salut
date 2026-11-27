@@ -138,14 +138,37 @@ Koreys tilini o'zbek tilida o'rganing — havola profilda 👆
 
 ---
 
-## 28-noyabr (ertaga) — yangi 4 ta Reels
+## 28-noyabr (ertaga) — 6 ta Reels
 
 | Vaqt | @voila_ai.uz | @gotopic.uz |
 |---|---|---|
+| 07:00 | `voila/motion/v-showreel.mp4` (15 s) | `gotopic/motion/g-showreel-v2.mp4` (15 s) |
 | 12:30 | `voila/motion/v-kinetik.mp4` (25 s) | `gotopic/motion/g-kinetik.mp4` (25 s) |
 | 20:00 | `voila/motion/v-ekran.mp4` (25 s) | `gotopic/motion/g-ekran.mp4` (25 s) |
 
 Ovoz videoning o'zida (har biriga alohida musiqa) — Instagram musiqasini qo'shmang. Muqova: «Kinetik» uchun nom chiqqan kadr (~1 s), «Ekran ichiga» uchun ekranlar karuseli (~6 s).
+
+**@voila_ai.uz · 07:00 · Showreel**
+```
+Xayrli tong! ☀️ 15 soniyada Voilà! 🇫🇷
+Darslar A1 → C2 · Vivi AI ustoz · har kuni seriya 🔥
+
+Kuniga atigi 5 daqiqa — bugundan boshlang.
+Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #tilorganish #motiondesign #uzbekistan #toshkent #voila
+```
+
+**@gotopic.uz · 07:00 · Showreel**
+```
+Xayrli tong! ☀️ 15 soniyada Go Topic 🇰🇷
+Hangul'dan TOPIK 6 gacha · Hori AI ustoz · har kuni seriya 🔥
+
+Kuniga atigi 5 daqiqa — bugundan boshlang.
+Darslar bepul — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #motiondesign #uzbekistan #gotopic
+```
 
 **@voila_ai.uz · 12:30 · Kinetik**
 ```
