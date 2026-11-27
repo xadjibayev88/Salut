@@ -53,7 +53,7 @@ Saqlab qo'ying 📌 va do'stingizga yuboring!
 
 ---
 
-## 2. Go Topic
+## 2. Go Topic (@gotopic.uz)
 
 **Profil**
 - Ism (Name): `GoTopic — Koreys tili AI`

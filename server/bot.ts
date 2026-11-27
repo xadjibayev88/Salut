@@ -258,6 +258,8 @@ function helpText(): string {
     '⌨️ /menu — pastki menyu',
     '',
     "💳 To'lov: tarifni tanlang → kartaga o'tkazing → chek rasmini shu yerga yuboring. Admin tekshirgach Super o'zi yoqiladi.",
+    '',
+    `📸 Instagram: <a href="https://www.instagram.com/voila_ai.uz/">@voila_ai.uz</a> — Reels, darslar va yangiliklar`,
   ].join('\n');
 }
 
@@ -567,7 +569,7 @@ export function startBot(token = env('TELEGRAM_BOT_TOKEN')): Bot | null {
     const url = appUrl();
     await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Voilà App 🚀', web_app: { url } } }).catch(() => {});
     await tg('setMyShortDescription', { short_description: "Voilà! — fransuz tilini o'yin tariqasida o'rganing 🇫🇷 A1→C2. Vivi AI ustoz — Super'da 🐱" }).catch(() => {});
-    await tg('setMyDescription', { description: "🇫🇷 Voilà! — fransuz tilini o'zbek tilida o'rganing.\n\n🗺 O'yin tariqasida darslar A1→C2 — bepul\n🏆 Haftalik turnir va kunlik seriya\n🐱 Vivi AI va Gemini Live — Super obunada\n💎 Super: 1 hafta, 1 oy yoki 3 oy — Payme, Click, karta yoki Visa\n\nBoshlash uchun «Start» ni bosing 👇" }).catch(() => {});
+    await tg('setMyDescription', { description: "🇫🇷 Voilà! — fransuz tilini o'zbek tilida o'rganing.\n\n🗺 O'yin tariqasida darslar A1→C2 — bepul\n🏆 Haftalik turnir va kunlik seriya\n🐱 Vivi AI va Gemini Live — Super obunada\n💎 Super: 1 hafta, 1 oy yoki 3 oy — Payme, Click, karta yoki Visa\n📸 Instagram: @voila_ai.uz\n\nBoshlash uchun «Start» ni bosing 👇" }).catch(() => {});
     await tg('setMyCommands', { commands: [{ command: 'start', description: '🚀 Boshlash va ilovaga kirish' }, { command: 'plans', description: '💎 Super tariflari' }, { command: 'me', description: '👤 Mening obunam' }, { command: 'menu', description: '⌨️ Menyu' }, { command: 'help', description: '❓ Yordam' }] }).catch(() => {});
     // Admin chatida qo'shimcha /stats buyrug'i va doimiy «📊 Statistika» tugmasi (boshqalar ko'rmaydi).
     for (const chat of adminChats()) {
