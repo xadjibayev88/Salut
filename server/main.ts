@@ -294,7 +294,6 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
     json(res, 200, { nonce });
   },
 
-  // Reklama (rewarded video) oxirigacha ko'rilgach: Vivi bilan qo'shimcha daqiqalar.
   // AdMob SSV callback: AdMob → Ad units → Rewarded → "Server-side verification" URL: https://<domen>/api/admob/ssv
   'GET /api/admob/ssv': async (req, res) => {
     const raw = (req.url ?? '').split('?')[1] ?? '';
@@ -313,6 +312,7 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
     json(res, 200, { ok: true });
   },
 
+  // Reklama (rewarded video) oxirigacha ko'rilgach: Vivi bilan qo'shimcha daqiqalar.
   'POST /api/reward/vivi': async (req, res) => {
     if (!originOk(req)) return json(res, 403, { message: 'Ruxsat etilmagan manba' });
     const limited = take('reward', clientIp(req));
