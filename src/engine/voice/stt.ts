@@ -198,10 +198,12 @@ export class CloudStt implements ReviewedStt {
     }
     this.ac = new AbortController();
     try {
+      // Til doim «auto»: o'quvchi o'zbekcha, fransuzcha yoki aralash gapirishi mumkin. Mikrofon tilini (masalan,
+      // Vivi fransuzcha javob kutganda fr-FR) yuborish o'zbekcha nutqni fransuz yozuviga «majburlab» qo'yardi.
       const res = await fetch('./api/stt', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ audio: await blobToBase64(blob), mime: mime.split(';')[0], hint: lang === 'auto' ? 'auto' : lang.startsWith('fr') ? 'fr' : lang.startsWith('uz') ? 'uz' : 'auto', context: this.context().slice(-600) }),
+        body: JSON.stringify({ audio: await blobToBase64(blob), mime: mime.split(';')[0], hint: 'auto', context: this.context().slice(-600) }),
         signal: this.ac.signal,
       });
       const body = (await res.json().catch(() => ({}))) as { text?: unknown; detectedLanguage?: unknown; confidence?: unknown; alternatives?: unknown; reviewReasons?: unknown; code?: string; message?: string };
