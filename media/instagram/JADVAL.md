@@ -13,6 +13,7 @@ Hammasini bir o'tirishda rejalashtiring, keyin har biri o'z vaqtida o'zi chiqadi
 | 1-kun | 20:00 | `voila/motion/v-2-ai.mp4` | `gotopic/motion/g-2-ai.mp4` |
 | 2-kun | 12:30 | `voila/motion/v-3-oyin.mp4` | `gotopic/motion/g-3-oyin.mp4` |
 | 2-kun | 20:00 | `voila/motion/v-4-imkoniyat.mp4` | `gotopic/motion/g-4-imkoniyat.mp4` |
+| 3-kun | 20:00 | — | `gotopic/motion/g-showreel.mp4` (15 s, 60 fps, halqa) |
 
 12:30 — tushlik tanaffusi, 20:00 — kechki eng faol vaqt. Bir xil vaqtda ikki hisobda chiqishi muammo emas: auditoriyalar boshqa.
 
@@ -102,6 +103,16 @@ Hangul'dan TOPIK 6 gacha — o'zbek tilida.
 Saqlab qo'ying 📌 va koreys tilini o'rganmoqchi do'stingizni belgilang 👇
 
 #koreystili #topik #한국어 #koreyscha #onlaynkurs #uzbekistan #gotopic
+```
+
+**3-kun 20:00 · Showreel (15 s)** — ovozi videoning o'zida (120 BPM, har zarbda harakat); Instagram musiqasini qo'shmang. Muqova: «HANGUL / TOPIK» tekisliklari (~13-soniya).
+```
+Hangul'dan TOPIK 6 gacha — 15 soniyada 🇰🇷
+ㅇ ㅁ ㅅ → so'zlar → TOPIK → Hori AI ustoz 🐯
+
+Koreys tilini o'zbek tilida o'rganing — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #motiondesign #tilorganish #uzbekistan #gotopic
 ```
 
 ---

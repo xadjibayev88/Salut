@@ -1,0 +1,462 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0}
+html,body{overflow:hidden;background:#0B0B10}
+svg{display:block}
+</style></head>
+<body>
+<svg id="sv" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+/* ============================================================
+   HANGUL STROKE — Go Topic showreel. 15 s, 120 BPM (beat = 0.5 s).
+   Hamma narsa window.seek(t) ichida vaqtdan hisoblanadi: CSS animatsiya,
+   taymer va kadrlararo holat yo'q.
+   ============================================================ */
+const Q = new URLSearchParams(location.search);
+const W = +(Q.get('w') || 1920), H = +(Q.get('h') || 1080);
+const S = Math.min(W, H) / 1080, CX = W / 2, CY = H / 2;
+const BK = '#0B0B10', WH = '#F4F2EE', V = '#6D4AFF', C = '#FF3B5C', K = '#2BB8F0';
+const FONT = "'Noto Sans KR', sans-serif";
+const sv = document.getElementById('sv');
+sv.setAttribute('width', W); sv.setAttribute('height', H); sv.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+/* ---------- vaqt va egri chiziqlar ---------- */
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10);
+const expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const expoIO = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+/** Kritik so'ndirilgan prujina — ortiqcha sakrash yo'q (bouncy taqiqlangan). */
+const spring = (dt, w = 16) => (dt <= 0 ? 0 : 1 - (1 + w * dt) * Math.exp(-w * dt));
+const bt = (n) => (n - 1) * 0.5; // n-zarb boshlanishi
+const ex = (t, a, d) => expo((t - a) / d);
+const eio = (t, a, d) => expoIO((t - a) / d);
+const sp = (t, a, w) => spring(t - a, w);
+const col = (hex, k) => { // rangni qoraga aralashtirish (soya)
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgb(${Math.round(r * k)},${Math.round(g * k)},${Math.round(b * k)})`;
+};
+
+/* ---------- matn o'lchami ---------- */
+const cv = document.createElement('canvas').getContext('2d');
+const tw = (txt, size, wt = 900) => { cv.font = `${wt} ${size}px ${FONT}`; return cv.measureText(txt).width; };
+const fit = (txt, maxW, maxSize, wt = 900) => Math.min(maxSize, maxSize * maxW / tw(txt, maxSize, wt));
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const T = (x, y, txt, size, fill, o = {}) =>
+  `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${FONT}" font-weight="${o.wt ?? 900}" font-size="${size.toFixed(1)}" fill="${fill}" text-anchor="${o.anchor ?? 'middle'}" letter-spacing="${o.ls ?? 0}"${o.f ? ` filter="url(#${o.f})"` : ''}${o.extra ?? ''}>${esc(txt)}</text>`;
+const R = (x, y, w, h, fill, o = {}) =>
+  `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0, w).toFixed(1)}" height="${Math.max(0, h).toFixed(1)}" rx="${o.rx ?? 0}" fill="${fill}"${o.f ? ` filter="url(#${o.f})"` : ''}${o.extra ?? ''}/>`;
+
+/* ---------- harakat xiraligi: tezlik va yo'nalishga qarab ---------- */
+let defs = [], fid = 0;
+/** v = (dx, dy) px/s → yo'nalishli Gauss xiraligi (σ ≈ bir kadrdagi siljish / 3.3).
+ *  box = [x, y, w, h] — elementning o'z koordinatalaridagi chegarasi; filtr maydoni unga 3σ zaxira qo'shib
+ *  olinadi, shuning uchun ingichka yoki juda tez obyektlarda ham xiralik kesilib qolmaydi. box yo'q — butun kadr. */
+function blur(vx, vy, box) {
+  const sx = Math.min(80, Math.abs(vx) / 200), sy = Math.min(80, Math.abs(vy) / 200);
+  if (sx < .4 && sy < .4) return null;
+  const id = 'b' + fid++;
+  const [bx, by, bw, bh] = box || [0, 0, W, H], mx = 3 * sx + 6, my = 3 * sy + 6;
+  defs.push(`<filter id="${id}" filterUnits="userSpaceOnUse" x="${(bx - mx).toFixed(1)}" y="${(by - my).toFixed(1)}" width="${(bw + 2 * mx).toFixed(1)}" height="${(bh + 2 * my).toFixed(1)}"><feGaussianBlur stdDeviation="${sx.toFixed(2)} ${sy.toFixed(2)}"/></filter>`);
+  return id;
+}
+const fat = (f) => (f ? ` filter="url(#${f})"` : '');
+const vel = (fn, t) => (fn(t) - fn(t - 1 / 240)) * 240;
+let clipN = 0;
+function clip(x, y, w, h) { const id = 'c' + clipN++; defs.push(`<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}"/></clipPath>`); return id; }
+
+/* ---------- qutb koordinatali shakllar (morf uchun bir xil nuqtalar) ---------- */
+const NP = 144;
+function radius(kind, a, sz) { // a — burchak, sz — {w,h} yoki r
+  const c = Math.cos(a), s = Math.sin(a);
+  if (kind === 'circle') return sz.r;
+  if (kind === 'rect') return Math.min(sz.w / 2 / Math.max(1e-6, Math.abs(c)), sz.h / 2 / Math.max(1e-6, Math.abs(s)));
+  if (kind === 'tri') { // teng tomonli uchburchak (cho'qqisi tepada), ichki aylana radiusi ~ r*0.5
+    const r = sz.r * 1.18; let best = 1e9;
+    for (let k = 0; k < 3; k++) {
+      const n = -Math.PI / 2 + Math.PI / 3 + k * 2 * Math.PI / 3; // qirra normali
+      const d = Math.cos(a - n);
+      if (d > 1e-6) best = Math.min(best, (r * 0.5) / d);
+    }
+    return best;
+  }
+}
+function shapePts(kind, sz) { const p = []; for (let i = 0; i < NP; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / NP; p.push(radius(kind, a, sz)); } return p; }
+function morph(A, B, x) { return A.map((r, i) => lerp(r, B[i], x)); }
+function poly(rs, cx, cy, rot = 0) {
+  let d = '';
+  rs.forEach((r, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / NP + rot; d += (i ? 'L' : 'M') + (cx + Math.cos(a) * r).toFixed(1) + ',' + (cy + Math.sin(a) * r).toFixed(1); });
+  return d + 'Z';
+}
+
+/* ---------- 3D: qutilar va kamera ---------- */
+function cam(yaw, pitch, ty, dist) {
+  const cp = Math.cos(pitch), spn = Math.sin(pitch), cy_ = Math.cos(yaw), sy_ = Math.sin(yaw);
+  const eye = [dist * cp * sy_, ty + dist * spn, dist * cp * cy_];
+  const f = [-cp * sy_, -spn, -cp * cy_];
+  const r = [cy_, 0, -sy_];
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  return { eye, f, r, u, dist };
+}
+function proj(cm, p) {
+  const d = [p[0] - cm.eye[0], p[1] - cm.eye[1], p[2] - cm.eye[2]];
+  const x = d[0] * cm.r[0] + d[1] * cm.r[1] + d[2] * cm.r[2];
+  const y = d[0] * cm.u[0] + d[1] * cm.u[1] + d[2] * cm.u[2];
+  const z = d[0] * cm.f[0] + d[1] * cm.f[1] + d[2] * cm.f[2];
+  return [CX + cm.dist * x / z, CY - cm.dist * y / z, z];
+}
+function boxes(cm, list, filter) {
+  const faces = [];
+  for (const b of list) {
+    const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, h = b.h;
+    const P = (x, y, z) => proj(cm, [x, y, z]);
+    const top = [P(x0, h, z0), P(x1, h, z0), P(x1, h, z1), P(x0, h, z1)];
+    faces.push({ pts: top, c: b.c, k: 1 });
+    if (h > .5) {
+      const sides = [
+        [P(x0, 0, z1), P(x1, 0, z1), P(x1, h, z1), P(x0, h, z1), .78], // old
+        [P(x1, 0, z0), P(x0, 0, z0), P(x0, h, z0), P(x1, h, z0), .78], // orqa
+        [P(x1, 0, z1), P(x1, 0, z0), P(x1, h, z0), P(x1, h, z1), .56], // o'ng
+        [P(x0, 0, z0), P(x0, 0, z1), P(x0, h, z1), P(x0, h, z0), .56], // chap
+      ];
+      for (const s of sides) faces.push({ pts: s.slice(0, 4), c: b.c, k: s[4] });
+    }
+  }
+  faces.forEach((f) => (f.z = f.pts.reduce((a, p) => a + p[2], 0) / 4));
+  faces.sort((a, b) => b.z - a.z);
+  return `<g${filter ? ` filter="url(#${filter})"` : ''}>` + faces.map((f) => `<path d="M${f.pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('L')}Z" fill="${f.k === 1 ? f.c : col(f.c, f.k)}"/>`).join('') + '</g>';
+}
+
+/* ---------- sahna ---------- */
+const L0 = Math.min(0.42 * W, 640 * S), LW = 0.9 * W, LH = 10 * S, BW = 110 * S, BH = Math.min(560 * S, .62 * H);
+const PALETTE = [V, C, K];
+const GRID_S = 200 * S, GRID_G = 44 * S;
+const gridPos = (i) => { const c = i % 3, r = Math.floor(i / 3); return [(c - 1) * (GRID_S + GRID_G), (r - .5) * (GRID_S + GRID_G)]; };
+const TOPIK_H = [130, 200, 270, 340, 410, 480].map((h) => h * S);
+const ROW_STEP = Math.min(175 * S, 0.155 * W), ROW_X = (i) => (i - 2.5) * ROW_STEP, BAR_W = ROW_STEP * .74;
+const SP = Math.min(420 * S, 0.3 * W), RR = Math.min(190 * S, SP * .42);
+const WORDS = ['KOREYS', 'TILI', "ENDI O'YIN"];
+const HOOK_SIZE = Math.min(...WORDS.map((w) => fit(w, 0.86 * W, 230 * S)));
+const HAN = ['한', '국', '어'];
+const HAN_SIZE = fit('한국어', 0.8 * W, 420 * S);
+/** 5-zarbda so'zlar kadrdan to'liq chiqib ketishi uchun kerakli surish (9:16 da kattaroq). */
+const PUSH5 = Math.max(3.4, (CY + HAN_SIZE * .14 - 26 * S + HOOK_SIZE * .35) / (HOOK_SIZE * 1.08) + .2);
+/** Grafik nuqtalari ustunlarning old-yuqori qirrasida turadi. */
+const DOT_Z = BAR_W / 2;
+
+function frame(t) {
+  defs = []; fid = 0; clipN = 0;
+  let g = '';
+
+  /* === 0–4 s: chiziq + kinetik matn === */
+  if (t < 4) {
+    // chiziq kengligi: 1-zarbda L0 → LW; 7-zarbda vertikal ustunga aylanadi
+    const lineW = (tt) => (tt < 3 ? lerp(L0, LW, ex(tt, 0, .32)) : lerp(LW, 110 * S, eio(tt, bt(7), .42)));
+    const lineH = (tt) => (tt < 3 ? LH : lerp(LH, 560 * S, eio(tt, bt(7), .42)));
+    // so'zlar to'plami kadr markazida turishi uchun chiziq har zarbda pastga suriladi, 5-zarbda qaytadi
+    const U = HOOK_SIZE * 1.08, CAP = HOOK_SIZE * .73;
+    const hs = (tt) => [2, 3, 4].reduce((a, n) => a + ex(tt, bt(n), .3), 0);
+    const shift = (tt) => ((Math.min(1, hs(tt)) * (26 * S + CAP) + Math.max(0, hs(tt) - 1) * U) / 2) * (1 - ex(tt, bt(5), .3));
+    const lineY = (tt) => CY + shift(tt) + (tt >= bt(5) ? lerp(0, HAN_SIZE * .14, ex(tt, bt(5), .3)) * (1 - eio(tt, bt(7), .42)) : 0);
+    // so'zlar chiziq ustidan ko'tariladi (chiziq ostida yashirin)
+    const above = clip(0, 0, W, lineY(t));
+    const arrived = (tt) => hs(tt) + ex(tt, bt(5), .3) * PUSH5;
+    const stack = arrived(t), vs = vel(lineY, t) - vel(arrived, t) * U; // so'zlarning haqiqiy vertikal tezligi
+    const fw = blur(0, vs);
+    let words = '';
+    WORDS.forEach((w, i) => {
+      const y = lineY(t) - 26 * S - (stack - 1 - i) * U;
+      if (stack > i && y > -HOOK_SIZE && y < H + HOOK_SIZE) words += T(CX, y, w, HOOK_SIZE, i === 2 ? C : WH, { f: fw, ls: -2 * S });
+    });
+    // 한국어: 5-zarbda chiqadi, 6-zarbda bo'g'inlar uchib ketadi
+    const hanRise = (tt) => ex(tt, bt(5) + .06, .34);
+    const fly = (tt) => ex(tt, bt(6), .34);
+    if (t >= bt(5)) {
+      const r = hanRise(t), f = fly(t), vr = vel(lineY, t) - vel(hanRise, t) * HAN_SIZE * 1.1, vf = vel(fly, t) * W;
+      const base = lineY(t) - 40 * S + (1 - r) * HAN_SIZE * 1.1;
+      const sw = tw('한', HAN_SIZE);
+      HAN.forEach((ch, i) => {
+        const dx = (i - 1) * sw * 1.02 + (i - 1) * f * W * .75 + (i === 1 ? 0 : 0);
+        const dy = i === 1 ? f * HAN_SIZE * 1.2 : 0; // o'rtadagi bo'g'in chiziq ortiga cho'kadi
+        const fb = blur(i === 1 ? 0 : vf, vr + (i === 1 ? vf * .4 : 0), [CX + dx - sw * .6, base + dy - HAN_SIZE * .95, sw * 1.2, HAN_SIZE * 1.15]);
+        words += T(CX + dx, base + dy, ch, HAN_SIZE, i === 1 ? C : WH, { f: fb });
+      });
+    }
+    g += `<g clip-path="url(#${above})">${words}</g>`;
+    // chiziq / ㅣ ustun va 8-zarbda uchga bo'linishi
+    const y = lineY(t), rotK = eio(t, bt(7), .42);
+    const len = lerp(lineW(t < bt(7) ? t : bt(7) - 1e-3), BH, rotK), thick = lerp(LH, BW, rotK), ang = rotK * 90;
+    const omega = vel((tt) => eio(tt, bt(7), .42), t) * Math.PI / 2; // burchak tezligi, rad/s
+    const fl = t < bt(7) ? blur(vel(lineW, t) * .5, vel(lineY, t), [CX - len / 2, y - thick / 2, len, thick]) : null;
+    const split = ex(t, bt(8), .32), vsp = vel((tt) => ex(tt, bt(8), .32), t) * SP;
+    if (t >= bt(8)) {
+      const fs = blur(vsp, 0, [CX - BW / 2 - split * SP, CY - BH / 2, 2 * split * SP + BW, BH]);
+      g += R(CX - BW / 2 - split * SP, CY - BH / 2, BW, BH, V, { f: fs });
+      g += R(CX - BW / 2 + split * SP, CY - BH / 2, BW, BH, K, { f: fs });
+    }
+    let bar = '';
+    if (t >= bt(7) && Math.abs(omega) * len / 2 / 200 >= .4) {
+      // aylanayotgan chiziq: har bo'lak markazdan uzoqligiga mos (ω·r) ko'ndalang xiralik oladi
+      const NSEG = 14, segW = len / NSEG;
+      for (let k = 0; k < NSEG; k++) {
+        const x0 = CX - len / 2 + k * segW, r = Math.abs(x0 + segW / 2 - CX);
+        bar += R(x0 - .5, y - thick / 2, segW + 1, thick, C, { f: blur(0, omega * r, [x0 - .5, y - thick / 2, segW + 1, thick]) });
+      }
+    } else bar = R(CX - len / 2, y - thick / 2, len, thick, C, { f: fl });
+    g += `<g transform="rotate(${ang.toFixed(2)} ${CX} ${y.toFixed(1)})">${bar}</g>`;
+  }
+
+  /* === 4–5.5 s: ㅇ ㅁ ㅅ — shakl o'zgarishi === */
+  else if (t < 5.5) {
+    const xs = [-SP, 0, SP], Rr = RR;
+    const BAR = shapePts('rect', { w: BW, h: BH });
+    const CIR = shapePts('circle', { r: Rr }), SQU = shapePts('rect', { w: 2 * Rr, h: 2 * Rr }), TRI = shapePts('tri', { r: Rr });
+    const kinds = [CIR, SQU, TRI];
+    const m1 = eio(t, bt(9), .4); // ustun → ㅇ ㅁ ㅅ
+    const m2 = eio(t, bt(10), .42); // aylanma almashinuv
+    const m3 = eio(t, bt(11), .36); // hammasi kvadrat → 6 ga bo'linadi
+    const labels = ['ㅇ', 'ㅁ', 'ㅅ'];
+    for (let i = 0; i < 3; i++) {
+      let pts = morph(BAR, kinds[i], m1);
+      const j = (i + 1) % 3; // keyingi joy va keyingi shakl
+      pts = morph(pts, kinds[j], m2);
+      // aylanma yo'l: o'rinlar yoy bo'ylab almashadi
+      const a0 = xs[i], a1 = xs[j];
+      const arc = Math.sin(m2 * Math.PI) * (i === 2 ? 220 : -140) * S;
+      let x = lerp(a0, a1, m2), y = arc;
+      const rot = m2 * Math.PI * (i === 2 ? -1 : 1) * .5;
+      if (t >= bt(11)) {
+        pts = morph(pts, SQU, m3);
+        // har kvadrat ikkiga bo'linadi: ustki va pastki to'r kataklari
+        for (const rr of [0, 1]) {
+          const idx = rr * 3 + j;
+          const [gx, gz] = gridPos(idx);
+          const sz = lerp(2 * Rr, GRID_S, m3);
+          const px = lerp(x, gx, m3), py = lerp(0, gz, m3);
+          const vx = vel((tt) => lerp(xs[j], gridPos(idx)[0], eio(tt, bt(11), .36)), t), vy = vel((tt) => lerp(0, gridPos(idx)[1], eio(tt, bt(11), .36)), t);
+          const hb = Math.max(1.45 * Rr, .75 * sz);
+          g += `<path d="${poly(morph(pts, shapePts('rect', { w: sz, h: sz }), m3), CX + px, CY + py, rot * (1 - m3))}" fill="${PALETTE[i]}"${fat(blur(vx, vy, [CX + px - hb, CY + py - hb, 2 * hb, 2 * hb]))}/>`;
+        }
+      } else {
+        const vx = vel((tt) => lerp(a0, a1, eio(tt, bt(10), .42)), t);
+        const vyA = vel((tt) => Math.sin(eio(tt, bt(10), .42) * Math.PI) * (i === 2 ? 220 : -140) * S, t);
+        const hb = 1.45 * Rr;
+        g += `<path d="${poly(pts, CX + x, CY + y, rot)}" fill="${PALETTE[i]}"${fat(blur(vx, vyA, [CX + x - hb, CY + y - hb, 2 * hb, 2 * hb]))}/>`;
+        // jamo yorlig'i shakl ostida chiqadi va ketadi (kesuvchi niqob bilan)
+        const lab = ex(t, bt(9) + .2, .26) * (1 - ex(t, bt(10), .2));
+        if (lab > 0 && i === Math.min(i, 2)) {
+          const cp = clip(CX + a0 - 120 * S, CY + Rr + 20 * S, 240 * S, 140 * S);
+          g += `<g clip-path="url(#${cp})">${T(CX + a0, CY + Rr + 20 * S + 118 * S * lab, labels[i], 104 * S, WH, { wt: 700 })}</g>`;
+        }
+      }
+    }
+  }
+
+  /* === 5.5–10 s: 3D shahar → TOPIK grafigi === */
+  else if (t < 10) {
+    const yaw = (tt) => {
+      let y = lerp(0, Math.PI / 4, eio(tt, bt(12), .42));
+      y = lerp(y, -Math.PI / 5, eio(tt, bt(15), .42));
+      y = lerp(y, 0, eio(tt, bt(16), .42));
+      return y;
+    };
+    const pitch = (tt) => { let p = lerp(Math.PI / 2 - 1e-4, .62, eio(tt, bt(13), .45)); return lerp(p, .0, eio(tt, bt(16), .42)); };
+    const ty = (tt) => lerp(0, 290 * S, eio(tt, bt(16), .42));
+    const dist = 2600 * S;
+    const scene = (tt) => {
+      const list = [], toRow = eio(tt, bt(16), .42), shrinkBars = ex(tt, bt(20), .3);
+      for (let i = 0; i < 6; i++) {
+        const [gx, gz] = gridPos(i);
+        const ext = ex(tt, bt(14) + i * .045, .34), sz = lerp(GRID_S, BAR_W, toRow);
+        list.push({ x: lerp(gx, ROW_X(i), toRow), z: lerp(gz, 0, toRow), w: sz, d: sz, h: TOPIK_H[i] * ext * (1 - shrinkBars), c: PALETTE[((i % 3) + 2) % 3] });
+      }
+      return { cm: cam(yaw(tt), pitch(tt), ty(tt), dist), list };
+    };
+    const { cm, list } = scene(t), prev = scene(t - 1 / 240);
+    // kamera + o'sish: barcha yuqori burchaklarning ekrandagi o'rtacha kvadratik tezligi
+    let sx = 0, sy = 0, np = 0, bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+    list.forEach((b, i) => {
+      const q = prev.list[i];
+      for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const a = proj(cm, [b.x + dx * b.w / 2, b.h, b.z + dz * b.d / 2]), a0 = proj(prev.cm, [q.x + dx * q.w / 2, q.h, q.z + dz * q.d / 2]);
+        const f0 = proj(cm, [b.x + dx * b.w / 2, 0, b.z + dz * b.d / 2]);
+        sx += ((a[0] - a0[0]) * 240) ** 2; sy += ((a[1] - a0[1]) * 240) ** 2; np++;
+        for (const pt of [a, f0]) { bx0 = Math.min(bx0, pt[0]); bx1 = Math.max(bx1, pt[0]); by0 = Math.min(by0, pt[1]); by1 = Math.max(by1, pt[1]); }
+      }
+    });
+    g += boxes(cm, list, blur(Math.sqrt(sx / np), Math.sqrt(sy / np), [bx0, by0, bx1 - bx0, by1 - by0]));
+    // === ma'lumot qatlami (old ko'rinishda) ===
+    if (t >= bt(17)) {
+      const base = proj(cm, [0, 0, DOT_Z])[1];
+      const out20 = ex(t, bt(20) + .08, .3), ax = ex(t, bt(17), .32) * (1 - out20);
+      const AXH = Math.min(ROW_X(5) + 120 * S, .46 * W), x0 = proj(cm, [-AXH, 0, DOT_Z])[0], x1 = proj(cm, [AXH, 0, DOT_Z])[0];
+      const axV = vel((tt) => ex(tt, bt(17), .32) * (1 - ex(tt, bt(20) + .08, .3)), t) * (x1 - x0) / 2;
+      g += R(lerp(CX, x0, ax), base, (x1 - x0) * ax, 4 * S, WH, { f: blur(axV, 0, [lerp(CX, x0, ax), base, (x1 - x0) * ax, 4 * S]) });
+      const cpL = clip(0, base + 8 * S, W, 70 * S);
+      let labs = '';
+      for (let i = 0; i < 6; i++) {
+        const px = proj(cm, [ROW_X(i), 0, DOT_Z])[0];
+        const r = ex(t, bt(17) + .08 + i * .03, .3) * (1 - out20);
+        const lv = vel((tt) => ex(tt, bt(17) + .08 + i * .03, .3) * (1 - ex(tt, bt(20) + .08, .3)), t) * 50 * S;
+        labs += T(px, base + 8 * S + 50 * S * r, `T${i + 1}`, 34 * S, WH, { wt: 700, f: blur(0, lv, [px - 40 * S, base, 80 * S, 100 * S]) });
+      }
+      g += `<g clip-path="url(#${cpL})">${labs}</g>`;
+      // sarlavha: o'q bilan birga niqobdan ko'tariladi
+      const capY = proj(cm, [0, TOPIK_H[5], DOT_Z])[1] - 4 * S, capR = ex(t, bt(17) + .14, .32) * (1 - out20);
+      const cpC = clip(0, capY - 56 * S, W, 66 * S);
+      const cv_ = vel((tt) => ex(tt, bt(17) + .14, .32) * (1 - ex(tt, bt(20) + .08, .3)), t) * 64 * S;
+      g += `<g clip-path="url(#${cpC})">${T(x0, capY + (1 - capR) * 64 * S, "SO'Z BOYLIGI", 40 * S, WH, { anchor: 'start', wt: 900, ls: 3 * S, f: blur(0, cv_, [x0, capY - 60 * S, 420 * S, 130 * S]) })}</g>`;
+      // raqamlar sanaladi
+      const words = [800, 1500, 3000, 6000, 12000, 30000];
+      if (t >= bt(18)) {
+        for (let i = 0; i < 6; i++) {
+          const top = proj(cm, [ROW_X(i), TOPIK_H[i] * (1 - ex(t, bt(20), .3)), DOT_Z]);
+          const r = ex(t, bt(18) + i * .04, .36) * (1 - ex(t, bt(20), .25));
+          const n = Math.round(words[i] * expo((t - bt(18) - i * .04) / .45));
+          const nb = top[1] - 44 * S; // tayanch chiziq — grafik chizig'idan yuqorida
+          const cpN = clip(top[0] - 100 * S, nb - 52 * S, 200 * S, 62 * S);
+          const nv = vel((tt) => ex(tt, bt(18) + i * .04, .36) * (1 - ex(tt, bt(20), .25)), t) * 64 * S;
+          g += `<g clip-path="url(#${cpN})">${T(top[0], nb + (1 - r) * 64 * S, n.toLocaleString('ru-RU').replace(/\s/g, ' '), 38 * S, WH, { wt: 700, f: blur(0, nv, [top[0] - 100 * S, nb - 50 * S, 200 * S, 120 * S]) })}</g>`;
+        }
+      }
+      // chiziqli grafik ustun uchlari orqali
+      if (t >= bt(19)) {
+        const pts = TOPIK_H.map((h, i) => proj(cm, [ROW_X(i), h, DOT_Z]));
+        let len = 0; for (let i = 1; i < 6; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+        const dr = eio(t, bt(19), .4);
+        g += `<polyline points="${pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="${C}" stroke-width="${10 * S}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${len}" stroke-dashoffset="${(len * (1 - dr)).toFixed(1)}"/>`;
+        pts.forEach((p, i) => { const r = ex(t, bt(19) + i * .06, .2); if (r > 0) g += `<circle cx="${p[0]}" cy="${p[1]}" r="${(14 * S * r).toFixed(1)}" fill="${WH}"/>`; });
+      }
+    }
+  }
+
+  /* === 10–12 s: chiziq → ilova interfeysi === */
+  else if (t < 12) { g += uiLayer(t); }
+  /* === 12–14 s: tekisliklar — eng kuchli lahza === */
+  else if (t < 14) { if (t < bt(25) + .45) g += uiLayer(bt(25) - 1e-3); g += planes(t); }
+  /* === 14–15 s === */
+  else { g += endLayer(t); }
+  const push = 1 + 0.03 * (1 - Math.cos(2 * Math.PI * t / 15)) / 2;
+  return `<defs>${defs.join('')}</defs><rect width="${W}" height="${H}" fill="${BK}"/><g transform="translate(${CX} ${CY}) scale(${push.toFixed(5)}) translate(${-CX} ${-CY})">${g}</g>`;
+}
+
+function uiLayer(t) {
+  let g = '';
+  {
+    // oldingi grafik nuqtalari (front ko'rinish) — shu yerdan boshlanadi
+    const cm = cam(0, 0, 290 * S, 2600 * S);
+    const P0 = TOPIK_H.map((h, i) => proj(cm, [ROW_X(i), h, DOT_Z]));
+    const cw = Math.min(0.84 * W, 1100 * S), ch = 640 * S, cxL = CX - cw / 2, cyT = CY - ch / 2;
+    const trackY = cyT + 200 * S, tx0 = cxL + 70 * S, tx1 = cxL + cw - 70 * S;
+    const flatAt = (tt) => { const f = eio(tt, bt(21), .42); return P0.map((p, i) => [lerp(p[0], lerp(tx0, tx1, i / 5), f), lerp(p[1], trackY, f)]); };
+    const flat = eio(t, bt(21), .42), pts = flatAt(t), pq = flatAt(t - 1 / 240);
+    let qx = 0, qy = 0; pts.forEach((p, i) => { qx += ((p[0] - pq[i][0]) * 240) ** 2; qy += ((p[1] - pq[i][1]) * 240) ** 2; });
+    const xsP = pts.map((p) => p[0]), ysP = pts.map((p) => p[1]), mg = 16 * S;
+    const fpl = blur(Math.sqrt(qx / 6), Math.sqrt(qy / 6), [Math.min(...xsP) - mg, Math.min(...ysP) - mg, Math.max(...xsP) - Math.min(...xsP) + 2 * mg, Math.max(...ysP) - Math.min(...ysP) + 2 * mg]);
+    // karta chizig'i chiziladi
+    const per = 2 * (cw + ch), dr = eio(t, bt(21) + .05, .45);
+    g += `<rect x="${cxL}" y="${cyT}" width="${cw}" height="${ch}" rx="${40 * S}" fill="none" stroke="${WH}" stroke-width="${4 * S}" stroke-dasharray="${per}" stroke-dashoffset="${per * (1 - dr)}"/>`;
+    const inside = clip(cxL, cyT, cw, ch);
+    // trek: tekislangan grafik chiziq
+    let trk = `<polyline points="${pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="${t >= bt(22) ? col(WH, .35) : C}" stroke-width="${10 * S}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if (t < bt(22)) pts.forEach((p, i) => (trk += `<circle cx="${p[0]}" cy="${p[1]}" r="${(14 * S * (1 - flat)).toFixed(1)}" fill="${WH}"/>`));
+    g += `<g${fat(fpl)}>${trk}</g>`;
+    let ui = '';
+    // 22: slayder
+    if (t >= bt(22)) {
+      const k = eio(t, bt(22), .42), kx = lerp(tx0, lerp(tx0, tx1, .7), k);
+      const vk = vel((tt) => lerp(tx0, lerp(tx0, tx1, .7), eio(tt, bt(22), .42)), t);
+      ui += R(tx0, trackY - 5 * S, kx - tx0, 10 * S, C, { rx: 5 * S });
+      const fk = blur(vk, 0, [kx - 26 * S, trackY - 26 * S, 52 * S, 52 * S]);
+      ui += `<circle cx="${kx}" cy="${trackY}" r="${26 * S}" fill="${V}"${fat(fk)}/>`;
+      const lr = ex(t, bt(22), .3), fl2 = blur(0, vel((tt) => ex(tt, bt(22), .3), t) * 60 * S, [tx0, trackY - 110 * S, tx1 - tx0, 90 * S]);
+      ui += `<g${fat(fl2)}>${T(tx0, trackY - 50 * S + (1 - lr) * 60 * S, 'Bugungi maqsad', 48 * S, WH, { anchor: 'start', wt: 700 })}${T(tx1, trackY - 50 * S + (1 - lr) * 60 * S, Math.round(70 * k) + '%', 52 * S, WH, { anchor: 'end', wt: 900 })}</g>`;
+    }
+    // 23: Hori AI tugmasi
+    const row2 = cyT + 320 * S, row3 = cyT + 470 * S;
+    if (t >= bt(23)) {
+      const r = ex(t, bt(23), .3), on = eio(t, bt(23) + .18, .3);
+      const yy = row2 + (1 - r) * 200 * S, fr2 = blur(0, vel((tt) => ex(tt, bt(23), .3), t) * 200 * S, [tx0, yy - 50 * S, tx1 - tx0, 100 * S]);
+      const kx2 = lerp(tx1 - 98 * S, tx1 - 32 * S, on), fk2 = blur(vel((tt) => eio(tt, bt(23) + .18, .3), t) * 66 * S, 0, [kx2 - 24 * S, yy - 22 * S, 48 * S, 48 * S]);
+      ui += `<g${fat(fr2)}>${T(tx0, yy + 14 * S, 'Hori AI ustoz', 50 * S, WH, { anchor: 'start', wt: 700 })}${R(tx1 - 130 * S, yy - 30 * S, 130 * S, 64 * S, on > .5 ? K : col(WH, .3), { rx: 32 * S })}<circle cx="${kx2}" cy="${yy + 2 * S}" r="${24 * S}" fill="${WH}"${fat(fk2)}/></g>`;
+    }
+    // 24: ro'yxat qatori
+    if (t >= bt(24)) {
+      const r = ex(t, bt(24), .3), yy = row3 + (1 - r) * 200 * S, fr3 = blur(0, vel((tt) => ex(tt, bt(24), .3), t) * 200 * S, [tx0, yy - 50 * S, tx1 - tx0, 100 * S]);
+      ui += `<g${fat(fr3)}>${T(tx0, yy + 14 * S, 'Hangul  100%', 50 * S, WH, { anchor: 'start', wt: 700 })}${R(tx1 - 300 * S, yy - 6 * S, 300 * S, 14 * S, col(WH, .3), { rx: 7 * S })}${R(tx1 - 300 * S, yy - 6 * S, 300 * S * ex(t, bt(24) + .15, .3) * .62, 14 * S, K, { rx: 7 * S })}</g>`;
+    }
+    g += `<g clip-path="url(#${inside})">${ui}</g>`;
+  }
+  return g;
+}
+
+/** i-tekislik geometriyasi vaqtda: qatordan o'sish, 180° ag'darish va urilish. */
+function planeGeom(i, tt) {
+  const cw = Math.min(0.84 * W, 1100 * S), ch = 640 * S, cxL = CX - cw / 2, cyT = CY - ch / 2;
+  const rows = [cyT + 190 * S, cyT + 320 * S, cyT + 470 * S], ph = H / 3;
+  const grow = eio(tt, bt(25), .42), slam = eio(tt, bt(28) + .26, .24); // urilish: 3 tekislik bitta marjon tekislikka
+  // qator chizig'idan to'liq ekranli tekislikka
+  const x = lerp(cxL + 60 * S, 0, grow), w = lerp(cw - 120 * S, W, grow);
+  let y = lerp(rows[i] - 40 * S, i * ph, grow), h = lerp(80 * S, ph, grow);
+  // chekka tekisliklar ekrandan chiqadi, o'rtadagisi to'liq ekran
+  if (i === 1) { y = lerp(y, 0, slam); h = lerp(h, H, slam); }
+  else y += (i === 0 ? -1 : 1) * slam * ph * 1.05;
+  const fp = eio(tt, bt(26 + i), .34), c = Math.cos(fp * Math.PI); // 0 → 1: 180° ag'darish
+  return { x, w, h, fp, c, slam, mid: y + h / 2, hh: (h / 2) * Math.abs(c) };
+}
+
+function planes(t) {
+  let g = '';
+  {
+    const words = ['HANGUL', 'TOPIK', 'HORI AI'];
+    for (let i = 0; i < 3; i++) {
+      const G0 = planeGeom(i, t), G1 = planeGeom(i, t - 1 / 240);
+      const { x, w, h, fp, c, slam, mid, hh } = G0;
+      const ang = fp * Math.PI;
+      // perspektiva: aylanayotganda yaqin qirra kengayadi
+      const persp = Math.sin(ang) * 0.12 * w;
+      const topW = w + (c > 0 ? persp : -persp), botW = w - (c > 0 ? persp : -persp);
+      const fill = PALETTE[i === 1 ? 1 : i === 0 ? 0 : 2];
+      // qirralarning haqiqiy tezligi → yo'nalishli xiralik
+      const vx = Math.max(Math.abs(G0.x - G1.x), Math.abs(G0.x + G0.w - G1.x - G1.w)) * 240;
+      const vy = Math.max(Math.abs(G0.mid - G0.hh - G1.mid + G1.hh), Math.abs(G0.mid + G0.hh - G1.mid - G1.hh)) * 240;
+      const ff = blur(vx, vy, [x - .13 * w, mid - hh, w * 1.26, 2 * hh]);
+      g += `<path d="M${x + (w - topW) / 2},${mid - hh}L${x + (w + topW) / 2},${mid - hh}L${x + (w + botW) / 2},${mid + hh}L${x + (w - botW) / 2},${mid + hh}Z" fill="${i === 1 && slam > 0 ? C : fill}"${ff ? ` filter="url(#${ff})"` : ''}/>`;
+      if (fp > .5 && hh > 2) {
+        const size = fit(words[i], .8 * W, h * .62);
+        // filtr tashqi guruhda: uning maydoni sahifa koordinatalarida (ichki transformdan oldin) hisoblanadi
+        g += `<g${fat(ff)}><g transform="translate(${CX},${mid}) scale(1,${(Math.abs(c)).toFixed(3)})">${T(0, size * .36, words[i], size, WH, { ls: -2 * S })}</g></g>`;
+      }
+    }
+  }
+  return g;
+}
+
+/* === 14–15 s: yakuniy sarlavha → yana chiziq (halqa) === */
+function endLayer(t) {
+  let g = '';
+  {
+    const squash = eio(t, bt(29), .3);
+    const h = lerp(H, LH, squash), w = lerp(W, LW, squash);
+    const back = eio(t, bt(30), .45); // sarlavha chiziq ortiga qaytadi
+    const lw = lerp(w, L0, eio(t, bt(30) + .05, .45));
+    const ttl = 'Go Topic', ts = fit(ttl, .7 * W, 230 * S), sub = "koreys tili · o'zbek tilida", ss = fit(sub, .7 * W, 54 * S, 700);
+    const rise = ex(t, bt(29) + .12, .3) * (1 - back);
+    const up = clip(0, 0, W, CY - LH / 2), dn = clip(0, CY + LH / 2, W, H);
+    const vr = vel((tt) => ex(tt, bt(29) + .12, .3) * (1 - eio(tt, bt(30), .45)), t) * ts;
+    const fr = blur(0, vr);
+    g += `<g clip-path="url(#${up})">${T(CX, CY - 34 * S + (1 - rise) * ts * 1.1, ttl, ts, WH, { f: fr, ls: -3 * S })}</g>`;
+    g += `<g clip-path="url(#${dn})">${T(CX, CY + 30 * S + ss - (1 - rise) * ss * 2.6, sub, ss, WH, { wt: 700, f: fr })}</g>`;
+    const lwAt = (tt) => lerp(lerp(W, LW, eio(tt, bt(29), .3)), L0, eio(tt, bt(30) + .05, .45)), hAt = (tt) => lerp(H, LH, eio(tt, bt(29), .3));
+    const fv = blur(vel(lwAt, t) * .5, vel(hAt, t) * .5, [CX - lw / 2, CY - h / 2, lw, h]);
+    g += R(CX - lw / 2, CY - h / 2, lw, h, C, { f: fv });
+  }
+  return g;
+}
+
+window.seek = (t) => { sv.innerHTML = frame(Math.max(0, Math.min(15, t))); };
+window.DUR = 15;
+seek(0);
+</script></body></html>
