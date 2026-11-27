@@ -220,13 +220,36 @@ Saqlab qo'ying 📌 va koreys tilini o'rganayotgan do'stingizni belgilang 👇
 
 ---
 
-## 29-noyabr — Tanishuv videolari (50 s)
+## 29-noyabr — POV va Tanishuv videolari
 
 | Vaqt | @voila_ai.uz | @gotopic.uz |
 |---|---|---|
+| 12:30 | `voila/motion/v-pov.mp4` (30 s) | `gotopic/motion/g-pov.mp4` (30 s) |
 | 19:00 | `voila/motion/v-tanishuv.mp4` | `gotopic/motion/g-tanishuv.mp4` |
 
 Bu ilovani to'liq tanishtiruvchi asosiy video — joylagandan keyin profil tepasiga qadab qo'ying (Pin). Ovozi videoning o'zida; muqova: ikonka va nom chiqqan kadr (~26-soniya).
+
+**@voila_ai.uz · 12:30 · POV**
+```
+POV: fransuz tilini o'yin kabi o'rgatadigan ilova topdingiz 💻🇫🇷
+Vivi AI tinglaydi, gapiradi va xatolaringizni tuzatadi 🐱
+Darslar · liga · seriya — hammasi bitta ilovada.
+
+Darslar bepul — havola profilda 👆
+
+#pov #fransuztili #fransuzcha #tilorganish #uzbekistan #voila
+```
+
+**@gotopic.uz · 12:30 · POV**
+```
+POV: koreys tilini o'yin kabi o'rgatadigan ilova topdingiz 💻🇰🇷
+Hori AI tinglaydi, gapiradi va xatolaringizni tuzatadi 🐯
+Hangul · 30 000 so'z · TOPIK — hammasi bitta ilovada.
+
+Darslar bepul — havola profilda 👆
+
+#pov #koreystili #hangul #topik #한국어 #uzbekistan #gotopic
+```
 
 **@voila_ai.uz · 19:00 · Tanishuv**
 ```
