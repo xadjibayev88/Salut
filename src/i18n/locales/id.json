@@ -1393,7 +1393,6 @@
  "Profil yarating": "Buat profil",
  "Ro'yxatdan o'tish": "Daftar",
  "Salut, do'stim!": "Salut, teman!",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Teks/audio dikirim ke Google Gemini untuk obrolan, suara, terjemahan, dan memori. Ubah kapan saja di profil.",
  "Yana salom!": "Selamat datang kembali!",
  "Hozirgi darsga tushish": "Ke pelajaran saat ini",
  "AI roziliklari": "Persetujuan AI",
@@ -1423,5 +1422,8 @@
  "Turnir va seriya": "Turnamen dan runtunan",
  "Umuman bilmayman": "Sama sekali belum tahu",
  "Vivi AI — jonli ustoz": "Vivi AI — tutor langsung",
- "Voilà! da sizni nimalar kutmoqda 👇": "Yang menanti Anda di Voilà! 👇"
+ "Voilà! da sizni nimalar kutmoqda 👇": "Yang menanti Anda di Voilà! 👇",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Untuk obrolan teks, terjemahan, dan suara Vivi, teks dikirim ke Google Gemini. Ubah kapan saja di profil.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "Audio mikrofon dan memori yang kamu simpan juga dikirim ke Google Gemini. Kamu bisa menyalakannya nanti di profil.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "Obrolan suara dan memori Vivi (opsional)"
 }

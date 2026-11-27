@@ -85,7 +85,7 @@ export interface AiRouteDependencies {
 
 const LIVE_DISABLED = Object.freeze({ code: 'live_disabled', message: 'Jonli rejim hozircha o‘chiq. Oddiy darslardan davom eting.' });
 const AI_CONFIG_UNAVAILABLE = Object.freeze({ code: 'ai_config_unavailable', message: 'AI xizmatlari hozircha yoqilmagan.' });
-const AI_CONSENT_REQUIRED = Object.freeze({ code: 'ai_consent_required', message: 'Bu AI vazifasi uchun amaldagi rozilik kerak.' });
+const AI_CONSENT_REQUIRED = Object.freeze({ code: 'ai_consent_required', message: 'Bu AI vazifasi uchun rozilik kerak: Profil → «Vivi AI va maxfiylik» bo‘limida yoqing.' });
 const AI_QUOTA_UNAVAILABLE = Object.freeze({ code: 'ai_quota_unavailable', message: 'AI quota xizmati hozircha mavjud emas.' });
 const AI_UPSTREAM_ERROR = Object.freeze({ code: 'ai_upstream_error', message: 'AI xizmati so‘rovni bajara olmadi.' });
 const AI_EXECUTION_ERROR = Object.freeze({ code: 'ai_execution_error', message: 'AI so‘rovini xavfsiz bajarib bo‘lmadi.' });

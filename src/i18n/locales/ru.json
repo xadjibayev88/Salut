@@ -1384,7 +1384,6 @@
  "Profil yarating": "Создайте профиль",
  "Ro'yxatdan o'tish": "Регистрация",
  "Salut, do'stim!": "Salut, друг!",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Для чата, голоса, перевода и памяти текст/аудио отправляются в Google Gemini. Изменить можно в профиле.",
  "Yana salom!": "С возвращением!",
  "Hozirgi darsga tushish": "К текущему уроку",
  "AI roziliklari": "Согласия ИИ",
@@ -1414,5 +1413,8 @@
  "Turnir va seriya": "Турнир и серия",
  "Umuman bilmayman": "Совсем не знаю",
  "Vivi AI — jonli ustoz": "Vivi AI — живой репетитор",
- "Voilà! da sizni nimalar kutmoqda 👇": "Что ждёт вас в Voilà! 👇"
+ "Voilà! da sizni nimalar kutmoqda 👇": "Что ждёт вас в Voilà! 👇",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Для текстового чата, перевода и голоса Vivi текст отправляется в Google Gemini. Изменить можно в профиле.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "Аудио с микрофона и сохранённая вами память тоже отправляются в Google Gemini. Можно включить позже в профиле.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "Голосовой чат и память Vivi (необязательно)"
 }

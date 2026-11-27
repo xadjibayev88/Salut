@@ -1384,7 +1384,6 @@
  "Profil yarating": "프로필 만들기",
  "Ro'yxatdan o'tish": "회원가입",
  "Salut, do'stim!": "Salut, 친구!",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "대화·음성·번역·기억을 위해 텍스트/오디오가 Google Gemini로 전송됩니다. 프로필에서 언제든 변경하세요.",
  "Yana salom!": "다시 오신 걸 환영해요!",
  "Hozirgi darsga tushish": "현재 레슨으로 이동",
  "AI roziliklari": "AI 동의",
@@ -1414,5 +1413,8 @@
  "Turnir va seriya": "대회와 연속 기록",
  "Umuman bilmayman": "전혀 몰라요",
  "Vivi AI — jonli ustoz": "Vivi AI — 살아있는 튜터",
- "Voilà! da sizni nimalar kutmoqda 👇": "Voilà!에서 기다리는 것들 👇"
+ "Voilà! da sizni nimalar kutmoqda 👇": "Voilà!에서 기다리는 것들 👇",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "텍스트 채팅, 번역, Vivi 음성을 위해 텍스트가 Google Gemini로 전송됩니다. 프로필에서 언제든 변경할 수 있어요.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "마이크 오디오와 저장한 메모리도 Google Gemini로 전송됩니다. 나중에 프로필에서 켤 수도 있어요.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "음성 채팅과 Vivi 메모리 (선택)"
 }

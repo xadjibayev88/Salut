@@ -132,11 +132,26 @@ export async function deleteAiMemoryRequest() {
   return accountApi<{ deleted: boolean }>('ai/memory', { method: 'DELETE' });
 }
 
-/** Ro'yxatdan o'tishda bitta toggle bilan berilgan rozilik: serverdagi barcha AI vazifalariga ruxsat yoziladi. */
-export async function grantAllAiConsent(): Promise<boolean> {
+/** Asosiy matnli AI vazifalari: ro'yxatdan o'tishdagi majburiy rozilik faqat shularni qamraydi. */
+export const SIGNUP_CORE_SCOPES: readonly AiScope[] = ['text_tutor', 'text_feedback', 'translation', 'text_tts'];
+/** Mikrofon audiosi va saqlanadigan xotira — alohida, sukut bo'yicha o'chiq ixtiyoriy rozilik. */
+export const SIGNUP_OPTIONAL_SCOPES: readonly AiScope[] = ['microphone_stt', 'live_session', 'memory'];
+
+/** Server talab qiladigan provider bilan faqat tanlangan scope'lar uchun grant ro'yxati. */
+export function signupGrants(requirements: readonly AiGrant[] | undefined, includeOptional: boolean): AiGrant[] {
+  const wanted = new Set<AiScope>([...SIGNUP_CORE_SCOPES, ...(includeOptional ? SIGNUP_OPTIONAL_SCOPES : [])]);
+  return scopeOptionsFor(requirements)
+    .filter(({ scope }) => wanted.has(scope))
+    .map(({ scope, provider }) => ({ scope, provider }));
+}
+
+/**
+ * Ro'yxatdan o'tishda berilgan rozilik: asosiy matnli vazifalar har doim, mikrofon/jonli suhbat/xotira
+ * esa faqat o'quvchi alohida belgilagan bo'lsa. Qolganini Profil → «Vivi AI va maxfiylik»da yoqadi.
+ */
+export async function grantSignupAiConsent(includeOptional: boolean): Promise<boolean> {
   const r = await loadAiConsent();
   if (!r.ok) return false;
-  const grants = scopeOptionsFor(r.body.requirements).map(({ scope, provider }) => ({ scope, provider }));
-  const w = await saveAiConsent(r.body.policyVersion, grants);
+  const w = await saveAiConsent(r.body.policyVersion, signupGrants(r.body.requirements, includeOptional));
   return w.ok;
 }
