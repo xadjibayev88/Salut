@@ -221,6 +221,10 @@ function meText(userId: string): string {
   return `👤 ${esc(u?.name || 'Foydalanuvchi')}\nObuna: <b>💎 Super</b>\nAmal qiladi: <b>${new Date(p.expiresAt!).toLocaleDateString('ru-RU', { timeZone: 'Asia/Tashkent' })}</b> gacha`;
 }
 
+/** Faqat admin chatida ko'rinadigan doimiy pastki tugma. */
+export const ADMIN_STATS_BUTTON = '📊 Statistika';
+const adminKb = () => ({ keyboard: [[{ text: ADMIN_STATS_BUTTON }]], resize_keyboard: true, is_persistent: true });
+
 // ---------- Bot mantiqi ----------
 
 export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: string; data: Buffer } | null>) {
@@ -301,10 +305,11 @@ export function createBot(tg: Tg, download: (fileId: string) => Promise<{ mime: 
     }
     if (text === '/plans' || text === '/tariflar') return send(chat, plansText(), { reply_markup: plansKb() });
     if (text === '/id' || text === '/myid') return send(chat, `Sizning chat ID: <code>${chat}</code>`);
-    if (text === '/stats' || text === '/statistika') {
-      if (!adminChats().includes(chat)) return; // faqat admin
+    if (text === '/stats' || text === '/statistika' || text === ADMIN_STATS_BUTTON) {
+      if (!adminChats().includes(chat)) return; // faqat admin — boshqalarga hech narsa ko'rinmaydi
+      void tg('sendChatAction', { chat_id: chat, action: 'typing' }).catch(() => {});
       const stats = statsText(collectStats(), await fetchPeerStats());
-      await send(chat, stats);
+      await send(chat, stats, { reply_markup: adminKb() });
       return;
     }
     if (text === '/me') return send(chat, meText(userOf(from)), { reply_markup: mainKb() });
@@ -506,6 +511,11 @@ export function startBot(token = env('TELEGRAM_BOT_TOKEN')): Bot | null {
     await tg('setMyShortDescription', { short_description: "Voilà! — fransuz tilini o'yin tariqasida o'rganing 🇫🇷 A1→C2. Vivi AI ustoz — Super'da 🐱" }).catch(() => {});
     await tg('setMyDescription', { description: "🇫🇷 Voilà! — fransuz tilini o'zbek tilida o'rganing.\n\n🗺 O'yin tariqasida darslar A1→C2 — bepul\n🏆 Haftalik turnir va kunlik seriya\n🐱 Vivi AI va Gemini Live — Super obunada\n💎 Super: 1 hafta, 1 oy yoki 3 oy — Payme, Click, karta yoki Visa\n\nBoshlash uchun «Start» ni bosing 👇" }).catch(() => {});
     await tg('setMyCommands', { commands: [{ command: 'start', description: 'Boshlash' }, { command: 'plans', description: '💎 Super tariflari' }, { command: 'me', description: 'Mening obunam' }] }).catch(() => {});
+    // Admin chatida qo'shimcha /stats buyrug'i va doimiy «📊 Statistika» tugmasi (boshqalar ko'rmaydi).
+    for (const chat of adminChats()) {
+      await tg('setMyCommands', { commands: [...[{ command: 'start', description: 'Boshlash' }, { command: 'plans', description: '💎 Super tariflari' }, { command: 'me', description: 'Mening obunam' }], { command: 'stats', description: '📊 Statistika (admin)' }], scope: { type: 'chat', chat_id: chat } }).catch(() => {});
+      if (!dashOf(chat)?.message_id) await tg('sendMessage', { chat_id: chat, text: '🔐 Admin paneli: «📊 Statistika» tugmasini bosing — hozirgi statistika keladi.', reply_markup: { keyboard: [[{ text: '📊 Statistika' }]], resize_keyboard: true, is_persistent: true } }).catch(() => {});
+    }
     let offset = 0;
     for (;;) {
       try {
