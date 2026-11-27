@@ -13,6 +13,7 @@ Hammasini bir o'tirishda rejalashtiring, keyin har biri o'z vaqtida o'zi chiqadi
 | 1-kun | 20:00 | `voila/motion/v-2-ai.mp4` | `gotopic/motion/g-2-ai.mp4` |
 | 2-kun | 12:30 | `voila/motion/v-3-oyin.mp4` | `gotopic/motion/g-3-oyin.mp4` |
 | 2-kun | 20:00 | `voila/motion/v-4-imkoniyat.mp4` | `gotopic/motion/g-4-imkoniyat.mp4` |
+| 3-kun | 12:30 | `voila/motion/v-spark.mp4` | `gotopic/motion/g-spark.mp4` |
 | 3-kun | 20:00 | — | `gotopic/motion/g-showreel.mp4` (15 s, 60 fps, halqa) |
 
 12:30 — tushlik tanaffusi, 20:00 — kechki eng faol vaqt. Bir xil vaqtda ikki hisobda chiqishi muammo emas: auditoriyalar boshqa.
@@ -105,6 +106,26 @@ Saqlab qo'ying 📌 va koreys tilini o'rganmoqchi do'stingizni belgilang 👇
 #koreystili #topik #한국어 #koreyscha #onlaynkurs #uzbekistan #gotopic
 ```
 
+**3-kun 12:30 · «Uchqun» (22 s)** — @voila_ai.uz
+```
+Bitta so'zdan boshlanadi — «Bonjour» ✨
+Vivi AI ustoz · A1 → C2 · seriya va turnirlar — hammasi bitta ilovada.
+
+Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #tilorganish #motiondesign #uzbekistan #voila
+```
+
+**3-kun 12:30 · «Uchqun» (22 s)** — @gotopic.uz
+```
+Bitta harfdan boshlanadi — 한 ✨
+Hori AI ustoz · 30 000 so'z · Hangul'dan TOPIK 6 gacha.
+
+Darslar bepul — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #motiondesign #uzbekistan #gotopic
+```
+
 **3-kun 20:00 · Showreel (15 s)** — ovozi videoning o'zida (120 BPM, har zarbda harakat); Instagram musiqasini qo'shmang. Muqova: «HANGUL / TOPIK» tekisliklari (~13-soniya).
 ```
 Hangul'dan TOPIK 6 gacha — 15 soniyada 🇰🇷
@@ -113,6 +134,65 @@ Hangul'dan TOPIK 6 gacha — 15 soniyada 🇰🇷
 Koreys tilini o'zbek tilida o'rganing — havola profilda 👆
 
 #koreystili #hangul #topik #한국어 #motiondesign #tilorganish #uzbekistan #gotopic
+```
+
+---
+
+## 28-noyabr (ertaga) — yangi 4 ta Reels
+
+| Vaqt | @voila_ai.uz | @gotopic.uz |
+|---|---|---|
+| 12:30 | `voila/motion/v-kinetik.mp4` (25 s) | `gotopic/motion/g-kinetik.mp4` (25 s) |
+| 20:00 | `voila/motion/v-ekran.mp4` (25 s) | `gotopic/motion/g-ekran.mp4` (25 s) |
+
+Ovoz videoning o'zida (har biriga alohida musiqa) — Instagram musiqasini qo'shmang. Muqova: «Kinetik» uchun nom chiqqan kadr (~1 s), «Ekran ichiga» uchun ekranlar karuseli (~6 s).
+
+**@voila_ai.uz · 12:30 · Kinetik**
+```
+TINGLA. GAPIR. O'YNA. YUTING. 🇫🇷
+Fransuz tili — kuniga 5 daqiqa, o'yin kabi.
+
+Darslar A1 → C2 · Vivi AI ustoz · turnir va sirli qutilar 🎁
+Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #tilorganish #motiondesign #uzbekistan #toshkent #voila
+```
+
+**@voila_ai.uz · 20:00 · Ekran ichiga**
+```
+Ilovaning ichiga bir qarang 👀📱
+Darslar xaritasi, Vivi AI ustoz, mashqlar, liga va do'kon — hammasi bitta ilovada.
+
+Vivi tinglaydi, gapiradi va xatolaringizni tuzatadi 🐱
+Super — 69 000 so'm/oy (repetitor bilan 400 000 so'm).
+
+Saqlab qo'ying 📌 va do'stingizni belgilang 👇
+
+#fransuztili #ai #ustoz #frenchlearning #uzbekistan #voila
+```
+
+**@gotopic.uz · 12:30 · Kinetik**
+```
+TINGLA. GAPIR. O'YNA. YUTING. 🇰🇷
+Koreys tili — Hangul'dan TOPIK 6 gacha, o'yin kabi.
+
+30 000 so'zlik lug'at · Hori AI ustoz · TOPIK mashqlari 📝
+Darslar bepul — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #motiondesign #uzbekistan #gotopic
+```
+
+**@gotopic.uz · 20:00 · Ekran ichiga**
+```
+Go Topic ichiga bir qarang 👀📱
+Darslar xaritasi, Hori AI ustoz, lug'at, liga va do'kon — hammasi bitta ilovada.
+
+Hori tinglaydi, gapiradi va xatolaringizni tuzatadi 🐯
+Super — 69 000 so'm/oy.
+
+Saqlab qo'ying 📌 va koreys tilini o'rganayotgan do'stingizni belgilang 👇
+
+#koreystili #koreyscha #topik #한국어공부 #kdrama #uzbekistan #gotopic
 ```
 
 ---
