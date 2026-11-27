@@ -1,10 +1,10 @@
 /* Voilà! — "Biz haqimizda" sahifasi sozlamasi (qayta build shart emas).
    Bo'sh qolgan havola ko'rsatilmaydi. */
 window.VOILA_SITE = {
-  telegram: "",        // masalan "https://t.me/voila_uz" (kanal)
+  telegram: "https://t.me/VoilaAi_bot", // Telegram bot
   telegramChat: "",    // masalan "https://t.me/voila_chat" (guruh / qo'llab-quvvatlash)
-  instagram: "",       // masalan "https://instagram.com/voila.uz"
+  instagram: "https://www.instagram.com/voila_ai.uz/",
   youtube: "",
   email: "support@salut.uz",
-  shareUrl: "",        // bo'sh bo'lsa — sayt manzili ulashiladi
+  shareUrl: "https://voila-fr.up.railway.app/", // ulashiladigan manzil
 };
