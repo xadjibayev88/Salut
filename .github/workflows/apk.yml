@@ -40,7 +40,7 @@ jobs:
           START_URL: ${{ inputs.start_url }}
         run: |
           set -euo pipefail
-          props=(-PverCode="${GITHUB_RUN_NUMBER}" -PversionName="1.0.${GITHUB_RUN_NUMBER}" -PstartUrl="${START_URL}")
+          props=(-PverCode="${GITHUB_RUN_NUMBER}" -PversionName="1.0.${GITHUB_RUN_NUMBER}" -PstartUrl="${START_URL}" -PrealAds=true)
           # Secret berilsa — u ishlatiladi, aks holda android/gradle.properties dagi admobAppId.
           [[ -n "${SALUT_ADMOB_APP_ID:-}" ]] && props+=(-PadmobAppId="${SALUT_ADMOB_APP_ID}")
           release_ready=true
