@@ -63,6 +63,6 @@ Yumshoq soyalar, katta radiusli kartalar (24–40 px), shisha panellar (fon xira
 - 9.0–12.0 s: Vivi AI karta to'liq ekranga o'sadi, chat pufaklari zarb bilan chiqadi, shisha mikrofon shar yonadi.
 - 12.0–15.0 s: shar Voilà! logosiga morf bo'ladi, ostida havola; oxirgi kadr birinchisiga ulanadi.
 
-## ASK ME
-- Voilà va Go Topic videolarida bir xil binafsha-pushti palitra ishlatilsinmi, yoki ilovalar urg'u rangi bilan ajratilsinmi?
-- Musiqa: har safar `media/sfx/music` dan, yoki har video uchun alohida?
+## Qarorlar (foydalanuvchi javobi)
+- Asosan ilova palitrasi (binafsha, pushti, oltin). Go Topic showreel ranglari (`#6D4AFF`, `#FF3B5C`, `#2BB8F0`) faqat Go Topic uchun.
+- Musiqa: har video uchun alohida, video ritmi va kayfiyatiga moslab (showreel'dagi kabi: zarbda kick, sahna almashinuvida hit, cho'qqidan oldin riser). WebAudio'da sintez qilish yoki `media/sfx/music` dan tanlash mumkin; asosiy shart — kesishlar zarbga tushsin va chiroyli eshitilsin.
