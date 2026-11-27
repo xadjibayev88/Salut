@@ -1,0 +1,178 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Onest:wght@500;600;700;800&family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* «SHOWREEL 1:1» — namunadagi tuzilma va vaqt (15 s, 120 BPM), Voilà / Go Topic mazmuni bilan. Hamma narsa seek(t) da. */
+const APP = new URLSearchParams(location.search).get('app') || 'voila';
+const K = {
+  voila: { name: 'VOILÀ!', words: ['FRANSUZ', 'TILINI', "O'RGAN."], code: 'FR → UZ', grid: 'A1 → C2', ai: 'VIVI AI', aiName: 'Vivi', flag: '🇫🇷',
+    sub: "fransuz tili · o'zbek tilida", url: 'voila-fr.up.railway.app', streak: 'SERIYA', card: 'Kuniga 5 daqiqa — o\'yin kabi.' },
+  gotopic: { name: 'GO TOPIC', words: ['KOREYS', 'TILINI', "O'RGAN."], code: 'KR → UZ', grid: 'TOPIK 1–6', ai: 'HORI AI', aiName: 'Hori', flag: '🇰🇷',
+    sub: "koreys tili · o'zbek tilida", url: 'gotopic.up.railway.app', streak: 'SERIYA', card: "Hangul'dan TOPIK 6 gacha." },
+}[APP];
+const W = 1080, H = 1920, CX = 540, CY = 960;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const DK = '#0B0D24', VI = '#9B5CFF', VL = '#B49CFF', PK = '#FF6B9A', PL = '#FF8FD0', CYN = '#7FE3FF', GD = '#FFD23F', WH = '#EEF0FF', LB = '#F3F1FB', INK = '#1A1640';
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10), expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const eio = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+const ex = (t, a, d) => expo((t - a) / d), io = (t, a, d) => eio((t - a) / d);
+const FD = "'Unbounded','Noto Sans KR','Noto Color Emoji',sans-serif", FB = "'Onest','Noto Sans KR','Noto Color Emoji',sans-serif";
+let ICON = null, PARTS = null;
+function txt(s, x, y, size, color, o = {}) { ctx.save(); ctx.font = `${o.wt || 900} ${size}px ${o.f || FD}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = o.base || 'alphabetic'; ctx.fillStyle = color; ctx.fillText(s, x, y); ctx.restore(); }
+function fitSize(s, maxW, size, wt = 900) { ctx.font = `${wt} ${size}px ${FD}`; return Math.min(size, size * maxW / ctx.measureText(s).width); }
+function bg(c) { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); }
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+/* HUD: burchak belgilari, kichik yozuvlar, pastda progress va timecode (butun video davomida) */
+function hud(t, light) {
+  const c = light ? 'rgba(26,22,64,.55)' : 'rgba(238,240,255,.55)'; ctx.save(); ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 3;
+  for (const [x, y, sx, sy] of [[40, 120, 1, 1], [1040, 120, -1, 1], [40, 1800, 1, -1], [1040, 1800, -1, -1]]) { ctx.beginPath(); ctx.moveTo(x, y + sy * 40); ctx.lineTo(x, y); ctx.lineTo(x + sx * 40, y); ctx.stroke(); }
+  ctx.font = `600 26px ${FB}`; ctx.textAlign = 'left'; ctx.fillText(`${K.name} · ${K.code}`, 96, 152); ctx.textAlign = 'right'; ctx.fillText('SHOWREEL 2026', 984, 152);
+  ctx.fillRect(96, 1756, 888 * (t / 15), 4); ctx.globalAlpha = .35; ctx.fillRect(96, 1756, 888, 4); ctx.globalAlpha = 1;
+  const f = Math.floor(t * 30) % 30, s = Math.floor(t); ctx.textAlign = 'left'; ctx.fillText(`00:00:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`, 96, 1730);
+  ctx.textAlign = 'right'; ctx.fillText(K.sub, 984, 1730); ctx.restore();
+}
+
+/* 0–1: nishon va yuklanish chizig'i */
+function sIntro(t) {
+  bg('#06070F'); const k = ex(t, 0, .4);
+  ctx.strokeStyle = 'rgba(238,240,255,.5)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(CX, CY, 150 * k * (1 - io(t, .45, .2)), 0, 7); ctx.stroke();
+  ctx.fillStyle = WH; ctx.beginPath(); ctx.arc(CX, CY, 12, 0, 7); ctx.fill();
+  if (t > .5) { const l = io(t, .5, .35); txt(K.code, CX, CY - 40, 34, WH, { f: FB, wt: 700 }); ctx.fillStyle = PK; ctx.fillRect(CX - 300, CY, 600 * l, 5); ctx.fillStyle = 'rgba(238,240,255,.25)'; ctx.fillRect(CX - 300 + 600 * l, CY, 600 * (1 - l), 5); }
+}
+/* 1–2: pill kengayib «2», keyin «1» */
+function sCount(t) {
+  if (t < .5) { bg('#06070F'); const k = io(t, 0, .32), w = lerp(80, W, k), h = lerp(20, H, io(t, .12, .32)); ctx.fillStyle = PK; rr(CX - w / 2, CY - h / 2, w, h, lerp(40, 0, k) + 10); ctx.fill();
+    txt('2', CX, CY + 230, 700 * ex(t, .2, .3), INK, { f: FD, wt: 500 }); }
+  else { bg('#06070F'); const k = ex(t, .5, .25); ctx.fillStyle = WH; rr(CX - 50, CY - 260 * k, 100, 520 * k, 8); ctx.fill(); }
+}
+/* 2–4: uchta so'z zarbma-zarb; oxirgisida «O» doiraga aylanib kadrni yutadi */
+function sWords(t) {
+  const i = Math.min(2, Math.floor(t / .5)), lt = t - i * .5;
+  if (i < 2 || t < 1.0) { bg([LB, GD][Math.min(i, 1)]); const s = fitSize(K.words[i], 960, 230); const k = ex(lt, 0, .25);
+    ctx.save(); ctx.translate(CX, CY); ctx.scale(lerp(1.25, 1, k), lerp(1.25, 1, k)); txt(K.words[i], 0, s * .36, s, INK); ctx.restore(); return; }
+  bg(PK); const w = K.words[2], s = fitSize(w, 960, 230), k = ex(t, 1.0, .3); ctx.font = `900 ${s}px ${FD}`;
+  const tot = ctx.measureText(w).width, wO = ctx.measureText('O').width, x0 = CX - tot / 2, ox = x0 + wO / 2, oy = CY;
+  const grow = io(t, 1.5, .5), R = lerp(s * .42, 1500, grow);
+  ctx.save(); ctx.translate(0, (1 - k) * 120); txt(w.slice(1), x0 + wO, CY + s * .36, s, INK, { align: 'left' }); ctx.restore();
+  ctx.fillStyle = DK; ctx.beginPath(); ctx.arc(lerp(ox, CX, grow), oy, R, 0, 7); ctx.fill();
+  // doira ichida keyingi sahnaning nuqtalari ko'rinadi
+  ctx.save(); ctx.beginPath(); ctx.arc(lerp(ox, CX, grow), oy, R, 0, 7); ctx.clip(); dots(0, lerp(ox, CX, grow), oy, .25 + grow * .75); ctx.restore();
+  txt("o'yin kabi", CX + 160, CY + s * .36 + 80, 44, INK, { f: FB, wt: 700 });
+}
+const DOTC = [VI, PK, GD, WH, CYN];
+function dots(t, cx = CX, cy = CY, sc = 1) {
+  const n = 9, m = 16, gap = 118 * sc;
+  for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) {
+    const x = cx + (c - (n - 1) / 2) * gap, y = cy + (r - (m - 1) / 2) * gap, col = DOTC[(r * 7 + c * 3) % 5];
+    const ph = cl((t - .3) / 1.2 - (c + r) * .015), shape = ph < .33 ? 'circ' : ph < .66 ? 'sq' : 'cap', rot = ph * Math.PI * (1 + (r + c) % 3 * .5);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(shape === 'circ' ? 0 : rot); ctx.fillStyle = col; const s = 34 * sc;
+    if (shape === 'circ') { ctx.beginPath(); ctx.arc(0, 0, s, 0, 7); ctx.fill(); } else if (shape === 'sq') { ctx.fillRect(-s * .85, -s * .85, s * 1.7, s * 1.7); } else { rr(-s * 1.4, -s * .45, s * 2.8, s * .9, s * .45); ctx.fill(); }
+    ctx.restore();
+  }
+}
+/* 4–6: nuqtalar to'ri shakl o'zgartiradi + sarlavha */
+function sGrid(t) { bg(DK); dots(t); const a = ex(t, .5, .4); if (a > 0) { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 30; txt(K.grid, CX, CY + 60 + (1 - a) * 80, fitSize(K.grid, 900, 170), WH); ctx.restore(); } }
+/* 6–8: zarrachalar shari → nomga yig'iladi */
+function sParticles(t) {
+  bg('#120F3A'); const g = ctx.createRadialGradient(CX, CY, 50, CX, CY, 900); g.addColorStop(0, 'rgba(155,92,255,.35)'); g.addColorStop(1, 'rgba(18,15,58,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const m = io(t, .7, 1.0), rot = t * .9;
+  ctx.fillStyle = VL;
+  PARTS.forEach((p, i) => {
+    const th = p.u * Math.PI * 2 + rot, ph = Math.acos(2 * p.v - 1), sx = CX + 330 * Math.sin(ph) * Math.cos(th), sy = CY + 330 * Math.cos(ph), z = Math.sin(ph) * Math.sin(th);
+    const x = lerp(sx, p.tx, m), y = lerp(sy, p.ty, m); ctx.globalAlpha = lerp(.35 + .55 * (z + 1) / 2, .95, m); ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
+  });
+  ctx.globalAlpha = 1; const a = ex(t, 1.6, .3); txt(K.sub, CX, CY + 210 + (1 - a) * 40, 38, VL, { f: FB, wt: 600 });
+}
+/* 8–10: shisha sharlar va katta so'z; sharlar kapsulaga qo'shiladi */
+function glass(x, y, r, rot = 0, stretch = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(stretch, 1);
+  const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .05, 0, 0, r); g.addColorStop(0, '#FFFFFF'); g.addColorStop(.2, CYN); g.addColorStop(.5, VI); g.addColorStop(.8, PK); g.addColorStop(1, '#2A1E6B');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+  ctx.globalAlpha = .7; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(-r * .38, -r * .45, r * .22, r * .12, -.6, 0, 7); ctx.fill(); ctx.restore();
+}
+function sGlass(t) {
+  bg('#1B1650'); const s = fitSize(K.ai, 980, 250), merge = io(t, 1.0, .7);
+  const B = [[-330, -420, 150], [300, -300, 120], [-250, 300, 170], [320, 380, 130], [0, -60, 110]];
+  const back = B.filter((_, i) => i % 2), front = B.filter((_, i) => !(i % 2));
+  const draw = ([x, y, r], i) => { const k = ex(t, i * .08, .5), dx = Math.sin(t * 1.6 + i) * 24; glass(lerp(CX + x + dx, CX, merge), lerp(CY + y, CY, merge), r * k * (1 - merge * .4)); };
+  back.forEach(draw); txt(K.ai, CX, CY + s * .36, s, WH);
+  if (merge < 1) front.forEach((b, i) => draw(b, i + 3));
+  if (merge > .3) glass(CX, CY, lerp(60, 230, merge), -.7 + t * .4, lerp(1, 2.3, merge));
+}
+/* 10–12: ilova dashboardi — XP sanaladi, chiziqli grafik, toggle, halqa, ustunlar, kursor */
+function card(x, y, w, h, fill, r = 34) { ctx.save(); ctx.shadowColor = 'rgba(26,22,64,.12)'; ctx.shadowBlur = 30; ctx.fillStyle = fill; rr(x, y, w, h, r); ctx.fill(); ctx.restore(); }
+function sDash(t) {
+  bg(LB); const a = (d) => ex(t, d, .35), xp = Math.round(2118 * expo(cl((t - .2) / 1.1)));
+  // 1: XP grafigi
+  const k1 = a(0); ctx.save(); ctx.translate(0, (1 - k1) * 120); ctx.globalAlpha = cl(k1 * 2);
+  card(70, 420, 940, 420, '#FFFFFF'); txt('Bu hafta', 110, 490, 30, 'rgba(26,22,64,.5)', { f: FB, wt: 600, align: 'left' });
+  txt('+' + xp.toLocaleString('ru-RU').replace(/\s/g, ' ') + ' XP', 110, 600, 96, INK, { align: 'left' });
+  ctx.strokeStyle = PK; ctx.lineWidth = 7; ctx.lineJoin = 'round'; ctx.beginPath(); const P = [0, .1, .06, .22, .3, .26, .48, .62, .58, .8, 1], L = cl((t - .2) / 1.1);
+  P.forEach((v, i) => { const u = i / (P.length - 1); if (u > L) return; const x = 110 + u * 860, y = 800 - v * 160; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); ctx.restore();
+  // 2: AI toggle (pushti karta)
+  const k2 = a(.15); ctx.save(); ctx.translate((1 - k2) * 200, 0); ctx.globalAlpha = cl(k2 * 2);
+  card(70, 880, 560, 200, PK); txt(K.aiName + ' AI ustoz', 110, 960, 46, '#fff', { f: FB, wt: 800, align: 'left' }); txt('ovozli suhbat · 24/7', 110, 1020, 30, 'rgba(255,255,255,.85)', { f: FB, wt: 600, align: 'left' });
+  const on = io(t, 1.15, .25); ctx.fillStyle = on > .5 ? INK : 'rgba(26,22,64,.3)'; rr(480, 950, 120, 66, 33); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lerp(514, 566, on), 983, 26, 0, 7); ctx.fill(); ctx.restore();
+  // 3: seriya halqasi
+  const k3 = a(.3); ctx.save(); ctx.globalAlpha = cl(k3 * 2); ctx.translate(0, (1 - k3) * 120);
+  card(660, 880, 350, 200, INK); const pr = .99 * expo(cl((t - .4) / 1)); ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 12; ctx.beginPath(); ctx.arc(750, 980, 52, 0, 7); ctx.stroke();
+  ctx.strokeStyle = GD; ctx.beginPath(); ctx.arc(750, 980, 52, -Math.PI / 2, -Math.PI / 2 + pr * Math.PI * 2); ctx.stroke();
+  txt('🔥 ' + Math.round(pr * 30), 900, 998, 48, '#fff', { f: FB, wt: 800 }); ctx.restore();
+  // 4: ustunlar (kunlik XP)
+  const k4 = a(.45); ctx.save(); ctx.globalAlpha = cl(k4 * 2); card(70, 1120, 940, 240, GD);
+  [.4, .7, .5, .9, .6, .8, 1].forEach((v, i) => { const hgt = 150 * v * ex(t, .5 + i * .05, .4); ctx.fillStyle = INK; rr(420 + i * 80, 1320 - hgt, 50, hgt, 10); ctx.fill(); });
+  txt('Kunlik maqsad', 110, 1200, 34, INK, { f: FB, wt: 800, align: 'left' }); txt('Du Se Ch Pa Ju Sh Ya', 110, 1250, 26, 'rgba(26,22,64,.6)', { f: FB, wt: 600, align: 'left' }); ctx.restore();
+  // 5: binafsha karta + ikonka + kursor bosadi
+  const k5 = a(.6); ctx.save(); ctx.globalAlpha = cl(k5 * 2); ctx.translate(0, (1 - k5) * 120); card(70, 1400, 940, 220, VI);
+  if (ICON) { ctx.save(); rr(110, 1440, 140, 140, 32); ctx.clip(); ctx.drawImage(ICON, 110, 1440, 140, 140); ctx.restore(); }
+  txt(K.card, 280, 1525, 40, '#fff', { f: FB, wt: 800, align: 'left' });
+  const press = t > 1.6 ? cl(1 - (t - 1.6) / .3) : 0; ctx.fillStyle = press > 0 ? GD : '#fff'; rr(830, 1550, 140, 50, 25); ctx.fill(); txt('Boshlash', 900, 1584, 24, INK, { f: FB, wt: 800 }); ctx.restore();
+  const cx = lerp(1150, 905, io(t, 1.1, .45)), cy = lerp(1800, 1580, io(t, 1.1, .45));
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1 - .12 * press, 1 - .12 * press); ctx.fillStyle = '#fff'; ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 70); ctx.lineTo(18, 53); ctx.lineTo(31, 81); ctx.lineTo(43, 75); ctx.lineTo(30, 48); ctx.lineTo(54, 48); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+/* 12–12.5: diagonal chiziqlar ustida «SERIYA»; 12.5–13: binafsha yarimton halqalar */
+function sRhythm(t) {
+  if (t < .5) { bg(INK); ctx.save(); ctx.translate(CX, CY); ctx.rotate(-Math.PI / 4); ctx.fillStyle = PK; const off = (t * 900) % 160; for (let x = -2000; x < 2000; x += 160) ctx.fillRect(x + off, -1600, 80, 3200); ctx.restore();
+    txt(K.streak + ' 🔥', CX, CY + 60, fitSize(K.streak + ' 🔥', 960, 170), '#fff'); return; }
+  bg(VI); const lt = t - .5; for (let r = 0; r < 26; r++) for (let a = 0; a < 6 + r * 6; a++) { const ang = a / (6 + r * 6) * Math.PI * 2, R = r * 46, s = 9 * (.5 + .5 * Math.sin(R / 60 - lt * 14)); ctx.fillStyle = WH; ctx.beginPath(); ctx.arc(CX + Math.cos(ang) * R, CY + Math.sin(ang) * R, Math.max(1, s), 0, 7); ctx.fill(); }
+  if (ICON) { const k = ex(lt, 0, .3), s = 260 * k; ctx.save(); rr(CX - s / 2, CY - s / 2, s, s, s * .22); ctx.clip(); ctx.drawImage(ICON, CX - s / 2, CY - s / 2, s, s); ctx.restore(); }
+}
+/* 13–15: harflar yoy bo'ylab uchib kelib nom yig'iladi, chiziq, imzo; oxirida faqat chiziq qoladi */
+function sTitle(t) {
+  bg('#120A10'); const g = ctx.createRadialGradient(CX, CY, 100, CX, CY, 1000); g.addColorStop(0, 'rgba(255,107,154,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const s = fitSize(K.name, 920, 190); ctx.font = `900 ${s}px ${FD}`; const chars = [...K.name], ws = chars.map((c) => ctx.measureText(c).width), tot = ws.reduce((a, b) => a + b, 0);
+  const out = io(t, 1.55, .35); let x = CX - tot / 2;
+  chars.forEach((c, i) => { const k = io(t, i * .06, .55), ang = (1 - k) * (-1.2 + i * .45), cx = x + ws[i] / 2, fx = CX - 300 + i * 90, fy = CY + 400 - i * 120;
+    ctx.save(); ctx.globalAlpha = 1 - out; ctx.translate(lerp(fx, cx, k), lerp(fy, CY, k)); ctx.rotate(ang); txt(c, 0, s * .36, s, '#fff'); ctx.restore(); x += ws[i]; });
+  const l = io(t, .55, .45); ctx.fillStyle = PK; const lw = lerp(tot, 600, out); ctx.fillRect(CX - lw / 2 * l, CY + s * .36 + 40, lw * l, 6);
+  ctx.globalAlpha = (1 - out) * ex(t, .7, .4); txt(K.sub.toUpperCase(), CX - tot / 2, CY + s * .36 + 110, 28, 'rgba(238,240,255,.8)', { f: FB, wt: 700, align: 'left' });
+  txt(K.url, CX + tot / 2, CY + s * .36 + 110, 30, PL, { f: FB, wt: 700, align: 'right' });
+  txt('🎁 Darslar bepul', CX, CY + s * .36 + 200, 40, GD, { f: FB, wt: 800 }); ctx.globalAlpha = 1;
+  const sp = ex(t, .5, .4); if (sp > 0 && sp < 1) { ctx.fillStyle = PK; ctx.beginPath(); ctx.arc(CX + tot / 2 + 30, CY - s * .5 - 60 * sp, 14 * (1 - sp), 0, 7); ctx.fill(); }
+}
+const SC = [[0, 1, sIntro], [1, 2, sCount], [2, 4, sWords], [4, 6, sGrid], [6, 8, sParticles], [8, 10, sGlass], [10, 12, sDash], [12, 13, sRhythm], [13, 15, sTitle]];
+function frame(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  const [a, , fn] = SC.find(([a, b]) => t >= a && t < b) || SC[SC.length - 1];
+  const lt = t - a; const push = 1 + .025 * Math.sin(Math.min(1, lt / 2) * Math.PI / 2);
+  ctx.translate(CX, CY); ctx.scale(push, push); ctx.translate(-CX, -CY); fn(lt); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  hud(t, (t >= 2 && t < 3) || (t >= 10 && t < 12));
+}
+window.seek = (t) => frame(Math.max(0, Math.min(14.999, t)));
+window.DUR = 15;
+window.ready = (async () => {
+  for (const f of ['900 40px Unbounded', '500 40px Unbounded', '600 40px Onest', '800 40px Onest', '900 40px "Noto Sans KR"', '40px "Noto Color Emoji"']) await document.fonts.load(f, "AaÀ한→·'🔥🎁");
+  ICON = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = `img/icon-${APP}.png`; });
+  // zarrachalar uchun nom shaklidagi nuqtalar
+  const oc = document.createElement('canvas'); oc.width = W; oc.height = 400; const o = oc.getContext('2d'); const s = fitSize(K.name, 920, 190);
+  o.font = `900 ${s}px ${FD}`; o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillStyle = '#fff'; o.fillText(K.name, CX, 200);
+  const d = o.getImageData(0, 0, W, 400).data, pts = []; for (let y = 0; y < 400; y += 7) for (let x = 0; x < W; x += 7) if (d[(y * W + x) * 4 + 3] > 128) pts.push([x, y - 200 + CY]);
+  let sd = 7; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  PARTS = Array.from({ length: 2600 }, (_, i) => { const p = pts[Math.floor(rnd() * pts.length)]; return { u: rnd(), v: rnd(), tx: p[0], ty: p[1] }; });
+  seek(0);
+})();
+</script></body></html>
