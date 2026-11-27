@@ -138,4 +138,63 @@ Koreys tilini o'zbek tilida o'rganing — havola profilda 👆
 
 ---
 
+## 28-noyabr (ertaga) — yangi 4 ta Reels
+
+| Vaqt | @voila_ai.uz | @gotopic.uz |
+|---|---|---|
+| 12:30 | `voila/motion/v-kinetik.mp4` (25 s) | `gotopic/motion/g-kinetik.mp4` (25 s) |
+| 20:00 | `voila/motion/v-ekran.mp4` (25 s) | `gotopic/motion/g-ekran.mp4` (25 s) |
+
+Ovoz videoning o'zida (har biriga alohida musiqa) — Instagram musiqasini qo'shmang. Muqova: «Kinetik» uchun nom chiqqan kadr (~1 s), «Ekran ichiga» uchun ekranlar karuseli (~6 s).
+
+**@voila_ai.uz · 12:30 · Kinetik**
+```
+TINGLA. GAPIR. O'YNA. YUTING. 🇫🇷
+Fransuz tili — kuniga 5 daqiqa, o'yin kabi.
+
+Darslar A1 → C2 · Vivi AI ustoz · turnir va sirli qutilar 🎁
+Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #tilorganish #motiondesign #uzbekistan #toshkent #voila
+```
+
+**@voila_ai.uz · 20:00 · Ekran ichiga**
+```
+Ilovaning ichiga bir qarang 👀📱
+Darslar xaritasi, Vivi AI ustoz, mashqlar, liga va do'kon — hammasi bitta ilovada.
+
+Vivi tinglaydi, gapiradi va xatolaringizni tuzatadi 🐱
+Super — 69 000 so'm/oy (repetitor bilan 400 000 so'm).
+
+Saqlab qo'ying 📌 va do'stingizni belgilang 👇
+
+#fransuztili #ai #ustoz #frenchlearning #uzbekistan #voila
+```
+
+**@gotopic.uz · 12:30 · Kinetik**
+```
+TINGLA. GAPIR. O'YNA. YUTING. 🇰🇷
+Koreys tili — Hangul'dan TOPIK 6 gacha, o'yin kabi.
+
+30 000 so'zlik lug'at · Hori AI ustoz · TOPIK mashqlari 📝
+Darslar bepul — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #motiondesign #uzbekistan #gotopic
+```
+
+**@gotopic.uz · 20:00 · Ekran ichiga**
+```
+Go Topic ichiga bir qarang 👀📱
+Darslar xaritasi, Hori AI ustoz, lug'at, liga va do'kon — hammasi bitta ilovada.
+
+Hori tinglaydi, gapiradi va xatolaringizni tuzatadi 🐯
+Super — 69 000 so'm/oy.
+
+Saqlab qo'ying 📌 va koreys tilini o'rganayotgan do'stingizni belgilang 👇
+
+#koreystili #koreyscha #topik #한국어공부 #kdrama #uzbekistan #gotopic
+```
+
+---
+
 **Har bir Reel'dan keyin (30 soniya):** shu Reel'ni Stories'ga ulashing va «Havola» stikerini qo'shing (sayt manzili). Birinchi soatda kelgan izohlarga javob bering — Instagram buni ko'proq odamga ko'rsatadi.

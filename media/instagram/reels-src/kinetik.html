@@ -1,0 +1,148 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800;900&family=Onest:wght@500;600;700;800&family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* «KINETIK» — so'zlar, shakllar va funksiyalar. 25 s, 96 BPM, har takt (2.5 s) — bitta usul. Hamma narsa seek(t) da. */
+const APP = new URLSearchParams(location.search).get('app') || 'voila';
+const K = {
+  voila: { name: 'VOILÀ', orbAt: [1], sub: "fransuz tili · o'zbek tilida", band: 'FRANSUZ TILI', mid: 'A1',
+    verbs: [['TINGLA', 'Tinglash mashqlari 🎧'], ['GAPIR', 'Vivi bilan ovozli suhbat'], ["O'YNA", 'Turnir · liga · seriya 🔥'], ['YUTING', 'Sirli quti va sovg\'alar 🎁']],
+    lead: "Voilà'da", list: ['Darslar A1 → C2', 'Vivi AI ustoz', 'Tinglash', 'Turnir va liga', 'Sirli quti', 'Seriya 🔥'], end: 'Voilà', url: 'voila-fr.up.railway.app' },
+  gotopic: { name: 'GO TOPIC', orbAt: [1, 4], sub: "koreys tili · o'zbek tilida", band: 'KOREYS TILI · 한국어', mid: '한',
+    verbs: [['TINGLA', 'Tinglash dialoglari 🎧'], ['GAPIR', 'Hori bilan ovozli suhbat'], ["O'YNA", 'Turnir · liga · seriya 🔥'], ['YUTING', 'Sirli quti va sovg\'alar 🎁']],
+    lead: "Go Topic'da", list: ['Hangul → TOPIK 6', 'Hori AI ustoz', "Lug'at · 30 000 so'z", 'TOPIK mashqlari', 'Turnir va liga', 'Sirli quti'], end: 'Go Topic', url: 'gotopic.up.railway.app' },
+}[APP];
+const W = 1080, H = 1920, CX = 540, CY0 = 900;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const DK = '#0B0D24', VI = '#9B5CFF', VL = '#B49CFF', PK = '#FF6B9A', PL = '#FF8FD0', CY = '#7FE3FF', GD = '#FFD23F', WH = '#EEF0FF', LB = '#F3F1FB', INK = '#1A1640';
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10), expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const eio = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+const ex = (t, a, d) => expo((t - a) / d), io = (t, a, d) => eio((t - a) / d);
+const BAR = 2.5;
+const FD = "'Unbounded','Noto Sans KR','Noto Color Emoji',sans-serif", FB = "'Onest','Noto Sans KR','Noto Color Emoji',sans-serif";
+const BGS = [DK, VI, LB, DK, CY, PK, VI, DK, LB, DK];
+let ICON = null;
+const grad = (x0, y0, x1, y1, s) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); s.forEach((c, i) => g.addColorStop(i / (s.length - 1), c)); return g; };
+function orb(x, y, r, c2 = PL) { if (r <= 0) return; const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r); g.addColorStop(0, '#FFFFFF'); g.addColorStop(.35, c2); g.addColorStop(1, VI); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+function txt(s, x, y, size, color, o = {}) { ctx.save(); ctx.font = `${o.wt || 900} ${size}px ${o.f || FD}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = color; if (o.ls) ctx.letterSpacing = o.ls + 'px'; ctx.fillText(s, x, y); ctx.restore(); }
+function mask(y0, y1, fn) { ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, y1 - y0); ctx.clip(); fn(); ctx.restore(); }
+
+/* 0: nom — shar O harfi o'rniga tushadi */
+function s0(t) {
+  const size = K.name.length > 6 ? 150 : 190; ctx.font = `900 ${size}px ${FD}`;
+  const ws = [...K.name].map((c) => ctx.measureText(c).width), tot = ws.reduce((a, b) => a + b, 0); let x = CX - tot / 2;
+  [...K.name].forEach((c, i) => {
+    const w = ws[i], cx = x + w / 2; x += w;
+    if (K.orbAt.includes(i)) { const k = ex(t, .25 + i * .05, .55); orb(cx, lerp(-200, CY0 - size * .36, k), size * .42); return; }
+    const k = ex(t, .1 + i * .07, .5); mask(CY0 - size, CY0 + 20, () => txt(c, cx, CY0 + (1 - k) * size, size, WH));
+  });
+  const k = ex(t, .9, .5); mask(CY0 + 40, CY0 + 140, () => txt(K.sub, CX, CY0 + 110 + (1 - k) * 80, 44, VL, { f: FB, wt: 600 }));
+}
+/* 1: shar halqalar ichida — 3D ellipslar aylanadi */
+function s1(t) {
+  const k = ex(t, 0, .6);
+  for (let i = 0; i < 6; i++) {
+    const R = (150 + i * 70) * k, tilt = t * (0.9 + i * .25) + i;
+    ctx.save(); ctx.translate(CX, CY0); ctx.rotate(tilt * .3); ctx.strokeStyle = i % 2 ? WH : PL; ctx.lineWidth = 10 - i; ctx.globalAlpha = .9 - i * .1;
+    ctx.beginPath(); ctx.ellipse(0, 0, R, Math.abs(Math.cos(tilt)) * R, 0, 0, 7); ctx.stroke(); ctx.restore();
+  }
+  orb(CX, CY0, lerp(40, 120, k));
+  const a = ex(t, .5, .5); mask(1400, 1520, () => txt('Har kuni 5 daqiqa', CX, 1490 + (1 - a) * 100, 64, WH));
+}
+/* 2: nuqtalar maydoni to'lqini, ichidan halqa ko'tariladi */
+function s2(t) {
+  const N = 17, sp = 70, cam = (x, y, z) => { const ca = Math.cos(.95), sa = Math.sin(.95); const yy = y * ca - z * sa, zz = y * sa + z * ca + 1500; return [CX + x * 1400 / zz, CY0 + 120 + yy * 1400 / zz, zz]; };
+  const ring = ex(t, .5, .8);
+  const pts = [];
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    const x = (i - (N - 1) / 2) * sp, z = (j - (N - 1) / 2) * sp, d = Math.hypot(x, z), onRing = Math.abs(d - 300) < 45;
+    const h = Math.sin(d / 90 - t * 5) * 22 + (onRing ? -ring * 220 : 0);
+    pts.push([...cam(x, h, z), onRing]);
+  }
+  pts.sort((a, b) => b[2] - a[2]).forEach(([x, y, z, on]) => { const r = 1600 / z * 7; ctx.fillStyle = on ? (ring > .05 ? PK : INK) : 'rgba(26,22,64,.55)'; ctx.beginPath(); ctx.arc(x, y, r * (on ? 1.4 : 1), 0, 7); ctx.fill(); });
+  const a = ex(t, 1, .5); txt(K.mid, CX, CY0 + 40 - a * 30, 220 * a, INK);
+  mask(1500, 1620, () => txt(APP === 'voila' ? 'Har darajaga — o\'z yo\'li' : 'Hangul\'dan boshlab', CX, 1590 + (1 - ex(t, .7, .5)) * 100, 58, INK));
+}
+/* 3: so'z lentalari qarama-qarshi yo'nalishda oqadi */
+function s3(t) {
+  for (let r = 0; r < 7; r++) {
+    const y = 330 + r * 210, dir = r % 2 ? 1 : -1, off = (t * 420 * dir + r * 300) % 1800, k = ex(t, r * .05, .5);
+    ctx.save(); ctx.font = `900 150px ${FD}`; ctx.globalAlpha = k;
+    { const u = K.band + ' · ', w1 = ctx.measureText(u).width, s = u.repeat(5), x = ((t * 420 * dir + r * 300) % w1 + w1) % w1 - w1 * 2;
+      if (r % 2) { ctx.fillStyle = r === 3 ? PL : WH; ctx.fillText(s, x, y); } else { ctx.strokeStyle = VL; ctx.lineWidth = 3; ctx.strokeText(s, x, y); } }
+    ctx.restore();
+  }
+  orb(CX, CY0, lerp(0, 150, ex(t, .3, .6)));
+}
+/* 4–7: to'rtta fe'l — har biri o'z harakati bilan */
+function verb(t, i) {
+  const [w, sub] = K.verbs[i], dark = i === 0 ? INK : WH; ctx.font = `900 190px ${FD}`; const size = Math.min(190, 190 * 940 / ctx.measureText(w).width);
+  ctx.save(); ctx.translate(CX, CY0);
+  if (i === 0) { // TINGLA — cho'ziladi: to'lqin bo'ylab
+    const k = ex(t, 0, .7); ctx.scale(lerp(3.2, 1, k), lerp(.3, 1, k));
+    for (let b = 0; b < 24; b++) { const hh = 30 + 90 * Math.abs(Math.sin(t * 6 + b * .6)) * (1 - k * .6); ctx.fillStyle = 'rgba(26,22,64,.18)'; ctx.fillRect(-460 + b * 40, -hh / 2 - 260, 22, hh); }
+  } else if (i === 1) { // GAPIR — aylanadi
+    const k = ex(t, 0, .8); ctx.rotate(lerp(-Math.PI * 1.5, 0, k)); ctx.scale(lerp(.2, 1, k), lerp(.2, 1, k));
+    ctx.strokeStyle = WH; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, -60, 340, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ex(t, .3, .9)); ctx.stroke();
+  } else if (i === 2) { // O'YNA — harflar yuqoridan tushib joyiga «qotadi»
+    ctx.font = `900 ${size}px ${FD}`; const ws = [...w].map((c) => ctx.measureText(c).width), tot = ws.reduce((a, b) => a + b, 0); let x = -tot / 2;
+    [...w].forEach((c, j) => { const k = ex(t, j * .09, .32); txt(c, x + ws[j] / 2, lerp(-1100, 0, k), size, dark); x += ws[j]; });
+    ctx.fillStyle = GD; ctx.fillRect(-tot / 2, 40, tot * ex(t, .8, .35), 22); ctx.restore();
+    mask(CY0 + 220, CY0 + 340, () => txt(sub, CX, CY0 + 310 + (1 - ex(t, .9, .5)) * 100, 52, WH, { f: FB, wt: 700 })); return;
+  } else { // YUTING — zarb bilan kattalashadi, +10 XP
+    const k = ex(t, 0, .35); ctx.scale(lerp(4, 1, k), lerp(4, 1, k)); ctx.globalAlpha = cl(k * 3);
+    const x = ex(t, .7, .4); txt('+10 XP', 0, -260 - x * 40, 110 * x, GD);
+  }
+  txt(w, 0, 0, size, dark); ctx.restore();
+  mask(CY0 + 220, CY0 + 340, () => txt(sub, CX, CY0 + 310 + (1 - ex(t, .7, .5)) * 100, 52, dark, { f: FB, wt: 700 }));
+}
+/* 8: ro'yxat — strelka, faol funksiya almashib turadi */
+function s8(t) {
+  const a = ex(t, 0, .5), LS = APP === 'voila' ? 74 : 60; txt(K.lead, 60, CY0 + 26, LS, INK, { align: 'left' });
+  ctx.font = `900 ${LS}px ${FD}`; const lw = ctx.measureText(K.lead).width, ax0 = 60 + lw + 24, ax1 = ax0 + 100 * a;
+  ctx.strokeStyle = PK; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(ax0, CY0); ctx.lineTo(ax1, CY0); ctx.moveTo(ax1 - 28, CY0 - 24); ctx.lineTo(ax1, CY0); ctx.lineTo(ax1 - 28, CY0 + 24); ctx.stroke();
+  const step = .36, f = cl(t - .3) / step, cur = Math.min(K.list.length - 1, Math.floor(f)), sm = cur + expo(cl((f - cur) * 3)) - 1;
+  const lx = ax0 + 130; ctx.font = `800 56px ${FB}`; const fitK = Math.min(1, (W - 40 - lx) / Math.max(...K.list.map((s) => ctx.measureText(s).width)));
+  K.list.forEach((s, j) => {
+    const y = CY0 + 18 + (j - Math.max(0, sm)) * 96, active = j === cur, d = Math.abs(j - Math.max(0, sm));
+    ctx.save(); ctx.globalAlpha = cl(1 - d * .28) * a; ctx.font = `${active ? 800 : 600} ${(active ? 56 : 46) * fitK}px ${FB}`; ctx.fillStyle = active ? PK : INK; ctx.textAlign = 'left'; ctx.fillText(s, lx, y); ctx.restore();
+  });
+}
+/* 9: zarrachalar spirali → ikonka → yakuniy nom */
+function s9(t) {
+  const col = io(t, .6, .6), n = 140;
+  for (let i = 0; i < n; i++) {
+    const u = i / n, a = u * Math.PI * 8 + t * 2.4, x = CX + Math.cos(a) * 260 * (1 - col), y = lerp(300, 1500, u) * (1 - col) + (CY0 - 140) * col, z = Math.sin(a);
+    ctx.fillStyle = [VL, PL, CY, GD][i % 4]; ctx.globalAlpha = .55 + .45 * (z + 1) / 2; ctx.beginPath(); ctx.arc(x, y, (10 + 8 * (z + 1)) * (1 - col * .6), 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const k = ex(t, 1, .5), sz = 300 * k;
+  if (ICON && k > 0) { ctx.save(); ctx.shadowColor = 'rgba(155,92,255,.9)'; ctx.shadowBlur = 80; ctx.beginPath(); ctx.roundRect(CX - sz / 2, CY0 - 140 - sz / 2, sz, sz, sz * .22); ctx.clip(); ctx.drawImage(ICON, CX - sz / 2, CY0 - 140 - sz / 2, sz, sz); ctx.restore(); }
+  const e = ex(t, 1.3, .5); mask(CY0 + 60, CY0 + 220, () => { ctx.save(); ctx.font = `900 120px ${FD}`; const w = ctx.measureText(K.end).width; txt(K.end, CX - 30, CY0 + 180 + (1 - e) * 140, 120, WH); orb(CX + w / 2 + 10, CY0 + 160 + (1 - e) * 140, 26); ctx.restore(); });
+  const u = ex(t, 1.6, .5); txt(K.url, CX, CY0 + 290 + (1 - u) * 40, 46, VL, { f: FB, wt: 600 });
+  const g = ex(t, 1.85, .5); txt("🎁 Darslar bepul", CX, CY0 + 370 + (1 - g) * 40, 44, GD, { f: FB, wt: 800 });
+  ctx.fillStyle = grad(CX - 300, 0, CX + 300, 0, ['rgba(255,143,208,0)', PL, 'rgba(255,143,208,0)']); ctx.fillRect(CX - 300 * u, CY0 + 410, 600 * u, 4);
+}
+const SC = [s0, s1, s2, s3, (t) => verb(t, 0), (t) => verb(t, 1), (t) => verb(t, 2), (t) => verb(t, 3), s8, s9];
+function frame(t) {
+  const b = Math.min(9, Math.floor(t / BAR)), lt = t - b * BAR;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  // fon: oldingi rang ustidan yangi rang doira bo'lib ochiladi (har zarbdagi kesish o'rniga)
+  ctx.fillStyle = b ? BGS[b - 1] : BGS[0]; ctx.fillRect(0, 0, W, H);
+  const R = b ? 2400 * io(lt, 0, .42) : 2400; ctx.fillStyle = BGS[b]; ctx.beginPath(); ctx.arc(CX, CY0, R, 0, 7); ctx.fill();
+  const push = 1 + .03 * lt / BAR; ctx.translate(CX, CY0); ctx.scale(push, push); ctx.translate(-CX, -CY0);
+  SC[b](lt);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const light = [2, 4, 8].includes(b); txt(K.end + (APP === 'voila' ? '! · fransuz tili' : ' · koreys tili'), CX, 230, 38, light ? 'rgba(26,22,64,.55)' : 'rgba(238,240,255,.85)', { f: FB, wt: 600 });
+}
+window.seek = (t) => frame(Math.max(0, Math.min(24.999, t)));
+window.DUR = 25;
+window.ready = (async () => {
+  for (const f of ['900 40px Unbounded', '800 40px Unbounded', '600 40px Onest', '800 40px Onest', '900 40px "Noto Sans KR"', '40px "Noto Color Emoji"']) await document.fonts.load(f, "AaÀ한→·'🎧🔥🎁");
+  ICON = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = `img/icon-${APP}.png`; });
+  seek(0);
+})();
+</script></body></html>
