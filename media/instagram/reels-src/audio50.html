@@ -1,0 +1,197 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body>
+<script>
+/* HANGUL STROKE — saundtrek. 120 BPM, F minor, 15 s. Hammasi OfflineAudioContext ichida sintez qilinadi;
+   foydalanuvchining SFX to'plamidan bir nechta harakat ovozlari ham shu kontekstda aralashtiriladi. */
+const SR = 48000, DUR = 50, TAIL = 2, BEAT = 0.625;
+const mtof = (m) => 440 * Math.pow(2, (m + (window.TR || 0) - 69) / 12);
+
+function chain(ctx) {
+  const master = ctx.createGain(); master.gain.value = 0.28;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.knee.value = 8; comp.ratio.value = 2; comp.attack.value = 0.01; comp.release.value = 0.2;
+  const lim = ctx.createDynamicsCompressor();
+  lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.05;
+  master.connect(comp); comp.connect(lim); lim.connect(ctx.destination);
+  return master;
+}
+
+/** Kompressor zanjirining kechikishi (namunalarda) — video bilan aniq moslash uchun. */
+async function measureLatency() {
+  const ctx = new OfflineAudioContext(1, SR, SR);
+  const m = chain(ctx);
+  const b = ctx.createBuffer(1, SR, SR); b.getChannelData(0)[4800] = 0.05;
+  const s = ctx.createBufferSource(); s.buffer = b; s.connect(m); s.start(0);
+  const out = (await ctx.startRendering()).getChannelData(0);
+  let best = 0, bi = 0; for (let i = 0; i < out.length; i++) if (Math.abs(out[i]) > best) { best = Math.abs(out[i]); bi = i; }
+  return bi - 4800;
+}
+
+window.renderAudio = async (sfxB64, cues) => {
+  const latency = await measureLatency();
+  const LEN = Math.ceil((DUR + TAIL) * SR) + latency;
+  const ctx = new OfflineAudioContext(2, LEN, SR);
+  const out = chain(ctx);
+
+  // --- yordamchilar ---
+  let seed = 1234567;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const nbuf = ctx.createBuffer(1, SR * 3, SR); { const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = rnd() * 2 - 1; }
+  const G = (v, dst) => { const g = ctx.createGain(); g.gain.value = v; if (dst) g.connect(dst); return g; };
+  const F = (type, f, q = 0.707, dst) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; if (dst) b.connect(dst); return b; };
+  const P = (pan, dst) => { const p = ctx.createStereoPanner(); p.pan.value = pan; if (dst) p.connect(dst); return p; };
+  const O = (type, f, t, stop, det = 0) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.detune.value = det; o.start(t); o.stop(stop); return o; };
+  const N = (t, dur) => { const s = ctx.createBufferSource(); s.buffer = nbuf; s.loop = true; s.start(t, rnd() * 2); s.stop(t + dur); return s; };
+  const tanh = (k) => { const c = new Float32Array(2048); for (let i = 0; i < c.length; i++) { const x = i / (c.length - 1) * 2 - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; };
+
+  // --- avtobuslar ---
+  const drums = G(0.9, out);
+  const pump = G(1, out);          // bas + akkordlar: har zarbda kick ostida "nafas oladi"
+  const fx = G(1, out);
+  const kicks = []; for (let n = 0; n < DUR / BEAT; n++) kicks.push(n * BEAT);
+  pump.gain.setValueAtTime(0.1, 0);
+  for (const k of kicks) { pump.gain.setTargetAtTime(0.1, k, 0.003); pump.gain.setTargetAtTime(1, k + 0.035, 0.075); }
+
+  // --- KICK: har zarbda ---
+  const kshape = tanh(2.4);
+  function kick(t, g = 1) {
+    const o = O('sine', 175, t, t + 0.7);
+    o.frequency.exponentialRampToValueAtTime(54, t + 0.065); o.frequency.exponentialRampToValueAtTime(43, t + 0.4);
+    const env = G(0); env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(g, t + 0.0015); env.gain.setTargetAtTime(0, t + 0.03, 0.12);
+    const ws = ctx.createWaveShaper(); ws.curve = kshape;
+    o.connect(env); env.connect(ws); ws.connect(drums);
+    const c = N(t, 0.03), cg = G(0); cg.gain.setValueAtTime(0.28 * g, t); cg.gain.setTargetAtTime(0, t, 0.004);
+    c.connect(F('highpass', 2800)).connect(cg); cg.connect(drums);
+  }
+  kicks.forEach((k) => kick(k));
+
+  // --- HAT: ofbitlar, oxirgi to'liq taktda 16-liklar ---
+  function hat(t, g, pan = 0.22, tau = 0.022) {
+    const s = N(t, 0.25), e = G(0); e.gain.setValueAtTime(g, t); e.gain.setTargetAtTime(0, t, tau);
+    s.connect(F('highpass', 7200)).connect(F('peaking', 10500, 1)).connect(e); e.connect(P(pan, drums));
+  }
+  for (let n = 0; n < DUR / BEAT; n++) {
+    const t = n * BEAT;
+    if (t >= 44.5 && t < 47 || (window.BUSY && t >= 5 && t < 15)) { for (let k = 1; k < 4; k++) hat(t + k * BEAT / 4, k === 2 ? 0.16 : 0.08, k % 2 ? -0.25 : 0.25); }
+    else hat(t + BEAT / 2, 0.13, 0.22, t >= 20 ? 0.05 : 0.022);
+  }
+
+  // --- AKKORDLAR (supersaw, pump) va BAS ---
+  const PROG = window.PROG || ['Fm', 'Db', 'Ab', 'Eb', 'Fm', 'Db', 'Ab', 'Eb', 'Fm', 'Fm']; const BARS = PROG.map((c, i) => [c, i * 2.5]);
+  const VOICE = { Fm: [53, 56, 60, 65], Db: [53, 56, 61, 65], Ab: [51, 56, 60, 63], Eb: [51, 55, 58, 63] };
+  const ROOT = { Fm: 29, Db: 37, Ab: 32, Eb: 39 }; // sub: 40–80 Hz oralig'ida
+  const chordLP = F('lowpass', 1900, 0.8); chordLP.connect(G(1, pump));
+  const cf = chordLP.frequency;
+  cf.setValueAtTime(1700, 0); cf.setValueAtTime(1700, 5); cf.linearRampToValueAtTime(2600, 5.6);
+  cf.setValueAtTime(2600, 42.0); cf.linearRampToValueAtTime(650, 15.3); cf.exponentialRampToValueAtTime(5200, 44.48);
+  cf.setValueAtTime(5200, 46.5); cf.linearRampToValueAtTime(2600, 47.1);
+  const chordBus = G(0.04, chordLP);
+  BARS.forEach(([ch, t0], bi) => {
+    const t1 = bi < BARS.length - 1 ? BARS[bi + 1][1] : DUR;
+    for (const m of VOICE[ch]) {
+      [[-13, -0.55], [0, 0], [13, 0.55]].forEach(([det, pan]) => {
+        const o = O('sawtooth', mtof(m), t0, t1 + 0.06, det), e = G(0);
+        e.gain.setValueAtTime(0, t0); e.gain.linearRampToValueAtTime(1, t0 + 0.012); e.gain.setValueAtTime(1, t1 - 0.004); e.gain.linearRampToValueAtTime(0, t1 + 0.04);
+        o.connect(e); e.connect(P(pan, chordBus));
+      });
+    }
+    // bas: sub sinus + bir oktava yuqori arra (past chastotali filtr)
+    const fs = mtof(ROOT[ch]);
+    const s = O('sine', fs, t0, t1 + 0.06), w = O('sawtooth', fs * 2, t0, t1 + 0.06);
+    const e = G(0); e.gain.setValueAtTime(0, t0); e.gain.linearRampToValueAtTime(1, t0 + 0.01); e.gain.setValueAtTime(1, t1 - 0.004); e.gain.linearRampToValueAtTime(0, t1 + 0.035);
+    s.connect(G(0.42, e)); w.connect(F('lowpass', 330, 1)).connect(G(0.16, e)); e.connect(pump);
+  });
+
+  // --- ARPEJJIO (4–10 s): 8-liklar, ping-pong kechikish ---
+  const arpDry = G(1, out), dl = ctx.createDelay(1), dr = ctx.createDelay(1), fb = G(0.32);
+  dl.delayTime.value = 0.375; dr.delayTime.value = 0.375;
+  const arpIn = G(0.075); arpIn.connect(arpDry); arpIn.connect(dl);
+  dl.connect(P(-0.7, out)); dl.connect(dr); dr.connect(P(0.7, out)); dr.connect(fb); fb.connect(dl);
+  const PAT = [0, 1, 2, 3, 2, 1, 2, 3];
+  for (let t = 4.5, i = 0; t < 38 - 1e-6; t += BEAT / 2, i++) {
+    const ch = BARS.find(([, b], k) => t >= b && (k === BARS.length - 1 || t < BARS[k + 1][1]))[0];
+    const m = VOICE[ch][PAT[i % 8]] + 12;
+    const o = O('square', mtof(m), t, t + 0.4), f = F('lowpass', 3200, 2), e = G(0);
+    f.frequency.setValueAtTime(3600, t); f.frequency.setTargetAtTime(500, t, 0.07);
+    e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(1, t + 0.003); e.gain.setTargetAtTime(0, t + 0.01, 0.1);
+    o.connect(f); f.connect(e); e.connect(arpIn);
+  }
+  // ballar sanalishi (8.5 s): sekinlashuvchi "tiq"lar
+  for (let j = 0; j < 0; j++) {
+    const t = 8.5 + 0.45 * Math.pow(j / 16, 1.6); // tezdan sekinga — raqamlar sanalishi kabi
+    const o = O('sine', 2700, t, t + 0.05), e = G(0); e.gain.setValueAtTime(0.16, t); e.gain.setTargetAtTime(0, t, 0.006);
+    o.connect(e); e.connect(P(((j % 2) * 2 - 1) * 0.3, fx));
+  }
+
+  // --- SNARE ROLL + RISER: oxirgi to'liq taktga (12 s) kirish ---
+  function snare(t, g) {
+    const s = N(t, 0.3), e = G(0); e.gain.setValueAtTime(g, t); e.gain.setTargetAtTime(0, t, 0.06);
+    s.connect(F('bandpass', 1900, 0.7)).connect(e); e.connect(drums);
+    const o = O('triangle', 188, t, t + 0.2), e2 = G(0); e2.gain.setValueAtTime(g * 0.7, t); e2.gain.setTargetAtTime(0, t, 0.04);
+    o.connect(e2); e2.connect(drums);
+  }
+  const roll = []; for (let t = 42.0; t < 43.25; t += BEAT / 2) roll.push(t); for (let t = 43.25; t < 43.875; t += BEAT / 4) roll.push(t); for (let t = 43.875; t < 44.5 - 1e-6; t += BEAT / 8) roll.push(t);
+  roll.forEach((t) => snare(t, 0.08 + 0.28 * (t - 42.0) / 2.5));
+  {
+    const nL = N(42.0, 2.52), nR = N(42.0, 2.52), bp = F('bandpass', 350, 1.2), e = G(0);
+    bp.frequency.setValueAtTime(350, 42.0); bp.frequency.exponentialRampToValueAtTime(9000, 44.48);
+    e.gain.setValueAtTime(0.0001, 42.0); e.gain.exponentialRampToValueAtTime(0.42, 44.47); e.gain.linearRampToValueAtTime(0, 44.5);
+    nL.connect(P(-0.5, bp)); nR.connect(P(0.5, bp)); bp.connect(e); e.connect(fx);
+    const lp = F('lowpass', 500, 1.5), e2 = G(0);
+    lp.frequency.setValueAtTime(500, 42.0); lp.frequency.exponentialRampToValueAtTime(6000, 44.48);
+    e2.gain.setValueAtTime(0.0001, 42.0); e2.gain.exponentialRampToValueAtTime(0.11, 44.47); e2.gain.linearRampToValueAtTime(0, 44.5);
+    [-9, 9].forEach((det) => { const o = O('sawtooth', mtof(41), 42.0, 44.52, det); o.frequency.exponentialRampToValueAtTime(mtof(77), 44.5); o.connect(lp); });
+    lp.connect(e2); e2.connect(fx);
+  }
+
+  // --- HIT: har sahna almashinuvida (taktning boshida) ---
+  function hit(t, s, ch) {
+    const o = O('sine', 125, t, t + 1.6); o.frequency.exponentialRampToValueAtTime(36, t + 0.45);
+    const e = G(0); e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(0.95 * s, t + 0.003); e.gain.setTargetAtTime(0, t + 0.05, 0.26);
+    o.connect(e); e.connect(fx);
+    const n = N(t, 1.2), lp = F('lowpass', 8500, 0.6), e2 = G(0);
+    lp.frequency.setValueAtTime(8500, t); lp.frequency.exponentialRampToValueAtTime(700, t + 0.7);
+    e2.gain.setValueAtTime(0.34 * s, t); e2.gain.setTargetAtTime(0, t, 0.2);
+    n.connect(lp); lp.connect(e2); e2.connect(fx);
+    const sf = F('lowpass', 6500, 1.2), e3 = G(0);
+    sf.frequency.setValueAtTime(6500, t); sf.frequency.setTargetAtTime(750, t, 0.09);
+    e3.gain.setValueAtTime(0.06 * s, t); e3.gain.setTargetAtTime(0, t + 0.02, 0.2);
+    for (const m of VOICE[ch]) [-10, 10].forEach((det, k) => { const so = O('sawtooth', mtof(m + 12), t, t + 1.4, det); so.connect(P(k ? 0.45 : -0.45, sf)); });
+    sf.connect(e3); e3.connect(fx);
+  }
+  [[2.5, 0.5, "Db"], [4.5, 0.55, "Db"], [10, 0.5, "Fm"], [14, 0.6, "Db"], [20, 0.55, "Fm"], [25, 0.6, "Ab"], [28, 0.45, "Eb"], [31, 0.5, "Fm"], [33.5, 0.5, "Db"], [36.5, 0.5, "Ab"], [38.5, 0.6, "Eb"], [44.5, 1, "Db"], [46.5, 0.85, "Ab"]].forEach(([t, s, ch]) => hit(t, s, ch));
+
+  // --- CLAP: eng kuchli taktning 2- va 4-zarbalarida ---
+  function clap(t, g = 0.42) {
+    [0, 0.011, 0.023].forEach((d) => { const s = N(t + d, 0.05), e = G(0); e.gain.setValueAtTime(g, t + d); e.gain.setTargetAtTime(0, t + d, 0.007); s.connect(F('bandpass', 1350, 1.1)).connect(e); e.connect(drums); });
+    const s = N(t + 0.03, 0.4), e = G(0); e.gain.setValueAtTime(g * 0.65, t + 0.03); e.gain.setTargetAtTime(0, t + 0.03, 0.075);
+    s.connect(F('bandpass', 1150, 0.9)).connect(e); e.connect(drums);
+  }
+  clap(18.125); clap(19.375);
+
+  // --- SFX (foydalanuvchi to'plamidan): eng baland nuqtasi harakat bilan bir vaqtga to'g'rilangan ---
+  const bufs = {};
+  for (const [k, b64] of Object.entries(sfxB64)) {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const b = await ctx.decodeAudioData(bin.buffer);
+    let pk = 0; for (let c = 0; c < b.numberOfChannels; c++) { const d = b.getChannelData(c); for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i])); }
+    bufs[k] = { b, norm: pk > 0 ? 0.9 / pk : 1 };
+  }
+  for (const [t, key, g, maxLen] of cues) {
+    const { b, norm } = bufs[key];
+    const s = ctx.createBufferSource(); s.buffer = b;
+    const e = G(0); const st = Math.max(0, t);
+    e.gain.setValueAtTime(g * norm, st);
+    if (maxLen) { e.gain.setValueAtTime(g * norm, st + maxLen - 0.06); e.gain.linearRampToValueAtTime(0, st + maxLen); }
+    s.connect(e); e.connect(fx); s.start(st, Math.max(0, -t)); if (maxLen) s.stop(st + maxLen + 0.01);
+  }
+
+  const r = await ctx.startRendering();
+  const L = r.getChannelData(0), Rr = r.getChannelData(1);
+  const inter = new Float32Array((LEN - latency) * 2);
+  for (let i = 0; i < LEN - latency; i++) { inter[2 * i] = L[i + latency]; inter[2 * i + 1] = Rr[i + latency]; }
+  const bytes = new Uint8Array(inter.buffer); let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return { latency, b64: btoa(bin) };
+};
+</script></body></html>

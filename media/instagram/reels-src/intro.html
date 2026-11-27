@@ -1,0 +1,123 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800;900&family=Onest:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* «TANISHUV» — namunadagi 50 soniyalik mahsulot tanishtiruvi tuzilmasida, Voilà / Go Topic uchun. Hamma narsa seek(t) da. */
+const APP = new URLSearchParams(location.search).get('app') || 'voila';
+const K = {
+  voila: { name: 'Voilà!', ai: 'Vivi', lang: 'fransuz', imagine: 'Tasavvur qiling…', prompt: "Fransuz tilini o'yin kabi o'rgat", prompts: ["Bonjour'dan boshla", 'Darslar xaritasini och', 'Vivi bilan gaplash', 'Tinglash mashqi'],
+    feats: ['Darslar xaritasi · A1 → C2', 'Vivi AI ustoz', 'Tinglash va mashq', 'Turnir va liga', 'Sirli quti va sovg\'alar', 'Hammasi — bitta ilovada'], url: 'voila-fr.up.railway.app', greet: 'Bonjour !' },
+  gotopic: { name: 'Go Topic', ai: 'Hori', lang: 'koreys', imagine: 'Tasavvur qiling…', prompt: "Koreys tilini o'yin kabi o'rgat", prompts: ["Hangul'dan boshla", 'Darslar xaritasini och', 'Hori bilan gaplash', "Lug'atdan so'z top"],
+    feats: ['Hangul → TOPIK 6', 'Hori AI ustoz', "Lug'at · 30 000 so'z", 'TOPIK mashqlari', 'Turnir va liga', 'Hammasi — bitta ilovada'], url: 'gotopic.up.railway.app', greet: '안녕하세요!' },
+}[APP];
+const W = 1080, H = 1920, CX = 540, CY = 960;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const VI = '#9B5CFF', VL = '#B49CFF', PK = '#FF6B9A', PL = '#FF8FD0', CYN = '#7FE3FF', GD = '#FFD23F', WH = '#FFFFFF', LB = '#F3F1FB', INK = '#1A1640', DEEP = '#1B0F6B', GRN = '#2BD47A';
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10), expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const eio = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+const ex = (t, a, d) => expo((t - a) / d), io = (t, a, d) => eio((t - a) / d);
+const FB = "'Onest','Noto Sans KR','Noto Color Emoji',sans-serif", FD = "'Unbounded','Noto Sans KR',sans-serif";
+const IMG = {};
+function T(s, x, y, size, color, o = {}) { ctx.save(); ctx.font = `${o.wt || 500} ${size}px ${o.f || FB}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = color; if (o.alpha != null) ctx.globalAlpha *= o.alpha; ctx.fillText(s, x, y); ctx.restore(); }
+const tw = (s, size, wt = 500, f = FB) => { ctx.font = `${wt} ${size}px ${f}`; return ctx.measureText(s).width; };
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function grad(stops, x0 = 0, y0 = 0, x1 = 0, y1 = H) { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c)); return g; }
+function fill(c) { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); }
+function deepBg(t) { fill(grad(['#0A0640', DEEP, '#3B2BD9'])); const g = ctx.createRadialGradient(CX, H * .95, 50, CX, H * .95, 1200); g.addColorStop(0, 'rgba(127,227,255,.55)'); g.addColorStop(1, 'rgba(59,43,217,0)'); fill(g); }
+function pastelBg(t) { fill(grad(['#5B7CFF', '#A88CFF', '#FFB3D1', '#FFD6E8'])); const g = ctx.createRadialGradient(CX + Math.sin(t) * 200, 700, 50, CX, 700, 900); g.addColorStop(0, 'rgba(255,255,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); fill(g); }
+/** Yozilayotgan matn (kursor chizig'i bilan). */
+function typed(s, k) { return s.slice(0, Math.round(s.length * cl(k))); }
+function caret(x, y, size, t, color = WH) { if (Math.floor(t * 2.4) % 2) return; ctx.fillStyle = color; ctx.fillRect(x + 4, y - size * .55, 4, size * 1.1); }
+function cursor(x, y, press = 0) { ctx.save(); ctx.translate(x, y); ctx.scale(1 - .14 * press, 1 - .14 * press); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 16; ctx.fillStyle = WH; ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 74); ctx.lineTo(19, 56); ctx.lineTo(33, 86); ctx.lineTo(46, 80); ctx.lineTo(32, 51); ctx.lineTo(57, 51); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+/** Shisha so'rov qatori. */
+function promptBar(x, y, w, h, text, t, dark = false, sendPress = 0) {
+  ctx.save(); ctx.shadowColor = 'rgba(40,20,120,.25)'; ctx.shadowBlur = 40; ctx.fillStyle = dark ? 'rgba(20,14,70,.55)' : 'rgba(255,255,255,.42)'; rr(x, y, w, h, h / 2); ctx.fill(); ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; rr(x, y, w, h, h / 2); ctx.stroke();
+  const fs = h * .32; ctx.font = `500 ${fs}px ${FB}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = dark ? WH : INK; ctx.fillText(text, x + h * .5, y + h / 2); caret(x + h * .5 + ctx.measureText(text).width, y + h / 2, fs, t, dark ? WH : INK);
+  ctx.save(); const bx = x + w - h * .55, by = y + h / 2, br = h * .34 * (1 - .15 * sendPress); ctx.fillStyle = grad([VI, PK], bx - br, 0, bx + br, 0); ctx.beginPath(); ctx.arc(bx, by, br, 0, 7); ctx.fill();
+  ctx.strokeStyle = WH; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx, by + br * .45); ctx.lineTo(bx, by - br * .45); ctx.moveTo(bx - br * .35, by - br * .1); ctx.lineTo(bx, by - br * .45); ctx.lineTo(bx + br * .35, by - br * .1); ctx.stroke(); ctx.restore();
+}
+/** Telefon ramkasidagi haqiqiy ekran. */
+function phone(img, x, y, w, o = {}) {
+  const h = w * 2.164, r = w * .15; ctx.save(); ctx.globalAlpha *= o.alpha ?? 1; ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); if (o.s) ctx.scale(o.s, o.s);
+  ctx.shadowColor = o.glow || 'rgba(30,10,120,.45)'; ctx.shadowBlur = 80; ctx.fillStyle = '#0b0b14'; rr(-w / 2, -h / 2, w, h, r); ctx.fill(); ctx.shadowBlur = 0;
+  const p = w * .03; rr(-w / 2 + p, -h / 2 + p, w - 2 * p, h - 2 * p, r * .82); ctx.clip(); const im = IMG[img]; if (im) ctx.drawImage(im, -w / 2 + p, -h / 2 + p - (o.scroll || 0), w - 2 * p, (w - 2 * p) * im.height / im.width);
+  ctx.restore();
+}
+/** Suzuvchi karta (ekranning kesmasi). */
+function shotCard(img, x, y, w, h, o = {}) { ctx.save(); ctx.globalAlpha *= o.alpha ?? 1; ctx.translate(x, y); ctx.rotate(o.rot || 0); ctx.shadowColor = 'rgba(40,20,120,.25)'; ctx.shadowBlur = 50; ctx.fillStyle = WH; rr(-w / 2, -h / 2, w, h, 28); ctx.fill(); ctx.shadowBlur = 0; rr(-w / 2, -h / 2, w, h, 28); ctx.clip(); const im = IMG[img]; if (im) ctx.drawImage(im, -w / 2, -h / 2 - (o.oy || 0), w, w * im.height / im.width); ctx.restore(); }
+function iconAt(x, y, s, glow = true) { if (!IMG.icon) return; ctx.save(); if (glow) { ctx.shadowColor = 'rgba(155,92,255,.9)'; ctx.shadowBlur = s * .5; } rr(x - s / 2, y - s / 2, s, s, s * .22); ctx.clip(); ctx.drawImage(IMG.icon, x - s / 2, y - s / 2, s, s); ctx.restore(); }
+
+/* ---------- sahnalar (vaqt namunadagidek) ---------- */
+const S = [
+  [0, 2.5, (t) => { pastelBg(t); const s = typed(K.imagine, (t - .2) / 1.3); T(s, CX, CY, 104, WH, { wt: 400 }); caret(CX + tw(s, 104, 400) / 2, CY, 104, t); }],
+  [2.5, 4.5, (t) => { pastelBg(t + 2.5); const k = ex(t, 0, .5), w = lerp(300, 940, k); promptBar(CX - w / 2, CY - 70, w, 140, typed(K.prompt, (t - .3) / 1.1), t, false, t > 1.65 ? cl(1 - (t - 1.65) / .3) : 0);
+    cursor(lerp(1150, CX + w / 2 - 90, io(t, .9, .6)), lerp(1500, CY + 20, io(t, .9, .6)), t > 1.65 ? cl(1 - (t - 1.65) / .3) : 0); }],
+  [4.5, 10, (t) => { deepBg(t); const scr = ['welcome', 'features', 'map', 'practice'], i = Math.min(3, Math.floor(t / 1.38)), lt = t - i * 1.38;
+    const k = ex(t, 0, .7); phone(scr[i], CX, lerp(1400, 860, k), 600, { s: 1 + .03 * lt });
+    if (lt < .35 && i > 0) { ctx.save(); ctx.globalAlpha = 1 - lt / .35; phone(scr[i - 1], CX, 860, 600, { s: 1 + .03 * 1.38 }); ctx.restore(); }
+    promptBar(90, 1560, 900, 120, typed(K.prompts[i], (lt - .1) / .7), t, true); }],
+  [10, 14, (t) => { fill(LB); if (t < 2) { const a = ex(t, .1, .5); ctx.save(); ctx.globalAlpha = a; ctx.filter = `blur(${(1 - a) * 18}px)`; const s1 = "Bu oddiy rasm emas.", w1 = tw(s1, 64); T("Bu oddiy ", CX - w1 / 2 + tw("Bu oddiy ", 64) / 2, CY, 64, INK); T("rasm", CX - w1 / 2 + tw("Bu oddiy ", 64) + tw("rasm", 64) / 2, CY, 64, VI); T(" emas.", CX + w1 / 2 - tw(" emas.", 64) / 2, CY, 64, INK); ctx.restore(); return; }
+    const lt = t - 2, k = ex(lt, 0, .4), w = lerp(120, 700, k); ctx.save(); ctx.shadowColor = 'rgba(255,107,154,.7)'; ctx.shadowBlur = 60; ctx.fillStyle = WH; rr(CX - w / 2, CY - 80, w, 160, 80); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = grad([CYN, VI, PK], CX - w / 2, 0, CX + w / 2, 0); ctx.lineWidth = 5; rr(CX - w / 2, CY - 80, w, 160, 80); ctx.stroke();
+    ctx.fillStyle = GRN; ctx.beginPath(); ctx.arc(CX - w / 2 + 80, CY, 16, 0, 7); ctx.fill(); const s = typed("Bu — haqiqiy ilova.", (lt - .3) / .9); T(s, CX - w / 2 + 120, CY, 54, INK, { align: 'left', wt: 600 }); }],
+  [14, 20, (t) => { const dark = t >= 3.4, sw = io(t, 3.2, .4);
+    if (!dark) { fill(LB); const a = ex(t, 0, .5); T(K.ai, 120, 560, 190, INK, { f: FD, wt: 900, align: 'left', alpha: a }); T('AI ustoz.', 120, 760, 150, INK, { f: FD, wt: 900, align: 'left', alpha: a });
+      iconAt(lerp(1300, 760, ex(t, .2, .8)), 1180, 520, false); T('24/7 · ovozli suhbat · xatolar tahlili', 120, 1560, 40, 'rgba(26,22,64,.7)', { align: 'left', wt: 600 });
+      promptBar(90, 1650, 900, 110, typed(`${K.ai}, menga ${K.lang} tilida gapir`, (t - 1) / 1.2), t, false); }
+    else { fill('#07051F'); const g = ctx.createRadialGradient(780, 1200, 50, 780, 1200, 900); g.addColorStop(0, 'rgba(155,92,255,.6)'); g.addColorStop(1, 'rgba(7,5,31,0)'); fill(g); const lt = t - 3.4;
+      ctx.save(); ctx.font = `900 190px ${FD}`; ctx.fillStyle = grad([PK, VI, CYN], 120, 0, 900, 0); ctx.textBaseline = 'middle'; ctx.fillText(K.ai, 120, 560); ctx.font = `900 150px ${FD}`; ctx.fillText('AI ustoz.', 120, 760); ctx.restore();
+      phone('tutor', 780, 1220, 380, { glow: 'rgba(255,107,154,.7)' });
+      for (let b = 0; b < 26; b++) { const hh = 20 + 70 * Math.abs(Math.sin(lt * 7 + b * .7)); ctx.fillStyle = b % 2 ? PL : CYN; rr(110 + b * 18, 1300 - hh / 2, 9, hh, 4); ctx.fill(); }
+      promptBar(90, 1650, 900, 110, K.greet + ' ✓', lt, true); }
+    if (sw > 0 && sw < 1) { for (let i = 0; i < 9; i++) { ctx.fillStyle = [VI, PK, CYN][i % 3]; ctx.globalAlpha = .8 * Math.sin(sw * Math.PI); ctx.fillRect(0, 380 + i * 140 + Math.sin(i * 7) * 40, W * (.4 + .6 * ((i * 37) % 10) / 10), 46); } ctx.globalAlpha = 1; } }],
+  [20, 25, (t) => { deepBg(t); T('NIMALAR BOR?', CX, 520, 30, 'rgba(255,255,255,.6)', { wt: 700 }); const step = .8, f = cl((t - .2) / step), cur = Math.min(K.feats.length - 1, Math.floor(f)), sm = cur + expo(cl((f - cur) * 3)) - 1;
+    const shots = ['map', 'tutor', 'practice', 'league', 'shop', 'welcome'];
+    K.feats.forEach((s, j) => { const y = CY + (j - Math.max(0, sm)) * 120, d = Math.abs(j - Math.max(0, sm)), act = j === cur, fs = Math.min(act ? 58 : 46, (act ? 58 : 46) * 680 / tw(s, act ? 58 : 46, act ? 600 : 400)); T(s, 330, y, fs, WH, { wt: act ? 600 : 400, alpha: cl(1 - d * .35), align: 'left' }); });
+    shotCard(shots[cur], 190, CY, 200, 130, { oy: 120 }); }],
+  [25, 28, (t) => { deepBg(t); const k = ex(t, .2, .7); ctx.save(); ctx.filter = `blur(${(1 - k) * 30}px)`; const nw = tw(K.name, 110, 800, FD), gap = 40, tot = 200 + gap + nw; iconAt(lerp(CX, CX - tot / 2 + 100, ex(t, 1, .6)), CY, 200 * lerp(.4, 1, k)); ctx.restore();
+    T(K.name, CX - tot / 2 + 200 + gap + nw / 2, CY, 110, WH, { f: FD, wt: 800, alpha: ex(t, 1.1, .5) }); }],
+  [28, 31, (t) => { deepBg(t); const l1 = 'Har bir katta yutuq', l2 = 'endi 5 daqiqadan boshlanadi';
+    T(typed(l1, (t - .1) / .8), CX, CY - 60, 66, WH, { wt: 500 }); const s2 = typed(l2, (t - 1) / 1.1); T(s2, CX, CY + 50, 66, WH, { wt: 500 });
+    const sel = io(t, 2.3, .4); if (sel > 0) { const w2 = tw(l2, 66), wsel = tw('5 daqiqadan', 66), x0 = CX - w2 / 2 + tw('endi ', 66); ctx.fillStyle = 'rgba(127,227,255,.35)'; ctx.fillRect(x0, CY + 10, wsel * sel, 80); } }],
+  [31, 33.5, (t) => { fill(grad(['#7FE3FF', '#B49CFF', '#FFB3D1'])); ctx.save(); ctx.filter = 'blur(30px)'; ctx.globalAlpha = .55; IMG.map && ctx.drawImage(IMG.map, -100, 200, 1280, 2770); ctx.restore();
+    T('Tezroq tushunasiz', CX, 520, 66, WH, { wt: 600, alpha: ex(t, .8, .5) });
+    ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.55)'; rr(110, 760, 860, 380, 46); ctx.fill(); ctx.restore(); T(typed(K.prompts[0], (t - .2) / .9), 170, 860, 48, INK, { align: 'left' }); ctx.fillStyle = grad([VI, PK], 860, 0, 940, 0); ctx.beginPath(); ctx.arc(900, 1070, 40, 0, 7); ctx.fill(); }],
+  [33.5, 36.5, (t) => { deepBg(t); T('Tezroq gapirasiz', CX, 520, 66, WH, { wt: 600, alpha: ex(t, 0, .5) }); ctx.fillStyle = '#0D0B22'; rr(90, 760, 900, 520, 46); ctx.fill();
+    T(`${K.ai} AI · ovozli suhbat`, 150, 840, 36, 'rgba(255,255,255,.7)', { align: 'left' }); for (let i = 0; i < 3; i++) { ctx.fillStyle = 'rgba(255,255,255,.12)'; rr(150, 920 + i * 70, 500 - i * 120, 26, 13); ctx.fill(); }
+    const pr = t > 1.4 ? cl(1 - (t - 1.4) / .3) : 0, done = t > 1.7, k = io(t, 1.7, .3), bw = lerp(240, 300, k); ctx.fillStyle = done ? GRN : WH; rr(690 - (bw - 240), 1150, bw, 90, 45); ctx.fill();
+    T(done ? '✓ +10 XP' : 'Gapirish', 810 - (bw - 240) / 2, 1195, 36, done ? WH : INK, { wt: 700 }); cursor(lerp(1150, 830, io(t, .7, .6)), lerp(1600, 1210, io(t, .7, .6)), pr); }],
+  [36.5, 38.5, (t) => { fill(grad(['#5B7CFF', '#A88CFF', '#FFB3D1'])); T('Hammasi tezroq', CX, 520, 66, WH, { wt: 600, alpha: ex(t, 0, .4) });
+    ['Seriya 🔥', 'Liga 🏆', '+XP ⭐', 'Sovg\'a 🎁'].forEach((s, i) => { const k = ex(t, .3 + i * .2, .4), x = [300, 760, 330, 750][i], y = [900, 1020, 1180, 1300][i]; ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = 'rgba(255,255,255,.85)'; rr(x - 190, y - 50 + (1 - k) * 40, 380, 100, 50); ctx.fill(); ctx.fillStyle = GRN; ctx.beginPath(); ctx.arc(x - 130, y + (1 - k) * 40, 22, 0, 7); ctx.fill(); T('✓', x - 130, y + 2 + (1 - k) * 40, 26, WH, { wt: 800 }); T(s, x + 20, y + (1 - k) * 40, 38, INK, { wt: 600 }); ctx.restore(); }); }],
+  [38.5, 44.5, (t) => { fill(LB); const cards = [['map', 220, 520, -.12], ['tutor', 860, 470, .1], ['league', 160, 1420, .08], ['shop', 880, 1450, -.1], ['practice', 540, 300, .03], ['profile', 540, 1660, -.04]];
+    cards.forEach(([n, x, y, r], i) => { const k = ex(t, i * .15, .7), fl = Math.sin(t * 1.2 + i) * 14; shotCard(n, x, y + fl + (1 - k) * 200, 300, 220, { rot: r, alpha: k, oy: 150 }); });
+    const a = ex(t, .8, .5); T("Til o'rganish endi", CX, CY - 60, 72, INK, { wt: 600, alpha: a });
+    const b = t > 1.6; if (b) { const w1 = tw('darslikdan', 72, 600), s = io(t, 3.0, .3); T('darslikdan', CX, CY + 90, 72, INK, { wt: 600, alpha: ex(t, 1.6, .4) * (1 - io(t, 4, .3)) }); ctx.save(); ctx.globalAlpha = 1 - io(t, 4, .3); ctx.fillStyle = PK; ctx.fillRect(CX - w1 / 2, CY + 88, w1 * s, 7); ctx.restore(); }
+    if (t > 4.3) { const s = "o'yindan boshlanadi."; T(typed(s, (t - 4.35) / .9), CX, CY + 90, 72, VI, { wt: 700 }); } }],
+  [44.5, 46.5, (t) => { deepBg(t); const k = ex(t, 0, 1.2); for (let L = 0; L < 3; L++) for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + L * .3 + t * .3, r = (220 - L * 55) * k; ctx.save(); ctx.translate(CX, CY); ctx.rotate(a); ctx.globalAlpha = .55; const g = ctx.createLinearGradient(0, 0, 0, -r); g.addColorStop(0, 'rgba(255,255,255,.2)'); g.addColorStop(1, ['rgba(180,156,255,.9)', 'rgba(127,227,255,.9)', 'rgba(255,255,255,.95)'][L]); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -r * .55, r * .28, r * .55, 0, 0, 7); ctx.fill(); ctx.restore(); }
+    ctx.fillStyle = '#1A1060'; ctx.beginPath(); ctx.arc(CX, CY, 26 * k, 0, 7); ctx.fill(); }],
+  [46.5, 50, (t) => { deepBg(t); const k = ex(t, .2, .6); const nw = tw(K.name, 100, 800, FD), tot = 170 + 36 + nw; iconAt(lerp(CX, CX - tot / 2 + 85, ex(t, .9, .5)), CY - 60, 170 * lerp(.3, 1, k)); T(K.name, CX - tot / 2 + 206 + nw / 2, CY - 60, 100, WH, { f: FD, wt: 800, alpha: ex(t, 1, .5) });
+    T("Ko'r. Tingla. Gapir.", CX, CY + 80, 44, 'rgba(255,255,255,.85)', { alpha: ex(t, 1.3, .5) }); const b = ex(t, 1.6, .5); ctx.save(); ctx.globalAlpha = b; ctx.fillStyle = grad([VI, PK], CX - 200, 0, CX + 200, 0); rr(CX - 220, CY + 160, 440, 100, 50); ctx.fill(); ctx.restore(); T('Bepul boshlash', CX, CY + 210, 40, WH, { wt: 700, alpha: b });
+    T(K.url, CX, CY + 330, 38, 'rgba(255,255,255,.75)', { alpha: ex(t, 1.9, .5) }); }],
+];
+function frame(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none';
+  const i = S.findIndex(([a, b]) => t >= a && t < b), [a, b, fn] = S[i < 0 ? S.length - 1 : i], lt = t - a;
+  // sekin kamera yaqinlashuvi + sahna oxirida yumshoq xira o'tish (namunadagi kabi)
+  const push = 1 + .03 * lt / (b - a); ctx.translate(CX, CY); ctx.scale(push, push); ctx.translate(-CX, -CY);
+  const outK = io(lt, b - a - .3, .3), inK = 1 - io(lt, 0, .3);
+  if (outK > 0 || (inK > 0 && i > 0)) ctx.filter = `blur(${Math.max(outK, i > 0 ? inK : 0) * 22}px)`;
+  fn(lt);
+}
+window.seek = (t) => frame(Math.max(0, Math.min(49.999, t)));
+window.DUR = 50;
+window.ready = (async () => {
+  for (const f of ['400 40px Onest', '500 40px Onest', '600 40px Onest', '700 40px Onest', '800 40px Unbounded', '900 40px Unbounded', '500 40px "Noto Sans KR"', '40px "Noto Color Emoji"']) await document.fonts.load(f, "AaÀ한안녕✓🔥🏆⭐🎁·'→");
+  const load = (k, src) => new Promise((r) => { const i = new Image(); i.onload = () => { IMG[k] = i; r(); }; i.onerror = r; i.src = src; });
+  await Promise.all([load('icon', `img/icon-${APP}.png`), ...['welcome', 'features', 'map', 'tutor', 'practice', 'league', 'shop', 'profile'].map((n) => load(n, `img/${APP}-${n}.png`))]);
+  seek(0);
+})();
+</script></body></html>
