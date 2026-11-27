@@ -153,6 +153,7 @@ export function sttBody(req: SttRequest, model: string): Record<string, unknown>
           text: `Sen nutqni matnga aylantiruvchisan. Gapiruvchi — fransuz tilini o'rganayotgan o'zbek o'quvchi; u AI ustoz «Vivi» bilan gaplashyapti.
 - Audiodagi gapni AYNAN yoz: tarjima qilma, javob berma, o'zingdan so'z qo'shma, gapni to'qima.
 - Nutq o'zbekcha, fransuzcha yoki aralash bo'lishi mumkin — har bir qismni o'z tilida yoz: o'zbekcha — lotin yozuvida (o', g', sh, ch), fransuzcha — fransuz imlosida (urg'u belgilari bilan).
+- O'zbekcha nutqni HECH QACHON fransuzchaga tarjima qilma yoki fransuz imlosida transliteratsiya qilma — o'zbekcha lotin yozuvida yoz.
 - O'quvchining fransuzcha talaffuzi xato bo'lishi mumkin: u aytmoqchi bo'lgan fransuzcha so'zni to'g'ri imloda yoz (masalan «jö mapel» → «je m'appelle»), lekin grammatik xatolarini TUZATMA (o'quvchi «je suis 25 an» desa — shunday yoz).
 - Ustozning oxirgi gapi kontekst sifatida beriladi: undagi ism va so'zlarni to'g'ri yozish uchun foydalan, lekin uni matnga qo'shma.
 - Nutq eshitilmasa, faqat shovqin yoki tushunarsiz bo'lsa — text bo'sh. Faqat JSON: {"text": "..."}`,
