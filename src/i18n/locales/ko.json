@@ -1102,7 +1102,6 @@
  "Suhbat tahlili": "대화 분석",
  "Suhbat tugadi": "대화 종료",
  "Suhbat vaqti": "대화 시간",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "대화·음성·번역·기억을 위해 텍스트/오디오가 Google Gemini로 전송됩니다. 프로필에서 언제든 변경하세요.",
  "Suhbatdosh": "대화 상대",
  "Suhbatimizda sezganlarim": "대화에서 느낀 점",
  "Suhbatingizdagi so'zlar": "대화 속 단어들",
@@ -1395,5 +1394,8 @@
  "Zo'r holat!": "최고의 상태예요!",
  "Zo'r!": "최고!",
  "Zumrad": "에메랄드",
- "Русский": "Русский"
+ "Русский": "Русский",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "텍스트 채팅, 번역, Vivi 음성을 위해 텍스트가 Google Gemini로 전송됩니다. 프로필에서 언제든 변경할 수 있어요.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "마이크 오디오와 저장한 메모리도 Google Gemini로 전송됩니다. 나중에 프로필에서 켤 수도 있어요.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "음성 채팅과 Vivi 메모리 (선택)"
 }

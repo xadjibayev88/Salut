@@ -1,5 +1,5 @@
 // Kirish / ro'yxatdan o'tish: Google, email + parol, yoki mehmon sifatida davom etish.
-import { grantAllAiConsent } from '../state/ai-consent';
+import { grantSignupAiConsent } from '../state/ai-consent';
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '../state/account';
 import { SocialLogin } from '../components/SocialLogin';
@@ -73,6 +73,9 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { in
   const [agree, setAgree] = useState(false);
   const agreeRef = useRef(false);
   agreeRef.current = agree;
+  const [agreeVoice, setAgreeVoice] = useState(false);
+  const agreeVoiceRef = useRef(false);
+  agreeVoiceRef.current = agreeVoice;
   const modeRef = useRef(initial);
   modeRef.current = mode;
   const [showPass, setShowPass] = useState(false);
@@ -103,7 +106,7 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { in
   }, []);
 
   const finish = () => {
-    if (modeRef.current === 'register' && agreeRef.current) void grantAllAiConsent().catch(() => undefined);
+    if (modeRef.current === 'register' && agreeRef.current) void grantSignupAiConsent(agreeVoiceRef.current).catch(() => undefined);
     setDone(true);
     timers.current.push(window.setTimeout(onDone, motionAllowed() ? 650 : 0));
   };
@@ -271,9 +274,18 @@ export function AuthScreen({ initial = 'register', onDone, onSkip, title }: { in
               <label className={`authx-consent ${agree ? 'on' : ''}`}>
                 <span>
                   <b>Vivi AI va maxfiylik shartlariga roziman</b>
-                  <small>Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.</small>
+                  <small>Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.</small>
                 </span>
                 <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setError(null); }} />
+              </label>
+            )}
+            {!login && (
+              <label className={`authx-consent authx-consent-optional ${agreeVoice ? 'on' : ''}`}>
+                <span>
+                  <b>Ovozli suhbat va Vivi xotirasi (ixtiyoriy)</b>
+                  <small>Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.</small>
+                </span>
+                <input type="checkbox" checked={agreeVoice} onChange={(e) => setAgreeVoice(e.target.checked)} />
               </label>
             )}
             {error && <p className="auth-error" role="alert">{error}</p>}

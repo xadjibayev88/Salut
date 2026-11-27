@@ -1102,7 +1102,6 @@
  "Suhbat tahlili": "Маек талдоосу",
  "Suhbat tugadi": "Маек аяктады",
  "Suhbat vaqti": "Маек убактысы",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Маек, үн, котормо жана эс тутум үчүн текст/аудио Google Gemini'ге жөнөтүлөт. Профилде өзгөртөсүз.",
  "Suhbatdosh": "Маектеш",
  "Suhbatimizda sezganlarim": "Маегибизде байкагандарым",
  "Suhbatingizdagi so'zlar": "Маектешүүдөгү сөздөр",
@@ -1395,5 +1394,8 @@
  "Zo'r holat!": "Сонун абал!",
  "Zo'r!": "Сонун!",
  "Zumrad": "Зымырат",
- "Русский": "Русский"
+ "Русский": "Русский",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Тексттик маек, котормо жана Vivi үнү үчүн текст Google Gemini'ге жөнөтүлөт. Профилде каалаган убакта өзгөртөсүз.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "Микрофон аудиосу жана сиз сактаган эс тутум да Google Gemini'ге жөнөтүлөт. Кийин профилде күйгүзсөңүз болот.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "Үн аркылуу маек жана Vivi эс тутуму (милдеттүү эмес)"
 }

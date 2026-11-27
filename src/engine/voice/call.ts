@@ -105,6 +105,14 @@ export interface Snapshot {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/**
+ * STT natijasi o'quvchi tasdig'ini talab qiladimi. Faqat «confidence_missing» (Gemini API ishonch bermaydi)
+ * yolg'iz o'zi avto-yuborishni to'xtatmaydi; qolgan har qanday sabab tekshirish oynasini ochadi.
+ */
+export function needsLearnerReview(result: Pick<SttResult, 'reviewReasons'>): boolean {
+  return result.reviewReasons.some((reason) => reason !== 'confidence_missing');
+}
+
 export class VoiceCall {
   snap: Snapshot;
   private mic = new Mic();
@@ -320,9 +328,9 @@ export class VoiceCall {
       return;
     }
     this.set({ phase: 'review', draft: t, sttResult: result, retryAvailable: false, partial: '', live: '', level: 0 });
-    // Avto-yuborish: gapirgan matn tekshirish oynasisiz darhol Vivi'ga ketadi (suhbat matnida ko'rinadi).
-    // Faqat «autoSend: false» bo'lsa, avvalgidek tasdiqlash oynasi qoladi.
-    if (this.o.autoSend !== false) this.submitDraft(t);
+    // Avto-yuborish: aniq tanilgan gap tekshirish oynasisiz darhol Vivi'ga ketadi.
+    // Aralash til, shovqin, til mos kelmasligi kabi shubhali natijada oyna qoladi — o'quvchi tasdiqlamaguncha baho yo'q.
+    if (this.o.autoSend !== false && !needsLearnerReview(result)) this.submitDraft(t);
   }
 
   /** STT matnini tahrirlash oynasida saqlash. */

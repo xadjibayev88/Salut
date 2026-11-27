@@ -1102,7 +1102,6 @@
  "Suhbat tahlili": "Сұхбат талдауы",
  "Suhbat tugadi": "Сұхбат аяқталды",
  "Suhbat vaqti": "Сұхбат уақыты",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Сөйлесу, дауыс, аударма және жады үшін мәтін/аудио Google Gemini-ге жіберіледі. Профильде өзгертесіз.",
  "Suhbatdosh": "Сұхбаттасушы",
  "Suhbatimizda sezganlarim": "Сұхбатымызда байқағандарым",
  "Suhbatingizdagi so'zlar": "Сұхбатыңыздағы сөздер",
@@ -1395,5 +1394,8 @@
  "Zo'r holat!": "Керемет күйде!",
  "Zo'r!": "Керемет!",
  "Zumrad": "Зүмірт",
- "Русский": "Русский"
+ "Русский": "Русский",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Мәтіндік сөйлесу, аударма және Vivi дауысы үшін мәтін Google Gemini-ге жіберіледі. Профильде кез келген уақытта өзгертесіз.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "Микрофон аудиосы мен сіз сақтаған жады да Google Gemini-ге жіберіледі. Кейін профильде қосуға болады.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "Дауыстық сөйлесу және Vivi жадысы (міндетті емес)"
 }

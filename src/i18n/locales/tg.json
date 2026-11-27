@@ -1102,7 +1102,6 @@
  "Suhbat tahlili": "Таҳлили гуфтугӯ",
  "Suhbat tugadi": "Гуфтугӯ ба анҷом расид",
  "Suhbat vaqti": "Вақти гуфтугӯ",
- "Suhbat, ovoz, tarjima va xotira uchun matn/audio Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Барои суҳбат, овоз, тарҷума ва хотира матн/аудио ба Google Gemini фиристода мешавад. Дар профил тағйир медиҳед.",
  "Suhbatdosh": "Ҳамсуҳбат",
  "Suhbatimizda sezganlarim": "Мушоҳидаҳои ман дар гуфтугӯямон",
  "Suhbatingizdagi so'zlar": "Калимаҳо дар суҳбати шумо",
@@ -1395,5 +1394,8 @@
  "Zo'r holat!": "Ҳолати олӣ!",
  "Zo'r!": "Аъло!",
  "Zumrad": "Зумрад",
- "Русский": "Русский"
+ "Русский": "Русский",
+ "Matnli suhbat, tarjima va Vivi ovozi uchun matn Google Gemini'ga yuboriladi. Profilda istalgan payt o'zgartirasiz.": "Барои сӯҳбати матнӣ, тарҷума ва овози Vivi матн ба Google Gemini фиристода мешавад. Дар профил ҳар вақт тағйир медиҳед.",
+ "Mikrofon audiosi va siz saqlagan xotira ham Google Gemini'ga yuboriladi. Keyin Profilda yoqsangiz ham bo'ladi.": "Аудиои микрофон ва хотираи захиракардаи шумо низ ба Google Gemini фиристода мешавад. Баъдтар дар профил фаъол кардан мумкин аст.",
+ "Ovozli suhbat va Vivi xotirasi (ixtiyoriy)": "Сӯҳбати овозӣ ва хотираи Vivi (ихтиёрӣ)"
 }

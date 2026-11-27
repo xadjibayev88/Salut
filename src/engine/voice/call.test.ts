@@ -98,7 +98,40 @@ describe('VoiceCall speech review', () => {
     expect(onUserTurn).toHaveBeenCalledOnce();
     expect(call.snap.turns.at(-1)).toMatchObject({ role: 'user', text: 'Bonjour Vivi' });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('api/tutor');
+    // Wait for the rejected request to settle so its notice timer runs while `window` is still stubbed.
+    await vi.waitFor(() => expect(call.snap.phase).toBe('review'));
+    call.dispose();
   });
+
+  it('auto-sends when the only review reason is a missing confidence score', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ code: 'blocked', message: 'blocked' }), { status: 403 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const call = new VoiceCall(options());
+    call.snap = { ...call.snap, phase: 'user' };
+    await (call as unknown as { onFinal: (result: SttResult) => Promise<void> }).onFinal(result('Bonjour Vivi', ['confidence_missing']));
+    expect(call.snap.turns.at(-1)).toMatchObject({ role: 'user', text: 'Bonjour Vivi' });
+    await vi.waitFor(() => expect(call.snap.phase).toBe('review'));
+    call.dispose();
+  });
+
+  it.each<SttReviewReason>(['code_switch', 'language_mismatch', 'language_unknown', 'alternatives_conflict', 'possible_noise', 'target_phrase_mismatch'])(
+    'holds a doubtful transcript (%s) for learner review even with auto-send on',
+    async (reason) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      const call = new VoiceCall(options());
+      const onUserTurn = vi.fn();
+      call.onUserTurn = onUserTurn;
+      call.snap = { ...call.snap, phase: 'user' };
+      await (call as unknown as { onFinal: (result: SttResult) => Promise<void> }).onFinal(result('Salom, je voudrais un café', [reason, 'confidence_missing']));
+      expect(call.snap.phase).toBe('review');
+      expect(call.snap.draft).toBe('Salom, je voudrais un café');
+      expect(call.snap.turns).toEqual([]);
+      expect(onUserTurn).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      call.dispose();
+    },
+  );
 
   it('returns to listening without a review box when nothing was heard', async () => {
     const call = new VoiceCall(options());

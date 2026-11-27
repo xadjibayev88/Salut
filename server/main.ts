@@ -27,6 +27,9 @@ import { createLiveTokenRoute, mintGeminiLiveToken } from './live-route.ts';
 import { liveInstruction, parseTutorRequest } from './tutor.ts';
 import { adsConfigScript, appAdsTxt, createKeyCache, verifySsv } from './admob-ssv.ts';
 import { registerClientLogRoute, type RouteTable } from './client-log.ts';
+import { STORAGE_WARNING_TEXT, storageWarnings } from './storage-check.ts';
+
+const STORAGE_WARNINGS = storageWarnings(process.env);
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist');
 const env = process.env;
@@ -399,6 +402,8 @@ const routeHandlers: RouteTable = Object.freeze(registerClientLogRoute({
       ai,
       model: ai ? AI_RUNTIME_CONFIG.model : null,
       exhausted: [],
+      // Names only: the database (accounts, consent, AI quota) is not on persistent storage.
+      ...(STORAGE_WARNINGS.length ? { storageWarnings: STORAGE_WARNINGS } : {}),
       // Names only (never values) of what keeps Vivi AI closed, for hosts without log access.
       ...(ai ? {} : { aiProblems: [
         ...AI_CONFIG_PROBLEMS,
@@ -862,6 +867,7 @@ const server = createServer((req, res) => {
 server.keepAliveTimeout = 65_000;
 
 startBot();
+for (const w of STORAGE_WARNINGS) console.warn(`DIQQAT (${w}): ${STORAGE_WARNING_TEXT[w]}`);
 server.listen(PORT, () =>
   console.log(`Voilà! server: http://localhost:${PORT} · AI: ${aiRoutesEffectivelyReady()
     ? `yoqilgan (${AI_PROVIDER_MODE === 'gemini-api' ? 'Gemini API, bepul' : 'Google Cloud Vertex'} · ${AI_RUNTIME_CONFIG.model})`
