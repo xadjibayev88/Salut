@@ -220,4 +220,44 @@ Saqlab qo'ying 📌 va koreys tilini o'rganayotgan do'stingizni belgilang 👇
 
 ---
 
+## 29-noyabr — Tanishuv videolari (50 s)
+
+| Vaqt | @voila_ai.uz | @gotopic.uz |
+|---|---|---|
+| 19:00 | `voila/motion/v-tanishuv.mp4` | `gotopic/motion/g-tanishuv.mp4` |
+
+Bu ilovani to'liq tanishtiruvchi asosiy video — joylagandan keyin profil tepasiga qadab qo'ying (Pin). Ovozi videoning o'zida; muqova: ikonka va nom chiqqan kadr (~26-soniya).
+
+**@voila_ai.uz · 19:00 · Tanishuv**
+```
+Voilà! bilan tanishing 🐱🇫🇷
+Fransuz tilini o'zbek tilida — o'yin kabi o'rganadigan ilova.
+
+📚 Darslar xaritasi A1 → C2
+🎧 Vivi AI ustoz — tinglaydi, gapiradi, xatolarni tuzatadi
+🔥 Seriya, turnir va sirli qutilar
+
+Har bir katta yutuq endi 5 daqiqadan boshlanadi.
+Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #tilorganish #ai #uzbekistan #toshkent #voila
+```
+
+**@gotopic.uz · 19:00 · Tanishuv**
+```
+Go Topic bilan tanishing 🐯🇰🇷
+Koreys tilini o'zbek tilida — o'yin kabi o'rganadigan ilova.
+
+ㅎ Hangul'dan TOPIK 6 gacha
+🎧 Hori AI ustoz — tinglaydi, gapiradi, xatolarni tuzatadi
+📖 30 000 so'zlik lug'at · 🔥 seriya va turnirlar
+
+Har bir katta yutuq endi 5 daqiqadan boshlanadi.
+Darslar bepul — havola profilda 👆
+
+#koreystili #koreyscha #hangul #topik #한국어 #uzbekistan #gotopic
+```
+
+---
+
 **Har bir Reel'dan keyin (30 soniya):** shu Reel'ni Stories'ga ulashing va «Havola» stikerini qo'shing (sayt manzili). Birinchi soatda kelgan izohlarga javob bering — Instagram buni ko'proq odamga ko'rsatadi.
