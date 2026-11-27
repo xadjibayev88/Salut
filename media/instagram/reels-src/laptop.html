@@ -1,0 +1,128 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800;900&family=Onest:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#0b0705}
+#room{position:absolute;inset:0;overflow:hidden;perspective:1800px;perspective-origin:540px 1000px}
+#wall{position:absolute;inset:-60px;background:
+  radial-gradient(60% 30% at 50% 52%,rgba(255,170,90,.10),rgba(0,0,0,0) 70%),
+  repeating-linear-gradient(90deg,#1c120d 0 38px,#0d0806 38px 46px,#24170f 46px 84px,#0d0806 84px 92px);}
+#wall:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.05) 40%,rgba(0,0,0,.6))}
+.bok{position:absolute;border-radius:50%;filter:blur(18px)}
+#desk{position:absolute;left:-200px;right:-200px;top:1420px;bottom:-200px;background:linear-gradient(180deg,#1a100b,#070403)}
+#cam{position:absolute;inset:0;transform-style:preserve-3d}
+#lap{position:absolute;left:90px;top:760px;width:900px;transform-style:preserve-3d;transform:scale(1.12);transform-origin:450px 585px}
+#lid{position:absolute;left:0;top:0;width:900px;height:585px;border-radius:30px 30px 8px 8px;background:#1d1d22;padding:22px 22px 30px;transform-origin:50% 100%;transform:rotateX(-6deg);box-shadow:0 0 0 2px #2c2c33}
+#scr{width:856px;height:535px;border-radius:12px;display:block}
+#glow{position:absolute;left:-150px;top:-120px;width:1200px;height:900px;border-radius:50%;filter:blur(90px);opacity:.35}
+#deck{position:absolute;left:-40px;top:585px;width:980px;height:640px;transform-origin:50% 0;transform:rotateX(78deg);border-radius:10px 10px 46px 46px;background:linear-gradient(180deg,#b9bcc6,#8d909b);overflow:hidden}
+#keys{position:absolute;left:90px;top:40px;width:800px;height:330px;border-radius:12px;background:repeating-linear-gradient(90deg,#16161b 0 52px,#2a2a31 52px 56px),#16161b;opacity:.92}
+#keys:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 62px,#2a2a31 62px 66px)}
+#pad{position:absolute;left:330px;top:400px;width:320px;height:200px;border-radius:14px;background:rgba(255,255,255,.18)}
+#refl{position:absolute;inset:0;mix-blend-mode:screen;opacity:.55}
+#cap{position:absolute;left:60px;width:960px;top:470px;text-align:center;font:800 54px/1.22 Onest,'Noto Sans KR',sans-serif;color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+</style></head><body>
+<div id="room">
+  <div id="wall"></div>
+  <div class="bok" style="left:-60px;top:900px;width:160px;height:160px;background:#ff8a3a;opacity:.55"></div>
+  <div class="bok" style="left:960px;top:820px;width:220px;height:420px;background:#ff6a1a;opacity:.75;border-radius:40px"></div>
+  <div class="bok" style="left:30px;top:1180px;width:70px;height:70px;background:#ffd08a;opacity:.9"></div>
+  <div class="bok" style="left:60px;top:1060px;width:50px;height:50px;background:#ffd08a;opacity:.8"></div>
+  <div id="desk"></div>
+  <div id="cam">
+    <div id="lap"><div id="glow"></div>
+      <div id="deck"><div id="keys"></div><div id="pad"></div><div id="refl"></div></div>
+      <div id="lid"><canvas id="scr" width="1600" height="1000"></canvas></div>
+    </div>
+  </div>
+  <div id="cap"></div>
+</div>
+<script>
+/* «POV: NOUTBUK» — qorong'i xonada noutbuk, ekranida ilovaning tushuntiruv videosi. 30 s, 96 BPM (takt 2.5 s). Hamma narsa seek(t) da. */
+const APP = new URLSearchParams(location.search).get('app') || 'voila';
+const K = {
+  voila: { name: 'Voilà!', ai: 'Vivi', lang: 'Fransuz tili', cap: "POV: fransuz tilini o'yin kabi<br>o'rgatadigan ilova topdingiz", what: 'Agar aytsam…', prompt: 'Vivi, menga fransuz tilida gapir', reply: 'Bonjour ! Comment ça va ?', url: 'voila-fr.up.railway.app', fr: 'Bonjour' },
+  gotopic: { name: 'Go Topic', ai: 'Hori', lang: 'Koreys tili', cap: "POV: koreys tilini o'yin kabi<br>o'rgatadigan ilova topdingiz", what: 'Agar aytsam…', prompt: 'Hori, menga koreys tilida gapir', reply: '안녕하세요! 잘 지냈어요?', url: 'gotopic.up.railway.app', fr: '안녕' },
+}[APP];
+const W = 1600, H = 1000, CX = 800, CY = 500;
+const cv = document.getElementById('scr'), ctx = cv.getContext('2d');
+const VI = '#9B5CFF', VL = '#B49CFF', PK = '#FF6B9A', PL = '#FF8FD0', CYN = '#7FE3FF', GD = '#FFD23F', WH = '#FFFFFF', LB = '#F6F3FF', INK = '#1A1640';
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10), expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const eio = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+const ex = (t, a, d) => expo((t - a) / d), io = (t, a, d) => eio((t - a) / d);
+const FB = "'Onest','Noto Sans KR','Noto Color Emoji',sans-serif", FD = "'Unbounded','Noto Sans KR',sans-serif";
+const IMG = {};
+document.getElementById('cap').innerHTML = K.cap;
+function T(s, x, y, size, color, o = {}) { ctx.save(); ctx.font = `${o.wt || 800} ${size}px ${o.f || FD}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = color; if (o.alpha != null) ctx.globalAlpha *= o.alpha; ctx.fillText(s, x, y); ctx.restore(); }
+const tw = (s, size, wt = 800, f = FD) => { ctx.font = `${wt} ${size}px ${f}`; return ctx.measureText(s).width; };
+const fit = (s, maxW, size, wt = 800, f = FD) => Math.min(size, size * maxW / tw(s, size, wt, f));
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function G(st, x0, y0, x1, y1) { const g = ctx.createLinearGradient(x0, y0, x1, y1); st.forEach((c, i) => g.addColorStop(i / (st.length - 1), c)); return g; }
+function fill(c) { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); }
+const typed = (s, k) => s.slice(0, Math.round(s.length * cl(k)));
+function win(img, x, y, w, h, o = {}) { // brauzer oynasi ichida ekran
+  ctx.save(); ctx.globalAlpha *= o.alpha ?? 1; ctx.translate(x, y); ctx.rotate(o.rot || 0); ctx.scale(o.s || 1, o.s || 1);
+  ctx.shadowColor = 'rgba(30,10,90,.35)'; ctx.shadowBlur = 50; ctx.fillStyle = WH; rr(-w / 2, -h / 2, w, h, 22); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#EEEAF8'; rr(-w / 2, -h / 2, w, 44, [22, 22, 0, 0]); ctx.fill(); ['#FF6B6B', '#FFD23F', '#2BD47A'].forEach((c, i) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(-w / 2 + 28 + i * 24, -h / 2 + 22, 7, 0, 7); ctx.fill(); });
+  rr(-w / 2, -h / 2 + 44, w, h - 44, [0, 0, 22, 22]); ctx.clip(); const im = IMG[img]; if (im) { const iw = w, ih = iw * im.height / im.width; ctx.drawImage(im, -w / 2, -h / 2 + 44 - (o.scroll || 0), iw, ih); }
+  ctx.restore();
+}
+function phoneShot(img, x, y, w, o = {}) { const h = w * 2.164; ctx.save(); ctx.globalAlpha *= o.alpha ?? 1; ctx.translate(x, y); ctx.rotate(o.rot || 0); ctx.shadowColor = 'rgba(30,10,90,.4)'; ctx.shadowBlur = 50; ctx.fillStyle = '#0b0b14'; rr(-w / 2, -h / 2, w, h, w * .14); ctx.fill(); ctx.shadowBlur = 0; rr(-w / 2 + 8, -h / 2 + 8, w - 16, h - 16, w * .12); ctx.clip(); const im = IMG[img]; if (im) ctx.drawImage(im, -w / 2 + 8, -h / 2 + 8, w - 16, (w - 16) * im.height / im.width); ctx.restore(); }
+function icon(x, y, s) { if (!IMG.icon) return; ctx.save(); ctx.shadowColor = 'rgba(155,92,255,.8)'; ctx.shadowBlur = s * .4; rr(x - s / 2, y - s / 2, s, s, s * .22); ctx.clip(); ctx.drawImage(IMG.icon, x - s / 2, y - s / 2, s, s); ctx.restore(); }
+function cursor(x, y, p = 0) { ctx.save(); ctx.translate(x, y); ctx.scale(1 - .15 * p, 1 - .15 * p); ctx.fillStyle = WH; ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 64); ctx.lineTo(16, 48); ctx.lineTo(28, 74); ctx.lineTo(39, 69); ctx.lineTo(27, 44); ctx.lineTo(49, 44); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+const press = (t, a) => (t > a ? cl(1 - (t - a) / .3) : 0);
+
+/* ---------- ekrandagi sahnalar (har biri bitta takt) ---------- */
+const SC = [
+  (t) => { fill(G(['#2B3BFF', '#5B4BFF'], 0, 0, W, H)); const sh = ['map', 'tutor', 'league', 'shop'];
+    sh.forEach((n, i) => { const k = ex(t, i * .18, .6), x = [420, 780, 1130, 600][i], y = [520, 430, 560, 700][i]; win(n, x + (1 - k) * 300, y + Math.sin(t * 1.5 + i) * 10, 360, 260, { rot: [-.08, .04, .1, -.03][i], alpha: k, scroll: 120 }); });
+    icon(CX, CY, 150 * ex(t, .8, .5)); },
+  (t) => { fill(G([LB, '#E9E2FF'], 0, 0, 0, H)); const k = ex(t, 0, .5), p = press(t, 1.4); ctx.save(); ctx.translate(CX, CY); ctx.scale(1 - .06 * p, 1 - .06 * p);
+    ctx.shadowColor = 'rgba(155,92,255,.5)'; ctx.shadowBlur = 60; ctx.fillStyle = G([VI, PK], -260, 0, 260, 0); rr(-280 * k, -90, 560 * k, 180, 90); ctx.fill(); ctx.restore(); T('Boshlash', CX, CY, 70 * k, WH);
+    cursor(lerp(1650, CX + 120, io(t, .6, .6)), lerp(1050, CY + 30, io(t, .6, .6)), p); if (t > 1.4) { ctx.strokeStyle = VI; ctx.lineWidth = 5; ctx.globalAlpha = cl(1 - (t - 1.4) / .6); ctx.beginPath(); ctx.arc(CX + 120, CY + 30, 30 + (t - 1.4) * 400, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; } },
+  (t) => { fill(WH); T(typed(K.what, (t - .1) / .6), CX, CY - 80, 70, INK, { wt: 500, f: FB }); const k = ex(t, 1, .5); ctx.save(); ctx.font = `900 ${fit(K.lang, 1300, 190)}px ${FD}`; ctx.fillStyle = G([CYN, VI, PK], CX - 600, 0, CX + 600, 0); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = k; ctx.translate(CX, CY + 110 + (1 - k) * 80); ctx.fillText(K.lang, 0, 0); ctx.restore(); },
+  (t) => { fill(G(['#FFD1EA', '#F6A3D6'], 0, 0, W, H)); const sq = 1 - io(t, .9, .6) * .6; ctx.save(); ctx.translate(CX, CY); ctx.scale(1 + (1 - sq) * .5, sq); ctx.filter = `blur(${(1 - sq) * 14}px)`; T('Murakkab?', 0, 0, 200, '#fff'); ctx.restore(); ctx.filter = 'none';
+    if (t > 1.6) T("Yo'q.", CX, CY + 210, 90, INK, { alpha: ex(t, 1.6, .3) }); },
+  (t) => { fill(WH); for (let i = 0; i < 9; i++) { const a = i * .7 + t * .8, r = 380 + (i % 3) * 60; ctx.fillStyle = [VI, PK, CYN][i % 3]; ctx.save(); ctx.translate(CX + Math.cos(a) * r * 1.3, CY + Math.sin(a) * r * .7); ctx.rotate(a); ctx.fillRect(-18, -18, 36, 36); ctx.restore(); }
+    const k = ex(t, .1, .5); T("O'yin kabi", CX, CY, 170 * k, INK, { wt: 900 }); T('+10 XP', CX + 420, CY - 150, 60, GD, { alpha: ex(t, .8, .4) }); },
+  (t) => { fill(LB); const k = ex(t, 0, .5); T('Sizning', 520, 380, 130, INK, { wt: 900, alpha: k }); T('ustozingiz', 560, 560, 130, INK, { wt: 900, alpha: ex(t, .3, .5) });
+    icon(1220, 380, 230 * ex(t, .2, .6)); phoneShot('tutor', 1250, 720, 170, { rot: .08, alpha: ex(t, .6, .5) }); T(K.ai + ' AI', 1220, 545, 44, VI, { alpha: ex(t, .5, .4) }); },
+  (t) => { fill('#0E0C1C'); ctx.fillStyle = '#17142C'; rr(220, 280, 1160, 440, 36); ctx.fill(); T(K.ai + ' AI · ovozli suhbat', 280, 340, 30, 'rgba(255,255,255,.55)', { wt: 600, f: FB, align: 'left' });
+    T(typed(K.prompt, (t - .2) / 1.0), 280, 440, 46, WH, { wt: 500, f: FB, align: 'left' }); if (t > 1.4) { ctx.fillStyle = G([VI, PK], 280, 0, 1100, 0); rr(280, 520, tw(K.reply, 42, 600, FB) + 60, 90, 45); ctx.fill(); T(typed(K.reply, (t - 1.45) / .6), 310, 565, 42, WH, { wt: 600, f: FB, align: 'left' }); }
+    for (let b = 0; b < 30; b++) { const hh = 10 + 50 * Math.abs(Math.sin(t * 8 + b * .6)) * (t > 1.4 ? 1 : .2); ctx.fillStyle = PL; rr(1000 + b * 12, 660 - hh / 2, 6, hh, 3); ctx.fill(); } },
+  (t) => { fill(G(['#2B3BFF', '#9B5CFF'], 0, 0, W, H)); const k = io(t, 0, .9); win('map', lerp(1900, 560, k), CY, 640, 720, { scroll: lerp(0, 600, t / 2.5) }); win('tutor', lerp(2500, 1130, io(t, .3, .9)), CY + 40, 520, 640, { rot: .05, scroll: 160 }); },
+  (t) => { fill(LB); ['league', 'shop', 'profile'].forEach((n, i) => { const k = ex(t, i * .25, .6); phoneShot(n, 450 + i * 350, CY + (1 - k) * 600 + (i === 1 ? -20 : 30), 260, { rot: (i - 1) * .1 }); });
+    T('Liga · Do\'kon · Profil', CX, 90, 46, INK, { wt: 800, alpha: ex(t, .8, .4) }); },
+  (t) => { const second = t > 1.25, lt = second ? t - 1.25 : t; fill(second ? '#FFE0F3' : '#CFF6FF'); const w = second ? 'Interaktiv' : 'Dinamik', gap = 200 * io(lt, .25, .45) * (1 - io(lt, .9, .3));
+    ctx.save(); ctx.font = `900 ${fit(w, 1400, 230)}px ${FD}`; const ww = ctx.measureText(w).width, half = Math.floor(w.length / 2), wl = ctx.measureText(w.slice(0, half)).width; ctx.textBaseline = 'middle'; ctx.fillStyle = second ? PK : '#1FB7E0';
+    ctx.fillText(w.slice(0, half), CX - ww / 2 - gap / 2, CY); ctx.fillText(w.slice(half), CX - ww / 2 + wl + gap / 2, CY); ctx.restore(); if (gap > 40) win(second ? 'practice' : 'league', CX - ww / 2 + wl, CY, gap * .9, gap * 1.1, { scroll: 100 }); },
+  (t) => { fill(G(['#FFF1E8', '#FFE3F0'], 0, 0, W, H)); const a = "So'zdan — ", b = 'suhbatgacha'; T(a + b, CX, CY, 96, INK, { wt: 500, f: FB, alpha: ex(t, .1, .5) });
+    const x0 = CX - tw(a + b, 96, 500, FB) / 2 + tw(a, 96, 500, FB); ctx.fillStyle = PK; ctx.fillRect(x0, CY + 58, tw(b, 96, 500, FB) * io(t, .7, .5), 6); T(K.fr, 360, 270, 54, VI, { alpha: ex(t, .9, .4), f: FB }); },
+  (t) => { const dark = t < 1.5; fill(dark ? '#05030A' : WH); if (dark) { ctx.save(); ctx.shadowColor = PK; ctx.shadowBlur = 60; T(K.name, CX, CY, 220 * ex(t, .1, .4), PL, { wt: 900 }); ctx.restore(); return; }
+    const lt = t - 1.5; icon(CX, CY - 130, 170 * ex(lt, 0, .4)); T(K.name, CX, CY + 60, 110, INK, { wt: 900, alpha: ex(lt, .1, .4) }); T(K.url + ' · darslar bepul', CX, CY + 170, 38, 'rgba(26,22,64,.65)', { wt: 600, f: FB, alpha: ex(lt, .3, .4) }); },
+];
+const BAR = 2.5, lid = document.getElementById('lid'), cam = document.getElementById('cam'), glow = document.getElementById('glow'), refl = document.getElementById('refl'), cap = document.getElementById('cap');
+function frame(t) {
+  const i = Math.min(SC.length - 1, Math.floor(t / BAR)), lt = t - i * BAR;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; SC[i](lt);
+  // sahnalar orasida qisqa xira o'tish (ekran ichida)
+  const o = io(lt, BAR - .18, .18); if (o > 0) { ctx.globalAlpha = o * .6; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  // ekran yorug'ligi xona va klaviaturaga tushadi
+  const SCOL = ['#3B45FF', '#EDE6FF', '#FFFFFF', '#F6B3DD', '#FFFFFF', '#F3F0FF', '#2A2550', '#5B4BFF', '#F3F0FF', '#BEEFFF', '#FFE9EE', lt < 1.5 ? '#FF6BAE' : '#FFFFFF'], c = SCOL[i];
+  glow.style.background = `radial-gradient(closest-side,${c},rgba(0,0,0,0))`; refl.style.background = `radial-gradient(70% 60% at 50% 0%,${c},rgba(0,0,0,0))`;
+  // qo'lda ushlangan kamera: juda sekin suzish va yaqinlashish
+  const s = 1 + .06 * (t / 30), rx = Math.sin(t * .35) * 1.6, ry = Math.sin(t * .27 + 1) * 2.2, dx = Math.sin(t * .5) * 8, dy = Math.cos(t * .43) * 6;
+  cam.style.transform = `translate(${dx}px,${dy}px) scale(${s}) rotateX(${rx}deg) rotateY(${ry}deg)`; cam.style.transformOrigin = '540px 980px';
+  cap.style.opacity = cl(t / .4);
+}
+window.seek = (t) => frame(Math.max(0, Math.min(29.999, t)));
+window.DUR = 30;
+window.ready = (async () => {
+  for (const f of ['500 40px Onest', '600 40px Onest', '800 40px Onest', '800 40px Unbounded', '900 40px Unbounded', '700 40px "Noto Sans KR"']) await document.fonts.load(f, "AaÀ한안녕잘·'→—");
+  const load = (k, src) => new Promise((r) => { const i = new Image(); i.onload = () => { IMG[k] = i; r(); }; i.onerror = r; i.src = src; });
+  await Promise.all([load('icon', `img/icon-${APP}.png`), ...['map', 'tutor', 'practice', 'league', 'shop', 'profile'].map((n) => load(n, `img/${APP}-${n}.png`))]);
+  seek(0);
+})();
+</script></body></html>
