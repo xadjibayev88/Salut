@@ -140,7 +140,7 @@ describe('telegram bot', () => {
   it('welcome message has the app button and the Super offer', async () => {
     const { calls, bot } = setup();
     await bot.handle(msg(9, { text: '/start' }));
-    const last = calls.at(-1)!;
+    const last = calls.find((c) => String(c.body.text).includes('Assalomu alaykum'))!;
     expect(last.body.text).toContain('Assalomu alaykum');
     expect(JSON.stringify(last.body.reply_markup)).toContain('web_app');
   });
@@ -175,5 +175,32 @@ describe('telegram bot', () => {
     expect(tgLoginStatus(old)).toBe('expired');
     await bot.handle(cb(22, `tgl:${old}`));
     expect(takeTgLogin(old)).toBeNull();
+  });
+
+  it('/start gives every user the bottom menu; only the admin gets «📊 Statistika»', async () => {
+    process.env.ADMIN_TELEGRAM_CHAT_ID = '777';
+    const { calls, bot } = setup();
+    await bot.handle(msg(31, { text: '/start' }));
+    const userMenu = JSON.stringify(calls.at(-1)!.body.reply_markup);
+    expect(userMenu).toContain('Super tariflar');
+    expect(userMenu).toContain('web_app');
+    expect(userMenu).not.toContain('Statistika');
+    await bot.handle(msg(777, { text: '/start' }));
+    expect(JSON.stringify(calls.at(-1)!.body.reply_markup)).toContain('Statistika');
+    delete process.env.ADMIN_TELEGRAM_CHAT_ID;
+  });
+
+  it('menu buttons and /help answer', async () => {
+    const { calls, bot } = setup();
+    await bot.handle(msg(32, { text: '💎 Super tariflar' }));
+    expect(String(calls.at(-1)!.body.text)).toContain('Super');
+    await bot.handle(msg(32, { text: '❓ Yordam' }));
+    expect(String(calls.at(-1)!.body.text)).toContain('yordam');
+  });
+
+  it('inline mode offers sharing the app', async () => {
+    const { calls, bot } = setup();
+    await bot.handle({ inline_query: { id: 'iq1', from: { id: 33 }, query: '' } });
+    expect(calls.find((c) => c.method === 'answerInlineQuery')!.body.results.length).toBeGreaterThan(0);
   });
 });
