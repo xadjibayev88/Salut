@@ -3,7 +3,7 @@ const {chromium}=require('playwright');const fs=require('fs');
 const X='/home/user/gotopic/media/sfx/';
 const SND={whooshs:'whoosh/simple-whoosh-382724.mp3',swoosh:'whoosh/swoosh-014-383768.mp3',whoosh3:'whoosh/universfield-swoosh-023-454830.mp3',
   whooshend:'whoosh/whoosh-end-384629.mp3',swoosh2:'whoosh/swoosh-2-359826.mp3',softpop:'pop/soft-subtle-ui-pop-sfx-348820.mp3',pop:'pop/soft-pop-sfx-433612.mp3',
-  tick:'click/ui-sound-374228.mp3',tap:'click/confirm-tap-394001.mp3',shine:'scifi/benkirb-shine-1-268902.mp3'};
+  tick:'click/ui-sound-374228.mp3',ping:'notify/happy-message-ping-351298.mp3',success:'success/success-340660.mp3',tap:'click/confirm-tap-394001.mp3',shine:'scifi/benkirb-shine-1-268902.mp3'};
 // [boshlanish, ovoz, balandlik, maks. uzunlik] — har birining cho'qqisi kadrdagi harakat bilan mos
 const CUES=JSON.parse(require('fs').readFileSync(process.argv[4],'utf8'));
 (async()=>{

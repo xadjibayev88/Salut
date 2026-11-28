@@ -1,0 +1,120 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;800;900&family=Onest:wght@500;600;700;800&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* «SERIYA» — bitta funksiyani tanishtiruvchi 15 s reklama (namuna tuzilmasida): bildirishnoma → ikonka → dars → 364→365 → yo'l → so'zlar → «Seriyani saqla!» → logo. */
+const APP = new URLSearchParams(location.search).get('app') || 'voila';
+const K = {
+  voila: { name: 'Voilà!', flag: '🇫🇷', say: "Je voudrais un café,", say2: "s'il vous plaît.", answer: ['Bir', 'kofe', 'bering,', 'iltimos'], extra: ['choy', 'suv', 'non'], unit: 'LINIYA 7', unitT: 'Kafeda buyurtma', coin: '🪙' },
+  gotopic: { name: 'Go Topic', flag: '🇰🇷', say: '커피 한 잔', say2: '주세요.', answer: ['Bir', 'kofe', 'bering,', 'iltimos'], extra: ['choy', 'suv', 'non'], unit: 'LINIYA 7', unitT: 'Kafeda buyurtma', coin: '🐯' },
+}[APP];
+const W = 1080, H = 1920, CX = 540, CY = 960;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const VI = '#9B5CFF', VD = '#7B5CF0', PK = '#FF6B9A', CYN = '#7FE3FF', GD = '#FFD23F', OR = '#FF8A3A', WH = '#FFFFFF', LB = '#F3F1FB', INK = '#1A1640', DK = '#14122B', DK2 = '#1E1B3D', GRN = '#2BD47A', MUTE = '#C9C4DF';
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10), expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const eio = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+const ex = (t, a, d) => expo((t - a) / d), io = (t, a, d) => eio((t - a) / d);
+/** kritik so'ndirilgan prujina (sakramaydi) */
+const spr = (t, a, w = 14) => (t <= a ? 0 : 1 - (1 + w * (t - a)) * Math.exp(-w * (t - a)));
+const FB = "'Onest','Noto Sans KR','Noto Color Emoji',sans-serif", FD = "'Unbounded','Noto Sans KR','Noto Color Emoji',sans-serif";
+let ICON = null;
+function T(s, x, y, size, color, o = {}) { ctx.save(); ctx.font = `${o.wt || 800} ${size}px ${o.f || FB}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = color; if (o.alpha != null) ctx.globalAlpha *= o.alpha; ctx.fillText(s, x, y); ctx.restore(); }
+const tw = (s, size, wt = 800, f = FB) => { ctx.font = `${wt} ${size}px ${f}`; return ctx.measureText(s).width; };
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function G(st, x0, y0, x1, y1) { const g = ctx.createLinearGradient(x0, y0, x1, y1); st.forEach((c, i) => g.addColorStop(i / (st.length - 1), c)); return g; }
+function fill(c) { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); }
+const BRAND = () => G([CYN, VI, PK], 0, 0, W, H);
+function icon(x, y, s, r = .22) { if (!ICON) return; ctx.save(); rr(x - s / 2, y - s / 2, s, s, s * r); ctx.clip(); ctx.drawImage(ICON, x - s / 2, y - s / 2, s, s); ctx.restore(); }
+function face(x, y, s) { if (!ICON) return; ctx.save(); ctx.beginPath(); ctx.arc(x, y, s / 2, 0, 7); ctx.clip(); ctx.drawImage(ICON, 0, 0, ICON.width, ICON.height, x - s * .62, y - s * .62, s * 1.24, s * 1.24); ctx.restore(); }
+function flame(x, y, s, k = 1) { ctx.save(); ctx.translate(x, y); ctx.scale(s / 200, s / 200 * (1 + .03 * Math.sin(k * 9)));
+  ctx.fillStyle = G([GD, OR, PK], 0, -120, 0, 110); ctx.beginPath(); ctx.moveTo(0, -120); ctx.bezierCurveTo(70, -60, 100, -10, 90, 40); ctx.bezierCurveTo(80, 95, 40, 115, 0, 115); ctx.bezierCurveTo(-40, 115, -80, 95, -90, 40); ctx.bezierCurveTo(-98, 0, -70, -30, -45, -55); ctx.bezierCurveTo(-40, -20, -20, -5, -10, -10); ctx.bezierCurveTo(-25, -50, -15, -90, 0, -120); ctx.fill();
+  ctx.fillStyle = '#FFE9A8'; ctx.beginPath(); ctx.moveTo(0, 10); ctx.bezierCurveTo(35, 40, 40, 70, 25, 90); ctx.bezierCurveTo(12, 105, -12, 105, -25, 90); ctx.bezierCurveTo(-40, 70, -30, 40, 0, 10); ctx.fill(); ctx.restore(); }
+function tile(s, x, y, o = {}) { const w = tw(s, 44, 700) + 56, h = 92; ctx.save(); ctx.globalAlpha *= o.alpha ?? 1; ctx.fillStyle = o.ghost ? '#E7E3F3' : WH; rr(x - w / 2, y - h / 2, w, h, 20); ctx.fill(); if (!o.ghost) { ctx.strokeStyle = MUTE; ctx.lineWidth = 4; rr(x - w / 2, y - h / 2, w, h, 20); ctx.stroke(); ctx.fillStyle = MUTE; ctx.fillRect(x - w / 2 + 10, y + h / 2 - 2, w - 20, 6); T(s, x, y - 2, 44, INK, { wt: 700 }); } ctx.restore(); return w; }
+function cursor(x, y, p = 0) { ctx.save(); ctx.translate(x, y); ctx.scale(1 - .15 * p, 1 - .15 * p); ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 14; ctx.fillStyle = WH; ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 74); ctx.lineTo(19, 56); ctx.lineTo(33, 86); ctx.lineTo(46, 80); ctx.lineTo(32, 51); ctx.lineTo(57, 51); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+const press = (t, a) => (t > a ? cl(1 - (t - a) / .25) : 0);
+
+/* 0–1.5: bosh ekran, bildirishnoma tushadi, dokdagi ikonka bosiladi */
+function sHome(t) {
+  fill(G(['#F2F0F7', '#E4E1EE'], 0, 0, 0, H));
+  const n = spr(t, .1, 12), ny = lerp(-260, 640, n); ctx.save(); ctx.shadowColor = 'rgba(26,22,64,.18)'; ctx.shadowBlur = 50; ctx.fillStyle = 'rgba(255,255,255,.92)'; rr(70, ny, 940, 230, 52); ctx.fill(); ctx.restore();
+  icon(170, ny + 115, 112); T(K.name, 260, ny + 72, 42, INK, { wt: 800, align: 'left' }); T('hozir', 960, ny + 72, 34, '#8E89A8', { wt: 500, align: 'right' });
+  T('364 kunlik seriyangiz', 260, ny + 128, 40, INK, { wt: 500, align: 'left' }); T('bugun kechasi tugaydi. 🔥', 260, ny + 178, 40, INK, { wt: 500, align: 'left' });
+  // dok
+  ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.6)'; rr(90, 1600, 900, 200, 60); ctx.fill(); ctx.restore();
+  const ap = ['#FFD86B', '#4AA3FF', null, '#FF7AB6', '#3DDC84']; ap.forEach((c, i) => { const x = 210 + i * 165; if (c) { ctx.fillStyle = c; rr(x - 62, 1638, 124, 124, 30); ctx.fill(); } else { const p = press(t, 1.15); ctx.save(); ctx.translate(x, 1700); ctx.scale(1 - .12 * p, 1 - .12 * p); icon(0, 0, 124); ctx.restore(); } });
+  cursor(lerp(900, 545, io(t, .6, .5)), lerp(1400, 1700, io(t, .6, .5)), press(t, 1.15));
+}
+/* 1.5–3: ikonka ekranni to'ldiradi, maskot doira ichida */
+function sZoom(t) {
+  const k = io(t, 0, .55); const s = lerp(124, 2600, k); fill('#E4E1EE'); ctx.save(); ctx.translate(lerp(540, CX, k), lerp(1700, CY, k)); ctx.fillStyle = BRAND(); rr(-s / 2, -s / 2, s, s, s * .22 * (1 - k)); ctx.fill(); ctx.restore();
+  if (k > .5) { fill(BRAND()); const c = spr(t, .45, 10); ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.beginPath(); ctx.arc(CX, CY, 330 * c, 0, 7); ctx.fill(); face(CX, CY - 10, 520 * c); }
+}
+/* 3–6: dars — «Gapni tarjima qiling», kartochkalar javob qatoriga uchadi */
+function sLesson(t) {
+  fill(WH); ctx.fillStyle = '#EEEAF8'; rr(160, 150, 700, 26, 13); ctx.fill(); ctx.fillStyle = G([CYN, VI], 160, 0, 860, 0); rr(160, 150, 700 * lerp(.35, .6, io(t, 2.4, .4)), 26, 13); ctx.fill(); T('✕', 90, 163, 54, '#B5B0CC', { wt: 600 }); T('❤️ 5', 960, 163, 40, INK);
+  T('Gapni tarjima qiling', 80, 320, 58, INK, { wt: 800, align: 'left' });
+  icon(150, 520, 170); ctx.strokeStyle = MUTE; ctx.lineWidth = 4; rr(270, 430, 720, 190, 34); ctx.stroke(); T('🔊 ' + K.say, 310, 495, 44, INK, { wt: 600, align: 'left' }); T(K.say2, 310, 560, 44, INK, { wt: 600, align: 'left' });
+  ctx.fillStyle = '#E7E3F3'; ctx.fillRect(80, 820, 920, 4); ctx.fillRect(80, 960, 920, 4);
+  // pastdagi kartochkalar joyi
+  const pool = [...K.answer, ...K.extra], pos = [[230, 1280], [470, 1280], [720, 1280], [300, 1410], [560, 1410], [800, 1410], [430, 1540]];
+  const order = [0, 1, 2, 3]; let ax = 90;
+  pool.forEach((s, i) => { const [px, py] = pos[i]; tile(s, px, py, { ghost: true }); });
+  pool.forEach((s, i) => { const [px, py] = pos[i]; const j = order.indexOf(i);
+    if (j < 0) { tile(s, px, py); return; } const k = io(t, .35 + j * .32, .3), w = tw(s, 44, 700) + 56, tx = ax + w / 2; ax += w + 18;
+    tile(s, lerp(px, tx, k), lerp(py, 890, k) - Math.sin(k * Math.PI) * 120); });
+  const ok = t > 1.85; ctx.fillStyle = ok ? G([VI, PK], 80, 0, 1000, 0) : '#E5E1F0'; rr(80, 1680, 920, 130, 30); ctx.fill(); T(ok ? 'TEKSHIRISH' : 'TEKSHIRISH', CX, 1745, 46, ok ? WH : '#A9A3C2', { wt: 800 });
+  if (t > 2.2) { const k = ex(t, 2.2, .35); ctx.fillStyle = '#DFF8EA'; rr(0, lerp(H, 1540, k), W, 420, 0); ctx.fill(); T('✓  Ajoyib!', 80, lerp(H + 70, 1610, k), 58, '#1B9E58', { wt: 800, align: 'left' }); ctx.fillStyle = GRN; rr(80, lerp(H + 200, 1690, k), 920, 130, 30); ctx.fill(); T('DAVOM ETISH', CX, lerp(H + 265, 1755, k), 46, WH, { wt: 800 }); }
+  cursor(lerp(700, 560, io(t, 1.6, .3)), lerp(1500, 1760, io(t, 1.6, .3)), press(t, 1.85));
+}
+/* 6–7.5: qorong'i ekran — olov, 364 → 365, hafta nuqtalari */
+function sStreak(t) {
+  fill(DK); const k = spr(t, 0, 9); flame(CX, 700, 420 * k, t); const flip = io(t, .55, .3);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 860, W, 240); ctx.clip(); ctx.font = `900 230px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = G([GD, OR], 0, 880, 0, 1080);
+  ctx.fillText('364', CX, 980 - flip * 240); ctx.fillText('365', CX, 1220 - flip * 240); ctx.restore();
+  T('kunlik seriya!', CX, 1150, 56, OR, { wt: 800, alpha: ex(t, .2, .4) });
+  ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].forEach((d, i) => { const x = 220 + i * 107; T(d, x, 1300, 34, '#8E89A8', { wt: 600 }); const on = i < 6 || flip > .6; const p = i === 6 ? spr(t, .85, 14) : 1;
+    ctx.fillStyle = on ? OR : '#2E2A55'; ctx.beginPath(); ctx.arc(x, 1380, 38 * (on && i === 6 ? p : 1), 0, 7); ctx.fill(); if (on) T('✓', x, 1382, 40 * (i === 6 ? p : 1), WH, { wt: 900 }); });
+}
+/* 7.5–9.5: darslar yo'li */
+function sPath(t) {
+  fill(DK); ctx.fillStyle = DK2; ctx.fillRect(0, 0, W, 170); T(K.flag, 80, 100, 54, WH); T('🔥 365', 330, 100, 44, OR, { wt: 800 }); T(K.coin + ' 500', 600, 100, 44, GD, { wt: 800 }); T('❤️ 5', 880, 100, 44, PK, { wt: 800 });
+  const nodes = [[620, 560], [500, 760], [430, 980], [520, 1200], [640, 1420]], cam = lerp(0, -160, io(t, 0, 1.6));
+  ctx.save(); ctx.translate(0, cam); nodes.forEach(([x, y], i) => { const done = i < 2 || (i === 2 && t > 1.05), cur = i === 2;
+    if (cur) { ctx.strokeStyle = GD; ctx.lineWidth = 14; ctx.beginPath(); ctx.arc(x, y, 112, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * io(t, .2, .8)); ctx.stroke(); }
+    const p = cur ? spr(t, 1.05, 12) : 1; ctx.fillStyle = done ? G([VI, PK], x - 80, y, x + 80, y) : '#2E2A55'; ctx.beginPath(); ctx.arc(x, y, 82 * (cur ? lerp(1, 1.08, Math.sin(p * Math.PI)) : 1), 0, 7); ctx.fill();
+    T(done ? '✓' : '★', x, y + 3, 72, done ? WH : '#4B4677', { wt: 900 }); if (cur && t > 1.2) T('BOSHLASH', x + 220, y, 38, GD, { wt: 800, alpha: ex(t, 1.2, .3) }); }); ctx.restore();
+  ctx.fillStyle = DK; ctx.fillRect(0, 170, W, 250); ctx.fillStyle = G([VI, PK], 0, 0, W, 0); rr(60, 210, 960, 190, 36); ctx.fill(); T(K.unit, 110, 270, 38, 'rgba(255,255,255,.8)', { wt: 800, align: 'left' }); T(K.unitT, 110, 335, 56, WH, { wt: 800, align: 'left' });
+}
+/* 9.5–11: so'zlar barabani, tanlov ramkasi «Saqla»ga keladi */
+function sWords(t) {
+  fill(DK); const ws = ["O'rgan", 'Mashq qil', 'Gapir', 'Muzlat', 'Saqla'], f = cl(t / 1.1) * 4, idx = Math.min(4, Math.round(f));
+  ws.forEach((w, i) => { const d = i - f, y = CY + d * 170, a = cl(1 - Math.abs(d) * .4), act = i === idx; T(w, CX, y, act ? 130 : 110, act ? WH : '#5D5888', { f: FD, wt: 900, alpha: a }); });
+  const w = tw(ws[idx], 130, 900, FD) + 60; ctx.strokeStyle = GRN; ctx.lineWidth = 5; ctx.strokeRect(CX - w / 2, CY - 95, w, 190); ctx.fillStyle = GRN; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => ctx.fillRect(CX + sx * w / 2 - 10, CY + sy * 95 - 10, 20, 20));
+  if (t > 1.15) { const k = io(t, 1.15, .35), R = lerp(0, 2400, k); ctx.fillStyle = BRAND(); ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.fill(); }
+}
+/* 11–13: «Seriyani saqla!» */
+function sKeep(t) {
+  fill(BRAND()); const a = spr(t, 0, 12); T('Seriyani', CX, 820, 110 * a, WH, { f: FD, wt: 900 });
+  const b = spr(t, .3, 12); ctx.save(); ctx.translate(CX, 990); ctx.scale(b, b); const w = tw('saqla!', 170, 900, FD) + 70; ctx.strokeStyle = WH; ctx.lineWidth = 6; ctx.strokeRect(-w / 2, -110, w, 220); ctx.fillStyle = WH; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => ctx.fillRect(sx * w / 2 - 12, sy * 110 - 12, 24, 24)); T('saqla!', 0, 0, 170, WH, { f: FD, wt: 900 }); ctx.restore();
+  if (t > .9) { const k = spr(t, .9, 10); flame(CX, 590 - (1 - k) * 200, 220 * k, t); }
+}
+/* 13–15: oq ekran — maskot, olov uchqun, logo */
+function sEnd(t) {
+  fill(WH); const k = spr(t, 0, 11), m = io(t, .9, .5);
+  ctx.save(); const nw = tw(K.name, 120, 900, FD), s = 400 * k * lerp(1, .55, m), x = lerp(CX, CX - (220 + 40 + nw) / 2 + 110, m); flame(x, CY - 260 * (1 - m) - s * .55, 150 * k * (1 - m), t); icon(x, CY, s); ctx.restore();
+  if (m > 0) T(K.name, x + s / 2 + 40, CY, 120, INK, { f: FD, wt: 900, alpha: m, align: 'left' });
+  T("o'yin kabi o'rganing · darslar bepul", CX, CY + 220, 38, '#8E89A8', { wt: 600, alpha: ex(t, 1.3, .4) });
+}
+const SC = [[0, 1.5, sHome], [1.5, 3, sZoom], [3, 6, sLesson], [6, 7.5, sStreak], [7.5, 9.5, sPath], [9.5, 11, sWords], [11, 13, sKeep], [13, 15, sEnd]];
+function frame(t) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; const [a, b, fn] = SC.find(([a, b]) => t >= a && t < b) || SC[SC.length - 1]; const lt = t - a, push = 1 + .025 * lt / (b - a); ctx.translate(CX, CY); ctx.scale(push, push); ctx.translate(-CX, -CY); fn(lt); }
+window.seek = (t) => frame(Math.max(0, Math.min(14.999, t)));
+window.DUR = 15;
+window.ready = (async () => {
+  for (const f of ['500 40px Onest', '600 40px Onest', '700 40px Onest', '800 40px Onest', '900 40px Unbounded', '700 40px "Noto Sans KR"', '40px "Noto Color Emoji"']) await document.fonts.load(f, "AaÀ한커피잔주세요✕❤️🔊🔥🪙🐯🇫🇷🇰🇷✓★");
+  ICON = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = `img/icon-${APP}.png`; });
+  seek(0);
+})();
+</script></body></html>

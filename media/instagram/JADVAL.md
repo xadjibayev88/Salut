@@ -283,4 +283,36 @@ Darslar bepul — havola profilda 👆
 
 ---
 
+## 30-noyabr — «Seriya» (15 s)
+
+| Vaqt | @voila_ai.uz | @gotopic.uz |
+|---|---|---|
+| 12:30 | `voila/motion/v-seriya.mp4` | `gotopic/motion/g-seriya.mp4` |
+
+Muqova: bildirishnoma chiqqan birinchi kadr. Ovozi videoning o'zida.
+
+**@voila_ai.uz · 12:30 · Seriya**
+```
+364 kunlik seriyangiz bugun kechasi tugaydi… 😱🔥
+Bugungi darsni qiling — 5 daqiqa yetadi.
+
+Gapni tarjima qiling → seriya 365 → Vivi xursand 🐱
+Seriyani saqla! Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #seriya #tilorganish #uzbekistan #voila
+```
+
+**@gotopic.uz · 12:30 · Seriya**
+```
+364 kunlik seriyangiz bugun kechasi tugaydi… 😱🔥
+Bugungi darsni qiling — 5 daqiqa yetadi.
+
+커피 한 잔 주세요 → seriya 365 → Hori xursand 🐯
+Seriyani saqla! Darslar bepul — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #seriya #uzbekistan #gotopic
+```
+
+---
+
 **Har bir Reel'dan keyin (30 soniya):** shu Reel'ni Stories'ga ulashing va «Havola» stikerini qo'shing (sayt manzili). Birinchi soatda kelgan izohlarga javob bering — Instagram buni ko'proq odamga ko'rsatadi.
