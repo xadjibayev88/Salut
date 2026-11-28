@@ -1,0 +1,105 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;800;900&family=Onest:wght@500;600;700;800&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{background:#000;overflow:hidden}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* «SERIYA» — bitta funksiyani tanishtiruvchi 15 s reklama (namuna tuzilmasida): bildirishnoma → ikonka → dars → 364→365 → yo'l → so'zlar → «Seriyani saqla!» → logo. */
+const APP = new URLSearchParams(location.search).get('app') || 'voila';
+const K = {
+  voila: { name: 'Voilà!', ai: 'Vivi', q: "Bonjour ! Comment tu t'appelles ?", qUz: 'Salom! Isming nima?', me: "Je m'appelle Aziza.", wrong: 'Je suis 20 ans.', right: "J'ai 20 ans.", tip: "Yoshni « avoir » bilan aytamiz", me2: 'Aziza' },
+  gotopic: { name: 'Go Topic', ai: 'Hori', q: '안녕하세요! 이름이 뭐예요?', qUz: 'Salom! Ismingiz nima?', me: '제 이름은 자수르예요.', wrong: '저는 20살 있어요.', right: '저는 20살이에요.', tip: "Yoshni « 이에요 » bilan aytamiz", me2: 'Jasur' },
+}[APP];
+const W = 1080, H = 1920, CX = 540, CY = 960;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const VI = '#9B5CFF', VD = '#7B5CF0', PK = '#FF6B9A', CYN = '#7FE3FF', GD = '#FFD23F', OR = '#FF8A3A', WH = '#FFFFFF', LB = '#F3F1FB', INK = '#1A1640', DK = '#14122B', DK2 = '#1E1B3D', GRN = '#2BD47A', MUTE = '#C9C4DF';
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), lerp = (a, b, x) => a + (b - a) * x;
+const N10 = 1 - Math.pow(2, -10), expo = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.pow(2, -10 * x)) / N10);
+const eio = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? (1 - expo(1 - 2 * x)) / 2 : (1 + expo(2 * x - 1)) / 2);
+const ex = (t, a, d) => expo((t - a) / d), io = (t, a, d) => eio((t - a) / d);
+/** kritik so'ndirilgan prujina (sakramaydi) */
+const spr = (t, a, w = 14) => (t <= a ? 0 : 1 - (1 + w * (t - a)) * Math.exp(-w * (t - a)));
+const FB = "'Onest','Noto Sans KR','Noto Color Emoji',sans-serif", FD = "'Unbounded','Noto Sans KR','Noto Color Emoji',sans-serif";
+let ICON = null;
+function T(s, x, y, size, color, o = {}) { ctx.save(); ctx.font = `${o.wt || 800} ${size}px ${o.f || FB}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = color; if (o.alpha != null) ctx.globalAlpha *= o.alpha; ctx.fillText(s, x, y); ctx.restore(); }
+const tw = (s, size, wt = 800, f = FB) => { ctx.font = `${wt} ${size}px ${f}`; return ctx.measureText(s).width; };
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function G(st, x0, y0, x1, y1) { const g = ctx.createLinearGradient(x0, y0, x1, y1); st.forEach((c, i) => g.addColorStop(i / (st.length - 1), c)); return g; }
+function fill(c) { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); }
+const BRAND = () => G([CYN, VI, PK], 0, 0, W, H);
+function icon(x, y, s, r = .22) { if (!ICON) return; ctx.save(); rr(x - s / 2, y - s / 2, s, s, s * r); ctx.clip(); ctx.drawImage(ICON, x - s / 2, y - s / 2, s, s); ctx.restore(); }
+function face(x, y, s) { if (!ICON) return; ctx.save(); ctx.beginPath(); ctx.arc(x, y, s / 2, 0, 7); ctx.clip(); ctx.drawImage(ICON, 0, 0, ICON.width, ICON.height, x - s * .62, y - s * .62, s * 1.24, s * 1.24); ctx.restore(); }
+function flame(x, y, s, k = 1) { ctx.save(); ctx.translate(x, y); ctx.scale(s / 200, s / 200 * (1 + .03 * Math.sin(k * 9)));
+  ctx.fillStyle = G([GD, OR, PK], 0, -120, 0, 110); ctx.beginPath(); ctx.moveTo(0, -120); ctx.bezierCurveTo(70, -60, 100, -10, 90, 40); ctx.bezierCurveTo(80, 95, 40, 115, 0, 115); ctx.bezierCurveTo(-40, 115, -80, 95, -90, 40); ctx.bezierCurveTo(-98, 0, -70, -30, -45, -55); ctx.bezierCurveTo(-40, -20, -20, -5, -10, -10); ctx.bezierCurveTo(-25, -50, -15, -90, 0, -120); ctx.fill();
+  ctx.fillStyle = '#FFE9A8'; ctx.beginPath(); ctx.moveTo(0, 10); ctx.bezierCurveTo(35, 40, 40, 70, 25, 90); ctx.bezierCurveTo(12, 105, -12, 105, -25, 90); ctx.bezierCurveTo(-40, 70, -30, 40, 0, 10); ctx.fill(); ctx.restore(); }
+function tile(s, x, y, o = {}) { const w = tw(s, 44, 700) + 56, h = 92; ctx.save(); ctx.globalAlpha *= o.alpha ?? 1; ctx.fillStyle = o.ghost ? '#E7E3F3' : WH; rr(x - w / 2, y - h / 2, w, h, 20); ctx.fill(); if (!o.ghost) { ctx.strokeStyle = MUTE; ctx.lineWidth = 4; rr(x - w / 2, y - h / 2, w, h, 20); ctx.stroke(); ctx.fillStyle = MUTE; ctx.fillRect(x - w / 2 + 10, y + h / 2 - 2, w - 20, 6); T(s, x, y - 2, 44, INK, { wt: 700 }); } ctx.restore(); return w; }
+function cursor(x, y, p = 0) { ctx.save(); ctx.translate(x, y); ctx.scale(1 - .15 * p, 1 - .15 * p); ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 14; ctx.fillStyle = WH; ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 74); ctx.lineTo(19, 56); ctx.lineTo(33, 86); ctx.lineTo(46, 80); ctx.lineTo(32, 51); ctx.lineTo(57, 51); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+const press = (t, a) => (t > a ? cl(1 - (t - a) / .25) : 0);
+
+const typed = (s, k) => s.slice(0, Math.round(s.length * cl(k)));
+
+function bubble(x, y, w, h, fillc, r = 40) { ctx.fillStyle = fillc; rr(x, y, w, h, r); ctx.fill(); }
+function wave(x, y, w, h, t, c, amp = 1) { const n = Math.floor(w / 18); for (let b = 0; b < n; b++) { const hh = 12 + (h - 12) * Math.abs(Math.sin(t * 9 + b * .55)) * amp; ctx.fillStyle = c; rr(x + b * 18, y - hh / 2, 9, hh, 4); ctx.fill(); } }
+/* 0–1.5: kiruvchi qo'ng'iroq — Vivi qo'ng'iroq qilyapti */
+function sCall(t) {
+  fill(G(['#1B1540', '#0B0D24'], 0, 0, 0, H)); T('ovozli qo\'ng\'iroq · ' + K.name, CX, 330, 38, 'rgba(255,255,255,.6)', { wt: 600 }); T(K.ai, CX, 420, 96, WH, { f: FD, wt: 900 });
+  for (let i = 0; i < 3; i++) { const p = ((t * .9 + i / 3) % 1); ctx.strokeStyle = `rgba(180,156,255,${.6 * (1 - p)})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(CX, 860, 190 + p * 220, 0, 7); ctx.stroke(); }
+  face(CX, 860, 360 * spr(t, 0, 12));
+  const acc = press(t, 1.05); ctx.fillStyle = '#FF4D6A'; ctx.beginPath(); ctx.arc(300, 1520, 95, 0, 7); ctx.fill(); T('✕', 300, 1522, 70, WH, { wt: 900 });
+  ctx.save(); ctx.translate(780, 1520); ctx.scale(1 - .12 * acc, 1 - .12 * acc); ctx.fillStyle = GRN; ctx.beginPath(); ctx.arc(0, 0, 95, 0, 7); ctx.fill(); T('📞', 0, 4, 70, WH); ctx.restore();
+  T('Rad etish', 300, 1670, 34, 'rgba(255,255,255,.7)', { wt: 600 }); T('Qabul qilish', 780, 1670, 34, 'rgba(255,255,255,.7)', { wt: 600 });
+  cursor(lerp(960, 790, io(t, .5, .45)), lerp(1800, 1530, io(t, .5, .45)), acc);
+}
+/* 1.5–3: yashil tugma ekranni to'ldiradi → suhbat ekrani, taymer */
+function sOpen(t) {
+  const k = io(t, 0, .5); fill(G(['#1B1540', '#0B0D24'], 0, 0, 0, H)); ctx.fillStyle = BRAND(); ctx.beginPath(); ctx.arc(780, 1520, lerp(95, 2400, k), 0, 7); ctx.fill();
+  if (k > .6) { face(CX, 700, 300 * spr(t, .4, 12)); T(K.ai + ' AI', CX, 930, 64, WH, { f: FD, wt: 900, alpha: ex(t, .5, .3) }); T('00:0' + Math.min(9, Math.floor(t * 2)), CX, 1010, 40, 'rgba(255,255,255,.8)', { wt: 600 }); wave(270, 1200, 560, 120, t, 'rgba(255,255,255,.9)', ex(t, .7, .4)); }
+}
+/* 3–6.5: suhbat — subtitrlar, xato belgilanadi va kartochkada tuzatiladi */
+function sChat(t) {
+  fill(LB); ctx.fillStyle = BRAND(); ctx.fillRect(0, 0, W, 230); face(120, 140, 120); T(K.ai + ' AI · jonli', 210, 120, 44, WH, { wt: 800, align: 'left' }); T('🔴 00:0' + Math.min(9, 3 + Math.floor(t)), 210, 175, 32, 'rgba(255,255,255,.85)', { wt: 600, align: 'left' }); wave(700, 150, 300, 70, t, 'rgba(255,255,255,.9)');
+  const b1 = spr(t, 0, 13); ctx.save(); ctx.translate(70, 320); ctx.scale(b1, b1); bubble(0, 0, 820, 200, WH); T('🔊 ' + K.q, 40, 70, 40, INK, { wt: 700, align: 'left' }); T(K.qUz, 40, 140, 34, '#8E89A8', { wt: 500, align: 'left' }); ctx.restore();
+  const b2 = spr(t, .7, 13); ctx.save(); ctx.translate(1010, 600); ctx.scale(b2, b2); const w2 = tw(K.me, 42, 700) + 90; bubble(-w2, 0, w2, 130, G([VI, PK], -w2, 0, 0, 0)); T(typed(K.me, (t - .75) / .5), -w2 + 45, 65, 42, WH, { wt: 700, align: 'left' }); ctx.restore();
+  const b3 = spr(t, 1.4, 13); ctx.save(); ctx.translate(1010, 790); ctx.scale(b3, b3); const w3 = tw(K.wrong, 42, 700) + 90; bubble(-w3, 0, w3, 130, G([VI, PK], -w3, 0, 0, 0)); T(K.wrong, -w3 + 45, 65, 42, WH, { wt: 700, align: 'left' });
+  if (t > 1.9) { ctx.strokeStyle = '#FF4D6A'; ctx.lineWidth = 6; ctx.beginPath(); for (let x = 0; x < (w3 - 90) * io(t, 1.9, .3); x += 12) { const xx = -w3 + 45 + x; ctx.lineTo(xx, 100 + (x / 12 % 2 ? 8 : 0)); } ctx.stroke(); } ctx.restore();
+  if (t > 2.3) { const f = io(t, 2.3, .45), sc = Math.abs(Math.cos(f * Math.PI)), show = f > .5; ctx.save(); ctx.translate(CX, 1200); ctx.scale(1, sc); bubble(-470, -150, 940, 300, show ? '#E9FBF1' : '#FFE8EC', 44);
+    if (show) { T('✓ ' + K.right, -420, -50, 56, '#1B9E58', { wt: 800, align: 'left' }); T(K.tip, -420, 50, 36, '#3E7A5C', { wt: 600, align: 'left' }); } else { T('✕ ' + K.wrong, -420, 0, 56, '#E0344F', { wt: 800, align: 'left' }); } ctx.restore(); }
+}
+/* 6.5–8: talaffuz bahosi halqasi 0 → 92% */
+function sScore(t) {
+  fill(DK); const p = .92 * expo(cl(t / .9)); ctx.lineCap = 'round'; ctx.strokeStyle = '#2E2A55'; ctx.lineWidth = 46; ctx.beginPath(); ctx.arc(CX, 860, 300, 0, 7); ctx.stroke();
+  ctx.strokeStyle = G([CYN, VI, PK], CX - 300, 0, CX + 300, 0); ctx.beginPath(); ctx.arc(CX, 860, 300, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke();
+  T(Math.round(p * 100) + '%', CX, 850, 170, WH, { f: FD, wt: 900 }); T('talaffuz', CX, 980, 48, '#8E89A8', { wt: 700 });
+  [0, 1, 2].forEach((i) => { const s = spr(t, .9 + i * .15, 14); T('⭐', CX - 170 + i * 170, 1330, 120 * s, GD); });
+}
+/* 8–10: liga jadvali — siz 7-o'rindan 2-o'ringa ko'tarilasiz */
+function sLeague(t) {
+  fill(LB); T('Kurtak liga · bu hafta', CX, 230, 50, INK, { wt: 800 }); const names = ['Malika', 'Sardor', 'Dilnoza', 'Bekzod', 'Nodira', 'Javohir', K.me2], xp = [2350, 2180, 2105, 1990, 1870, 1760, 1680];
+  const up = io(t, .5, .9), meXp = Math.round(lerp(1680, 2240, up)); const order = names.map((n, i) => ({ n, xp: i === 6 ? meXp : xp[i], me: i === 6 })).sort((a, b) => b.xp - a.xp);
+  names.forEach((n, i) => { const me = i === 6, rankStart = i, rankEnd = order.findIndex((o) => o.n === n), r = lerp(rankStart, rankEnd, up), y = 380 + r * 180;
+    ctx.save(); if (me) { ctx.shadowColor = 'rgba(155,92,255,.5)'; ctx.shadowBlur = 40; } bubble(70, y, 940, 150, me ? G([VI, PK], 70, 0, 1010, 0) : WH, 36); ctx.restore();
+    T(String(Math.round(r) + 1), 140, y + 75, 50, me ? WH : '#8E89A8', { wt: 900, f: FD }); if (me) face(250, y + 75, 100); else { ctx.fillStyle = ['#FFD86B', '#7FE3FF', '#FF8FD0', '#B49CFF', '#3DDC84', '#FFB36B'][i]; ctx.beginPath(); ctx.arc(250, y + 75, 46, 0, 7); ctx.fill(); }
+    T(n, 330, y + 75, 46, me ? WH : INK, { wt: 800, align: 'left' }); T((me ? meXp : xp[i]) + ' XP', 970, y + 75, 42, me ? WH : '#8E89A8', { wt: 800, align: 'right' }); });
+  if (t > 1.45) T('🏆 Top-2!', CX, 1760, 70, VD, { f: FD, wt: 900, alpha: spr(t, 1.45, 12) });
+}
+/* 10–11.5: uch so'z zarbma-zarb */
+function sWords3(t) { const i = Math.min(2, Math.floor(t / .5)), lt = t - i * .5, bgs = [VI, PK, '#1FB7E0'], ws = ['Tingla.', 'Gapir.', 'Tuzat.']; fill(bgs[i]); const s = spr(lt, 0, 16); ctx.save(); ctx.translate(CX, CY); ctx.rotate((1 - s) * (i % 2 ? .2 : -.2)); ctx.scale(lerp(1.6, 1, s), lerp(1.6, 1, s)); T(ws[i], 0, 0, 200, WH, { f: FD, wt: 900 }); ctx.restore(); }
+/* 11.5–13: repetitor bilan solishtiruv */
+function sPrice(t) {
+  fill(WH); T("Repetitor bilan bir oy", CX, 620, 50, '#8E89A8', { wt: 700, alpha: ex(t, 0, .3) }); T("400 000 so'm", CX, 740, 100, '#B5B0CC', { f: FD, wt: 900, alpha: ex(t, .1, .3) });
+  const st = io(t, .45, .3); ctx.fillStyle = '#FF4D6A'; ctx.fillRect(CX - 380, 735, 760 * st, 12);
+  const k = spr(t, .75, 12); ctx.save(); ctx.translate(CX, 1000); ctx.scale(k, k); bubble(-430, -130, 860, 260, G([VI, PK], -430, 0, 430, 0), 60); T(K.ai + " AI · 69 000 so'm", 0, -30, 64, WH, { f: FD, wt: 900 }); T('24/7 · ovozli · cheksiz', 0, 60, 40, 'rgba(255,255,255,.9)', { wt: 700 }); ctx.restore();
+}
+/* 13–15: logo */
+function sLogo(t) { fill(BRAND()); const k = spr(t, 0, 11), m = io(t, .7, .5); const nw = tw(K.name, 120, 900, FD), x = lerp(CX, CX - (220 + 40 + nw) / 2 + 110, m), s = 380 * k * lerp(1, .58, m);
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 60; icon(x, CY, s); ctx.restore(); if (m > 0) T(K.name, x + s / 2 + 40, CY, 120, WH, { f: FD, wt: 900, alpha: m, align: 'left' }); T("Bugun bepul boshlang 👇", CX, CY + 230, 44, WH, { wt: 700, alpha: ex(t, 1.1, .4) }); }
+const SC = [[0, 1.5, sCall], [1.5, 3, sOpen], [3, 6.5, sChat], [6.5, 8, sScore], [8, 10, sLeague], [10, 11.5, sWords3], [11.5, 13, sPrice], [13, 15, sLogo]];
+function frame(t) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; const [a, b, fn] = SC.find(([a, b]) => t >= a && t < b) || SC[SC.length - 1]; const lt = t - a, push = 1 + .025 * lt / (b - a); ctx.translate(CX, CY); ctx.scale(push, push); ctx.translate(-CX, -CY); fn(lt); }
+window.seek = (t) => frame(Math.max(0, Math.min(14.999, t)));
+window.DUR = 15;
+window.ready = (async () => {
+  for (const f of ['500 40px Onest', '600 40px Onest', '700 40px Onest', '800 40px Onest', '900 40px Unbounded', '700 40px "Noto Sans KR"', '40px "Noto Color Emoji"']) await document.fonts.load(f, "AaÀ한안녕하세요이름뭐예요제은자수르저는살있어이에✕🔊📞🔴⭐🏆👇✓");
+  ICON = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = `img/icon-${APP}.png`; });
+  seek(0);
+})();
+</script></body></html>

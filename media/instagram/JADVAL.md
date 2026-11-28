@@ -283,34 +283,40 @@ Darslar bepul — havola profilda 👆
 
 ---
 
-## 30-noyabr — «Seriya» (15 s)
+## 30-noyabr — «Qo'ng'iroq» (15 s)
 
 | Vaqt | @voila_ai.uz | @gotopic.uz |
 |---|---|---|
-| 12:30 | `voila/motion/v-seriya.mp4` | `gotopic/motion/g-seriya.mp4` |
+| 12:30 | `voila/motion/v-qongiroq.mp4` | `gotopic/motion/g-qongiroq.mp4` |
 
-Muqova: bildirishnoma chiqqan birinchi kadr. Ovozi videoning o'zida.
+Muqova: «Vivi / Hori qo'ng'iroq qilyapti» kadri. Ovozi videoning o'zida. («Seriya» videolari — `v-seriya.mp4`, `g-seriya.mp4` — avvalgi postga juda o'xshab qolgani uchun jadvaldan olindi.)
 
-**@voila_ai.uz · 12:30 · Seriya**
+**@voila_ai.uz · 12:30 · Qo'ng'iroq**
 ```
-364 kunlik seriyangiz bugun kechasi tugaydi… 😱🔥
-Bugungi darsni qiling — 5 daqiqa yetadi.
+Vivi qo'ng'iroq qilyapti… 📞🐱
+Qabul qiling — va fransuzcha gaplashing!
 
-Gapni tarjima qiling → seriya 365 → Vivi xursand 🐱
-Seriyani saqla! Darslar bepul — havola profilda 👆
+Xato qilsangiz, Vivi darhol tuzatadi: « Je suis 20 ans » ✕ → « J'ai 20 ans » ✓
+Talaffuz 92% ⭐ · ligada Top-2 🏆
 
-#fransuztili #fransuzcha #seriya #tilorganish #uzbekistan #voila
+Repetitor 400 000 so'm — Vivi AI 69 000 so'm, 24/7.
+Darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #ai #ustoz #tilorganish #uzbekistan #voila
 ```
 
-**@gotopic.uz · 12:30 · Seriya**
+**@gotopic.uz · 12:30 · Qo'ng'iroq**
 ```
-364 kunlik seriyangiz bugun kechasi tugaydi… 😱🔥
-Bugungi darsni qiling — 5 daqiqa yetadi.
+Hori qo'ng'iroq qilyapti… 📞🐯
+Qabul qiling — va koreyscha gaplashing!
 
-커피 한 잔 주세요 → seriya 365 → Hori xursand 🐯
-Seriyani saqla! Darslar bepul — havola profilda 👆
+Xato qilsangiz, Hori darhol tuzatadi: 저는 20살 있어요 ✕ → 저는 20살이에요 ✓
+Talaffuz 92% ⭐ · ligada Top-2 🏆
 
-#koreystili #hangul #topik #한국어 #seriya #uzbekistan #gotopic
+Repetitor 400 000 so'm — Hori AI 69 000 so'm, 24/7.
+Darslar bepul — havola profilda 👆
+
+#koreystili #koreyscha #한국어 #ai #topik #uzbekistan #gotopic
 ```
 
 ---
