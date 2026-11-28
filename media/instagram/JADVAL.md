@@ -321,4 +321,38 @@ Darslar bepul — havola profilda 👆
 
 ---
 
+## 1-dekabr — Launch film (27 s)
+
+| Vaqt | @voila_ai.uz | @gotopic.uz |
+|---|---|---|
+| 19:00 | `voila/motion/v-launch.mp4` | `gotopic/motion/g-launch.mp4` |
+
+Ovozi videoning o'zida (Mixkit musiqasi va effektlari). Suratlar Wikimedia Commons'dan — mualliflar tavsif oxirida ko'rsatilishi shart (CC BY / CC BY-SA). To'liq ro'yxat: `launch-src/CREDITS.txt`.
+
+**@voila_ai.uz · 19:00 · Launch**
+```
+Voilà! — fransuz tili endi telefoningizda. 🇫🇷
+Darslar xaritasi, Vivi AI ustoz, seriya va sertifikat — bitta ilovada.
+
+Bugun boshlang: darslar bepul — havola profilda 👆
+
+#fransuztili #fransuzcha #tilorganish #uzbekistan #voila
+
+Suratlar: Wikimedia Commons — Rijin S; Chabe01 (CC BY-SA 4.0); Terragio67 (CC BY-SA 4.0); zoetnet (CC BY 2.0); Boubloub (CC0); Bradley Weber (CC BY 2.0)
+```
+
+**@gotopic.uz · 19:00 · Launch**
+```
+GoTopic. — koreys tili endi telefoningizda. 🇰🇷
+Hangul'dan TOPIK 6 gacha, Hori AI ustoz, seriya va sertifikat — bitta ilovada.
+
+Bugun boshlang: darslar bepul — havola profilda 👆
+
+#koreystili #hangul #topik #한국어 #uzbekistan #gotopic
+
+Suratlar: Wikimedia Commons — Basile Morin (CC BY-SA 4.0); Frank Schulenburg (CC BY-SA 4.0); Tristan Surtel (CC BY-SA 4.0) va boshqalar (launch-src/CREDITS.txt)
+```
+
+---
+
 **Har bir Reel'dan keyin (30 soniya):** shu Reel'ni Stories'ga ulashing va «Havola» stikerini qo'shing (sayt manzili). Birinchi soatda kelgan izohlarga javob bering — Instagram buni ko'proq odamga ko'rsatadi.
